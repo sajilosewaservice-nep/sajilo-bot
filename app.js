@@ -17,7 +17,10 @@ const SYSTEM_CONFIG = {
     THEME_COLOR: '#3b82f6'
 };
 
-const supabaseClient = window.supabase.createClient(SYSTEM_CONFIG.SUPABASE_URL, SYSTEM_CONFIG.SUPABASE_KEY);
+let supabaseClient;
+document.addEventListener('DOMContentLoaded', () => {
+    supabaseClient = supabase.createClient(SYSTEM_CONFIG.SUPABASE_URL, SYSTEM_CONFIG.SUPABASE_KEY);
+});
 
 // --- २. GLOBAL APPLICATION STATE ---
 let STATE = {
