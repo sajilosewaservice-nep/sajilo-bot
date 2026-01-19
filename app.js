@@ -8,11 +8,10 @@
  * =============================================================================
  */
 
-// --- १. SYSTEM CONFIGURATION ---
 const SYSTEM_CONFIG = {
-    // .env फाइलबाट URL र KEY तान्ने
-    SUPABASE_URL: process.env.SUPABASE_URL,
-    SUPABASE_KEY: process.env.SUPABASE_ANON_KEY, 
+    // यहाँ process.env नराख्नुहोस्, सिधै कोटेसन भित्र Key राख्नुहोस्
+    SUPABASE_URL: "https://ratgpvubjrcoipardzdp.supabase.co",
+    SUPABASE_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJhdGdwdnVianJjb2lwYXJkemRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzMTg0OTMsImV4cCI6MjA4Mzg5NDQ5M30.t1eofJj9dPK-Psp_oL3LpCWimyz621T21JNpZljEGZk", 
     PAGE_SIZE: 15,
     AUTO_REFRESH_RATE: 1800000, 
     THEME_COLOR: '#3b82f6'
