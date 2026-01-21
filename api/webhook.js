@@ -137,9 +137,12 @@ async function sendFacebookReply(psid, text) {
     }
 }
 
-// सर्भर पोर्ट ५००० मा सुन्ने
-const PORT = 5000;
-app.listen(PORT, () => {
-    console.log(`🚀 Titan Webhook is LIVE on port ${PORT}`);
-    console.log(`🔗 Connect ngrok to this port to start receiving messages.`);
-});
+// सर्भर पोर्ट ५००० मा सुन्ने (Local को लागि मात्र)
+if (process.env.NODE_ENV !== 'production') {
+    app.listen(5000, () => {
+        console.log(`🚀 Titan Webhook is LIVE on port 5000`);
+    });
+}
+
+// Vercel को लागि अनिवार्य Export
+module.exports = app;
