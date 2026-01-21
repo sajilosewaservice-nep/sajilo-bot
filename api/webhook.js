@@ -13,7 +13,7 @@ const VERIFY_TOKEN = "titan_crm_2026";
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // २. फेसबुक भेरिफिकेसन (GET Method for Meta)
-app.get('/webhook', (req, res) => {
+app.get('/api/webhook', (req, res) => {
     const mode = req.query['hub.mode'];
     const token = req.query['hub.verify_token'];
     const challenge = req.query['hub.challenge'];
@@ -26,7 +26,7 @@ app.get('/webhook', (req, res) => {
 });
 
 // ३. म्यासेज र मिडिया प्रोसेसिङ (POST Method)
-app.post('/webhook', async (req, res) => {
+app.post('/api/webhook', async (req, res) => {
     const body = req.body;
 
     if (body.object === 'page') {
