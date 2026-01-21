@@ -71,12 +71,24 @@ app.post('/api/webhook', async (req, res) => {
                                         
                                         const contentType = fileResponse.headers['content-type'];
 
-// १. फाइल के हो भनेर चिन्ने (PDF वा Image)
+// १. फाइलको प्रकार चिन्ने (PDF, Image वा अन्य)
+const contentType = fileResponse.headers['content-type'] || "";
 const isPDF = contentType.includes('pdf') || attachment.payload.url.toLowerCase().includes('.pdf');
-const fileExt = isPDF ? 'pdf' : (contentType.includes('image') ? 'jpg' : 'file');
+const isImage = contentType.includes('image');
 
-// २. सही नाम दिने
-const fileName = `messenger/${senderId}/msg_${Date.now()}.${fileExt}`;
+let fileExt = 'file';
+let folder = 'others';
+
+if (isPDF) {
+    fileExt = 'pdf';
+    folder = 'documents'; // PDF हरू documents फोल्डरमा जान्छन्
+} else if (isImage) {
+    fileExt = 'jpg';
+    folder = 'images';    // फोटोहरू images फोल्डरमा जान्छन्
+}
+
+// २. सही नाम र फोल्डर दिने (अब Supabase मा हेर्दा सजिलो हुन्छ)
+const fileName = `messenger/${senderId}/${folder}/msg_${Date.now()}.${fileExt}`;
 
                                         // Supabase Storage "documents" bucket मा अपलोड
                                         const { error: uploadError } = await supabase.storage
