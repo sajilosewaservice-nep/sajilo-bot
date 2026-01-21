@@ -69,31 +69,28 @@ app.post('/api/webhook', async (req, res) => {
                                             responseType: 'arraybuffer' 
                                         });
                                         
-                                        const contentType = fileResponse.headers['content-type'];
-
-// १. फाइलको प्रकार चिन्ने (PDF, Image वा अन्य)
-const contentType = fileResponse.headers['content-type'] || "";
-const isPDF = contentType.includes('pdf') || attachment.payload.url.toLowerCase().includes('.pdf');
-const isImage = contentType.includes('image');
+// १. फाइलको प्रकार चिन्ने
+const fileType = fileResponse.headers['content-type'] || ""; // नाम बदलियो
+const isPDF = fileType.includes('pdf') || attachment.payload.url.toLowerCase().includes('.pdf');
+const isImage = fileType.includes('image');
 
 let fileExt = 'file';
 let folder = 'others';
 
+// लामो तरिका (तपाईँलाई सजिलो लाग्ने)
 if (isPDF) {
     fileExt = 'pdf';
-    folder = 'documents'; // PDF हरू documents फोल्डरमा जान्छन्
+    folder = 'documents';
 } else if (isImage) {
     fileExt = 'jpg';
-    folder = 'images';    // फोटोहरू images फोल्डरमा जान्छन्
+    folder = 'images';
 }
 
-// २. सही नाम र फोल्डर दिने (अब Supabase मा हेर्दा सजिलो हुन्छ)
 const fileName = `messenger/${senderId}/${folder}/msg_${Date.now()}.${fileExt}`;
-
                                         // Supabase Storage "documents" bucket मा अपलोड
                                         const { error: uploadError } = await supabase.storage
                                             .from('documents')
-                                            .upload(fileName, fileResponse.data, { contentType, upsert: true });
+                                           .upload(fileName, fileResponse.data, { contentType: fileType, upsert: true });
 
                                         if (!uploadError) {
                                             const { data: { publicUrl } } = supabase.storage.from('documents').getPublicUrl(fileName);
