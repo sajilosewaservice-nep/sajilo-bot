@@ -10,7 +10,7 @@ const SUPABASE_URL = "https://ratgpvubjrcoipardzdp.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJhdGdwdnVianJjb2lwYXJkemRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzMTg0OTMsImV4cCI6MjA4Mzg5NDQ5M30.t1eofJj9dPK-Psp_oL3LpCWimyz621T21JNpZljEGZk";
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-const PAGE_ACCESS_TOKEN = "EAAcaSLIPpeYBQtd8KAJjlnZCmcMWXRCCWSWNeWye0ucjX2KBp5sNp4tO1HD19d4ZBx06BFEsxZCgDcBm7VxlGBwFxU7rZCDnadrXYU3z0yfWHZBByyqOZCoZCIlTARxRbD1AbuXsN2v1UbCWGS72TbfUaDGcVTTL2qW3R8p2eEqv6nqPWjj6qFw3IWvR27ualAO1FEmUtHvUAZDZD";
+const PAGE_ACCESS_TOKEN = "EAAcaSLIPpeYBQtCvOSrO7r3IWAbylbq3yB7mogGwmZA71nNS7RPzkdnDfe5M8D3vN993LN7nvUN0D1k2ZCmt0dXkn8HjpmbffDKOozGkEk6H3CGXahWZABw6CZAxah9ClHixXpEJBYZC0iTS4OkAQim38IjraOYVz0mziWZA1jex2jOI5NZAz89ZArGjF4fPwa4YVak7YfiF1AZDZD";
 
 // २. फेसबुक भेरिफिकेसन
 app.get('/api/webhook', (req, res) => {
