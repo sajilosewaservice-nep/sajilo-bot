@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../utils/supabaseClient'; // तपाईँको पाथ अनुसार मिलाउनुहोला
+import { supabase } from '../utils/supabaseClient'; 
 
 export default function ChatDashboard() {
-  // १. एउटै टोकन यहाँ छ, अब अन्त कतै हाल्नु पर्दैन
   const PAGE_TOKEN = "EAAcaSLIPpeYBQtd8KAJjlnZCmcMWXRCCWSWNeWye0ucjX2KBp5sNp4tO1HD19d4ZBx06BFEsxZCgDcBm7VxlGBwFxU7rZCDnadrXYU3z0yfWHZBByyqOZCoZCIlTARxRbD1AbuXsN2v1UbCWGS72TbfUaDGcVTTL2qW3R8p2eEqv6nqPWjj6qFw3IWvR27ualAO1FEmUtHvUAZDZD";
+  const VERIFY_TOKEN = "titan_crm_2026"; 
 
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState("");
-
+  
+  // यहाँबाट तपाईँको पुरानो loadHistory र handleSendReply फङ्सनहरू सुरु हुन्छन्...
+  
+  // ... बाँकी कोड यहाँ सुरु हुन्छ
   // आवाज बजाउने फङ्सन
   const playNotification = () => {
     const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3');
