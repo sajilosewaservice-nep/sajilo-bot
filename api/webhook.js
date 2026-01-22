@@ -1,183 +1,90 @@
-import React, { useState, useEffect } from 'react';
-import { supabase } from '../utils/supabaseClient'; 
+const express = require('express');
+const { createClient } = require('@supabase/supabase-js');
+const app = express();
 
-export default function ChatDashboard() {
-  const PAGE_TOKEN = "EAAcaSLIPpeYBQtd8KAJjlnZCmcMWXRCCWSWNeWye0ucjX2KBp5sNp4tO1HD19d4ZBx06BFEsxZCgDcBm7VxlGBwFxU7rZCDnadrXYU3z0yfWHZBByyqOZCoZCIlTARxRbD1AbuXsN2v1UbCWGS72TbfUaDGcVTTL2qW3R8p2eEqv6nqPWjj6qFw3IWvR27ualAO1FEmUtHvUAZDZD";
-  const VERIFY_TOKEN = "titan_crm_2026"; 
+app.use(express.json());
 
-  const [isChatOpen, setIsChatOpen] = useState(false);
-  const [selectedCustomer, setSelectedCustomer] = useState(null);
-  const [messages, setMessages] = useState([]);
-  const [inputText, setInputText] = useState("");
-  
-  // यहाँबाट तपाईँको पुरानो loadHistory र handleSendReply फङ्सनहरू सुरु हुन्छन्...
-  
-  // ... बाँकी कोड यहाँ सुरु हुन्छ
-  // आवाज बजाउने फङ्सन
-  const playNotification = () => {
-    const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3');
-    audio.play().catch(e => console.log("Sound error:", e));
-  };
+// १. तपाईँको सुपाबेस कन्फिगरेसन (तपाईँको app.js बाट सापट लिइएको)
+const SUPABASE_URL = "https://ratgpvubjrcoipardzdp.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJhdGdwdnVianJjb2lwYXJkemRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzMTg0OTMsImV4cCI6MjA4Mzg5NDQ5M30.t1eofJj9dPK-Psp_oL3LpCWimyz621T21JNpZljEGZk";
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  // फेसबुकबाट हिस्ट्री तान्ने फङ्सन
-  const loadHistory = async (id) => {
-    try {
-      const res = await fetch(`https://graph.facebook.com/v19.0/me/conversations?fields=messages{message,from,created_time,attachments{payload}}&user_id=${id}&access_token=${PAGE_TOKEN}`);
-      const data = await res.json();
-      if (data.data && data.data[0]) {
-        // नयाँ मेसेज तल देखाउन रिभर्स गरिएको
-        setMessages(data.data[0].messages.data.reverse());
-      }
-    } catch (err) {
-      console.error("History fetch error:", err);
+const PAGE_ACCESS_TOKEN = "EAAcaSLIPpeYBQtd8KAJjlnZCmcMWXRCCWSWNeWye0ucjX2KBp5sNp4tO1HD19d4ZBx06BFEsxZCgDcBm7VxlGBwFxU7rZCDnadrXYU3z0yfWHZBByyqOZCoZCIlTARxRbD1AbuXsN2v1UbCWGS72TbfUaDGcVTTL2qW3R8p2eEqv6nqPWjj6qFw3IWvR27ualAO1FEmUtHvUAZDZD";
+
+// २. फेसबुक भेरिफिकेसन (Webhook Setup को लागि)
+app.get('/api/webhook', (req, res) => {
+    const mode = req.query['hub.mode'];
+    const token = req.query['hub.verify_token'];
+    const challenge = req.query['hub.challenge'];
+
+    if (mode === 'subscribe' && token === "titan_crm_2026") {
+        return res.status(200).send(challenge);
     }
-  };
+    res.sendStatus(403);
+});
 
-  // च्याट विन्डो खोल्ने
-  const openChat = (customer) => {
-    setSelectedCustomer(customer);
-    setIsChatOpen(true);
-    loadHistory(customer.messenger_id);
-  };
+// ३. फेसबुकबाट नयाँ म्यासेज आउँदा सुपाबेसमा सेभ गर्ने इन्जिन
+app.post('/api/webhook', async (req, res) => {
+    const body = req.body;
 
-  // सुपाबेस रियल-टाइम: डाटाबेसमा म्यासेज अपडेट हुने बित्तिकै आवाज आउने र रिफ्रेस हुने
-  useEffect(() => {
-    if (isChatOpen && selectedCustomer) {
-      const channel = supabase
-        .channel('realtime-chat')
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'customers',
-            filter: `messenger_id=eq.${selectedCustomer.messenger_id}`,
-          },
-          () => {
-            loadHistory(selectedCustomer.messenger_id); // नयाँ मेसेज तान्ने
-            playNotification(); // 🔔 टिङ आवाज बजाउने
-          }
-        )
-        .subscribe();
+    if (body.object === 'page') {
+        for (const entry of body.entry) {
+            const webhook_event = entry.messaging[0];
+            const psid = webhook_event.sender.id; // पठाउनेको ID
 
-      return () => {
-        supabase.removeChannel(channel);
-      };
+            if (webhook_event.message) {
+                const messageText = webhook_event.message.text || "Sent an attachment";
+                
+                // फेसबुकबाट फोटो वा फाइल आएको छ भने त्यसको URL लिने
+                let attachments = [];
+                if (webhook_event.message.attachments) {
+                    attachments = webhook_event.message.attachments.map(a => a.payload.url);
+                }
+
+                if (webhook_event.message) {
+                // १. फेसबुकबाट वास्तविक नाम तान्ने नयाँ कोड (यो थप्नुहोस्)
+                let customerName = "Messenger User"; 
+                try {
+                    const userRes = await fetch(`https://graph.facebook.com/${psid}?fields=first_name,last_name&access_token=${PAGE_ACCESS_TOKEN}`);
+                    const userData = await userRes.json();
+                    if(userData.first_name) {
+                        customerName = `${userData.first_name} ${userData.last_name || ''}`;
+                    }
+                } catch (err) {
+                    console.error("Name fetch error:", err);
+                }
+
+                const messageText = webhook_event.message.text || "Sent an attachment";
+                
+                // ... बाँकी अट्याचमेन्टको कोड ...
+
+                // २. अब यहाँ लाइन ५१ मा "Messenger User" को सट्टा customerName राख्नुहोस्
+                const { error } = await supabase
+                    .from('customers')
+                    .upsert({
+                        messenger_id: psid,
+                        customer_name: customerName, // <-- यहाँ फेरियो
+                        phone_number: psid,
+                        chat_summary: messageText,
+                        platform: 'messenger',
+                        documents: attachments,
+                        updated_at: new Date().toISOString()
+                    }, { onConflict: 'messenger_id' });
+                if (error) console.error("Supabase Error:", error);
+            }
+        }
+        res.status(200).send('EVENT_RECEIVED');
+    } else {
+        res.sendStatus(404);
     }
-  }, [isChatOpen, selectedCustomer]);
+});
 
-  // रिप्लाई पठाउने (तपाईँको webhook.js को /api/direct-reply मा जान्छ)
-  const handleSendReply = async () => {
-    if (!inputText) return;
-    try {
-      const res = await fetch('/api/direct-reply', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          psid: selectedCustomer.messenger_id,
-          messageText: inputText
-        })
-      });
-
-      if (res.ok) {
-        // पठाएको मेसेजलाई स्क्रिनमा तुरुन्तै थप्ने
-        setMessages(prev => [...prev, { 
-          message: inputText, 
-          from: { id: 'page' }, 
-          created_time: new Date().toISOString() 
-        }]);
-        setInputText("");
-      }
-    } catch (err) {
-      alert("म्याजेट पठाउन सकिएन!");
-    }
-  };
-
-  return (
-    <div className="p-4">
-      {/* १. तपाईँको कस्टमर लिस्ट यहाँ हुन्छ (नमुना बटन) */}
-      <h2 className="text-xl font-bold mb-4">ग्राहकहरूसँगको कुराकानी</h2>
-      <button 
-        onClick={() => openChat({ messenger_id: "PSID_यहाँ_आउँछ", customer_name: "Customer Name" })}
-        className="bg-blue-600 text-white px-4 py-2 rounded shadow"
-      >
-        च्याट खोल्नुहोस्
-      </button>
-
-      {/* २. च्याट विन्डो (Popup Modal) */}
-      {isChatOpen && selectedCustomer && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4">
-          <div className="bg-white w-full max-w-lg h-[85vh] rounded-2xl flex flex-col shadow-2xl overflow-hidden">
-            
-            {/* Header */}
-            <div className="p-4 border-b bg-red-600 text-white flex justify-between items-center shadow-md">
-              <div>
-                <h3 className="font-bold text-lg">{selectedCustomer.customer_name}</h3>
-                <p className="text-xs opacity-80 italic text-white">मेसेन्जर मार्फत अनलाइन</p>
-              </div>
-              <button onClick={() => setIsChatOpen(false)} className="bg-red-700 hover:bg-red-800 px-3 py-1 rounded-full transition">X</button>
-            </div>
-
-            {/* Chat Body (Message History) */}
-            <div className="flex-1 overflow-y-auto p-4 bg-gray-50 flex flex-col gap-3">
-              {messages.map((msg, i) => {
-                const isCustomer = msg.from.id === selectedCustomer.messenger_id;
-                return (
-                  <div key={i} className={`max-w-[80%] p-3 rounded-2xl shadow-sm ${isCustomer ? 'bg-white text-gray-800 self-start rounded-tl-none border border-gray-200' : 'bg-red-500 text-white self-end rounded-tr-none'}`}>
-                    {/* टेक्स्ट म्यासेज */}
-                    {msg.message && <p className="text-sm leading-relaxed">{msg.message}</p>}
-                    
-                    {/* फोटो र अडियो सपोर्ट */}
-                    {msg.attachments?.data?.map((att, index) => (
-                      <div key={index} className="mt-2">
-                        {att.payload?.url?.includes('.mp3') || att.payload?.url?.includes('.wav') ? (
-                          <audio controls className="w-full h-8 outline-none"><source src={att.payload.url} /></audio>
-                        ) : (
-                          <img src={att.payload.url} className="max-w-full rounded-lg border border-gray-200" alt="attachment" />
-                        )}
-                      </div>
-                    ))}
-                    
-                    <span className="text-[10px] opacity-60 block mt-1 text-right">
-                      {new Date(msg.created_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Footer (Type & Send) */}
-            <div className="p-4 bg-white border-t flex gap-2 items-center shadow-inner">
-              <input 
-                value={inputText} 
-                onChange={(e) => setInputText(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSendReply()}
-                className="flex-1 border border-gray-300 p-3 rounded-full outline-none focus:border-red-500 transition-all text-sm" 
-                placeholder="यहाँ टाइप गर्नुहोस्..." 
-              />
-              <button 
-                onClick={handleSendReply} 
-                className="bg-red-600 hover:bg-red-700 text-white p-3 rounded-full w-12 h-12 flex items-center justify-center transition shadow-lg"
-              >
-                ➤
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// १. ड्यासबोर्डबाट म्यासेज पठाउन यो कोड थप्नुहोस्
+// ४. तपाईँको ड्यासबोर्डबाट जवाफ पठाउनको लागि (Direct Reply)
 app.post('/api/direct-reply', async (req, res) => {
     const { psid, messageText } = req.body;
-    
-    // तपाईँको फेसबुक पेज एक्सेस टोकन
-    const PAGE_TOKEN = "EAAcaSLIPpeYBQtd8KAJjlnZCmcMWXRCCWSWNeWye0ucjX2KBp5sNp4tO1HD19d4ZBx06BFEsxZCgDcBm7VxlGBwFxU7rZCDnadrXYU3z0yfWHZBByyqOZCoZCIlTARxRbD1AbuXsN2v1UbCWGS72TbfUaDGcVTTL2qW3R8p2eEqv6nqPWjj6qFw3IWvR27ualAO1FEmUtHvUAZDZD";
 
     try {
-        const fbResponse = await fetch(`https://graph.facebook.com/v19.0/me/messages?access_token=${PAGE_TOKEN}`, {
+        const response = await fetch(`https://graph.facebook.com/v19.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -186,16 +93,16 @@ app.post('/api/direct-reply', async (req, res) => {
             })
         });
 
-        const result = await fbResponse.json();
+        const result = await response.json();
 
-        if (fbResponse.ok) {
-            res.status(200).json({ success: true, data: result });
+        if (response.ok) {
+            res.status(200).json({ success: true, result });
         } else {
-            console.error("FB Error:", result);
-            res.status(500).json({ error: "फेसबुकमा म्यासेज पठाउन सकिएन" });
+            res.status(500).json({ success: false, error: result });
         }
-    } catch (error) {
-        console.error("Server Error:", error);
-        res.status(500).json({ error: "Internal Server Error" });
+    } catch (err) {
+        res.status(500).json({ success: false, error: "Internal Server Error" });
     }
 });
+
+module.exports = app;
