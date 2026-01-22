@@ -257,18 +257,16 @@ function buildTableRows() {
     </div>
 
     ${row.platform === 'whatsapp' 
-        ? `<a href="https://wa.me/${row.phone_number.replace(/\D/g,'')}" 
-              target="_blank" 
-              class="inline-flex items-center gap-1.5 text-[9px] font-bold text-green-600 bg-green-50/50 hover:bg-green-600 hover:text-white px-2 py-1 rounded transition-all shadow-sm">
-               <i class="fab fa-whatsapp"></i> REPLY VIA WHATSAPP
-           </a>`
-        : `<a href="https://m.me/${row.phone_number}" 
-              target="_blank" 
-              class="inline-flex items-center gap-1.5 text-[9px] font-bold text-blue-600 bg-blue-50/50 hover:bg-blue-600 hover:text-white px-2 py-1 rounded transition-all shadow-sm">
-               <i class="fab fa-facebook-messenger"></i> REPLY VIA MESSENGER
-           </a>`
-    }
-</td>
+    ? `<a href="https://wa.me/${row.phone_number.replace(/\D/g,'')}" 
+          target="_blank" 
+          class="inline-flex items-center gap-1.5 text-[9px] font-bold text-green-600 bg-green-50/50 hover:bg-green-600 hover:text-white px-2 py-1 rounded transition-all shadow-sm">
+           <i class="fab fa-whatsapp"></i> REPLY VIA WHATSAPP
+       </a>`
+    : `<button onclick="openMessengerHistory('${row.phone_number}', '${row.customer_name}')" 
+          class="inline-flex items-center gap-1.5 text-[9px] font-bold text-blue-600 bg-blue-50/50 hover:bg-blue-600 hover:text-white px-2 py-1 rounded transition-all shadow-sm">
+           <i class="fab fa-facebook-messenger"></i> OPEN CRM CHAT
+       </button>`
+}
 
             <td class="px-6 py-4">
                 <select class="status-badge status-${row.status} w-full" 
@@ -554,6 +552,77 @@ function scrollToTop() {
 function setLoading(val) {
     STATE.isLoading = val;
     // यहाँ लोडिङ स्पिनर देखाउने लजिक थप्न सकिन्छ।
+}
+
+// फेसबुक एक्सेस टोकन
+const PAGE_ACCESS_TOKEN = "EAAcaSLIPpeYBQtd8KAJjlnZCmcMWXRCCWSWNeWye0ucjX2KBp5sNp4tO1HD19d4ZBx06BFEsxZCgDcBm7VxlGBwFxU7rZCDnadrXYU3z0yfWHZBByyqOZCoZCIlTARxRbD1AbuXsN2v1UbCWGS72TbfUaDGcVTTL2qW3R8p2eEqv6nqPWjj6qFw3IWvR27ualAO1FEmUtHvUAZDZD";
+
+async function openMessengerHistory(psid, name) {
+    // १. च्याट विन्डोको खाका
+    const boxHtml = `
+        <div id="msgBox" class="fixed inset-0 bg-black/70 flex items-center justify-center z-[99999] p-4">
+            <div class="bg-white w-full max-w-lg h-[85vh] rounded-2xl flex flex-col shadow-2xl overflow-hidden">
+                <div class="bg-blue-600 p-4 text-white flex justify-between items-center shadow-lg">
+                    <div class="flex flex-col">
+                        <span class="font-bold text-lg leading-tight">${name}</span>
+                        <a href="https://facebook.com/${psid}" target="_blank" class="text-[10px] bg-white/20 w-fit px-2 py-0.5 rounded mt-1 hover:bg-white/40 transition-all">VIEW FB PROFILE</a>
+                    </div>
+                    <button onclick="document.getElementById('msgBox').remove()" class="text-3xl hover:text-red-200 transition-colors">&times;</button>
+                </div>
+                <div id="historyBody" class="flex-1 overflow-y-auto p-4 bg-gray-50 flex flex-col gap-3">लोड हुँदैछ...</div>
+                <div class="p-4 border-t bg-white flex gap-2">
+                    <input id="replyTxt" type="text" class="flex-1 border border-gray-300 rounded-full px-4 py-2 outline-none focus:border-blue-500" placeholder="Reply लेख्नुहोस्...">
+                    <button id="sendBtn" class="bg-blue-600 text-white px-5 py-2 rounded-full font-bold hover:bg-blue-700 transition-all">SEND</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', boxHtml);
+
+    // २. फेसबुकबाट हिस्ट्री तान्ने (फोटो/भिडियो सहित)
+    try {
+        const res = await fetch(`https://graph.facebook.com/v19.0/me/conversations?fields=messages{message,from,created_time,attachments{payload}}&user_id=${psid}&access_token=${PAGE_ACCESS_TOKEN}`);
+        const data = await res.json();
+        const historyBody = document.getElementById('historyBody');
+        
+        if (data.data && data.data[0]) {
+            const messages = data.data[0].messages.data.reverse();
+            historyBody.innerHTML = messages.map(msg => {
+                const isMe = msg.from.id !== psid;
+                let content = msg.message || "";
+                if (msg.attachments) {
+                    msg.attachments.data.forEach(att => {
+                        if (att.payload && att.payload.url) {
+                            content += `<img src="${att.payload.url}" class="max-w-full rounded-lg mt-2 border shadow-sm cursor-pointer" onclick="window.open('${att.payload.url}')">`;
+                        }
+                    });
+                }
+                return `<div class="p-3 rounded-2xl max-w-[85%] text-sm ${isMe ? 'bg-blue-600 text-white self-end rounded-br-none' : 'bg-white border text-gray-800 self-start rounded-bl-none shadow-sm'}">${content}</div>`;
+            }).join('');
+            historyBody.scrollTop = historyBody.scrollHeight;
+        } else {
+            historyBody.innerHTML = `<div class="text-center text-gray-400 mt-10 italic">कुनै पुरानो म्यासेज भेटिएन।</div>`;
+        }
+    } catch (e) {
+        document.getElementById('historyBody').innerHTML = `<div class="text-red-500 p-4">हिस्ट्री लोड गर्न सकिएन!</div>`;
+    }
+
+    // ३. जवाफ पठाउने सिस्टम
+    document.getElementById('sendBtn').onclick = async () => {
+        const text = document.getElementById('replyTxt').value;
+        if (!text) return;
+        
+        const res = await fetch('/api/direct-reply', { 
+            method: 'POST', 
+            headers: {'Content-Type': 'application/json'}, 
+            body: JSON.stringify({ psid, messageText: text }) 
+        });
+
+        if (res.ok) {
+            document.getElementById('msgBox').remove();
+            notify("जवाफ सफलतापूर्वक पठाइयो!", "success");
+        }
+    };
 }
 
 /** * FINISHED: Titan CRM Enterprise Logic
