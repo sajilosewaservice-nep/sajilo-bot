@@ -52,18 +52,24 @@ app.post('/api/webhook', async (req, res) => {
                     attachments = webhook_event.message.attachments.map(a => a.payload.url);
                 }
 
-                // १. पहिले डाटाबेसमा भएको पुरानो डाटा तान्ने
+                // १. पहिलेको डाटा तान्ने
 const { data: currentCust } = await supabase
     .from('customers')
     .select('documents')
     .eq('messenger_id', psid)
-    .single();
+    .maybeSingle();
 
-// २. पुराना र नयाँ लिङ्कहरूलाई एउटै लिस्टमा मिसाउने
-const oldDocs = (currentCust && currentCust.documents) ? currentCust.documents : [];
-const allDocs = [...new Set([...oldDocs, ...attachments])]; 
+// २. पुराना फाइलहरूलाई पक्का Array बनाउने (यो नै मुख्य समाधान हो)
+let oldDocs = [];
+if (currentCust && currentCust.documents) {
+    // यदि पहिलेदेखि नै एरे छ भने लिने, नत्र एरेमा बदल्ने
+    oldDocs = Array.isArray(currentCust.documents) ? currentCust.documents : [currentCust.documents];
+}
 
-// ३. अब नयाँ लिस्टसहित अपडेट (Upsert) गर्ने
+// ३. नयाँ र पुराना मिसाउने (यसले १ वटा होइन, जति पनि फोटो बस्न दिन्छ)
+const allDocs = [...new Set([...oldDocs, ...attachments])].filter(Boolean); 
+
+// ४. अब अपडेट गर्ने
 const { error } = await supabase
     .from('customers')
     .upsert({
@@ -72,8 +78,8 @@ const { error } = await supabase
         phone_number: psid,
         chat_summary: messageText,
         platform: 'messenger',
-        documents: allDocs, // यहाँ सबै फाइलको लिस्ट गयो
-        updated_at: new Date().toISOString()
+        documents: allDocs,        // <--- यो लाइन थप्नुहोस्
+        updated_at: new Date().toISOString() // <--- यो लाइन थप्नुहोस्
     }, { onConflict: 'messenger_id' });
 
                 if (error) console.error("Supabase Error:", error);
