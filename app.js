@@ -466,13 +466,19 @@ function renderFileIcons(docs) {
     if (!docs || docs.length === 0) return '<span class="text-slate-200">-</span>';
     
     return docs.map(url => {
-        // यहाँ हामीले 'fbcdn' थपेका छौँ जसले मेसेन्जरका फोटोहरू चिन्छ
-        const isImage = url.toLowerCase().match(/\.(jpg|jpeg|png|gif|webp)/g) || 
-                        url.includes('msg_') || 
-                        url.includes('_wa') ||
-                        url.includes('fbcdn') || 
-                        url.includes('messenger');
+        const lowerUrl = url.toLowerCase();
         
+        // १. फोटो पहिचान गर्ने (Messenger + WhatsApp)
+        const isImage = lowerUrl.match(/\.(jpg|jpeg|png|gif|webp)/g) || 
+                        lowerUrl.includes('fbcdn') || 
+                        lowerUrl.includes('_wa') || 
+                        lowerUrl.includes('messenger');
+
+        // २. अडियो/भ्वाइस रेकर्ड पहिचान गर्ने
+        const isAudio = lowerUrl.match(/\.(mp3|wav|ogg|m4a|aac|mp4)/g) || 
+                        lowerUrl.includes('audioclip') || 
+                        lowerUrl.includes('voice_message');
+
         if (isImage) {
             return `
                 <div class="inline-block m-1">
@@ -482,12 +488,24 @@ function renderFileIcons(docs) {
                          onerror="this.src='https://via.placeholder.com/40?text=IMG'" 
                          title="फोटो हेर्नुहोस्">
                 </div>`;
-        } else {
-            const pdfUrl = url.split('?')[0].toLowerCase().endsWith('.pdf') ? `${url}#toolbar=1` : url;
+        } else if (isAudio) {
+            // ३. भ्वाइस रेकर्डको लागि निलो माइक आइकन
             return `
-                <a href="${pdfUrl}" target="_blank" rel="noopener noreferrer"
+                <a href="${url}" target="_blank" 
+                   class="inline-flex items-center justify-center w-10 h-10 bg-blue-50 border border-blue-200 rounded text-blue-600 hover:bg-blue-600 hover:text-white transition-all shadow-sm m-1 text-center" 
+                   title="Voice Record सुन्नुहोस्">
+                    <div class="flex flex-col items-center justify-center leading-none">
+                        <i class="fas fa-microphone" style="font-size: 14px;"></i>
+                        <span style="font-size: 7px; font-weight: 900; margin-top: 1px;">VOICE</span>
+                    </div>
+                </a>`;
+        } else {
+            // ४. वास्तविक PDF वा अन्य फाइलको लागि रातो आइकन
+            const pdfUrl = lowerUrl.split('?')[0].endsWith('.pdf') ? `${url}#toolbar=1` : url;
+            return `
+                <a href="${pdfUrl}" target="_blank"
                    class="inline-flex items-center justify-center w-10 h-10 bg-red-50 border border-red-200 rounded text-red-600 hover:bg-red-600 hover:text-white transition-all shadow-sm m-1 text-center" 
-                   title="PDF फाइल खोल्नुहोस्">
+                   title="फाइल खोल्नुहोस्">
                     <div class="flex flex-col items-center justify-center leading-none">
                         <i class="fas fa-file-pdf" style="font-size: 14px;"></i>
                         <span style="font-size: 7px; font-weight: 900; margin-top: 1px;">VIEW</span>
