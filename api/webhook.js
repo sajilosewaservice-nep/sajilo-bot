@@ -52,17 +52,29 @@ app.post('/api/webhook', async (req, res) => {
                     attachments = webhook_event.message.attachments.map(a => a.payload.url);
                 }
 
-                const { error } = await supabase
-                    .from('customers')
-                    .upsert({
-                        messenger_id: psid,
-                        customer_name: customerName,
-                        phone_number: psid,
-                        chat_summary: messageText,
-                        platform: 'messenger',
-                        documents: attachments,
-                        updated_at: new Date().toISOString()
-                    }, { onConflict: 'messenger_id' });
+                // १. पहिले डाटाबेसमा भएको पुरानो डाटा तान्ने
+const { data: currentCust } = await supabase
+    .from('customers')
+    .select('documents')
+    .eq('messenger_id', psid)
+    .single();
+
+// २. पुराना र नयाँ लिङ्कहरूलाई एउटै लिस्टमा मिसाउने
+const oldDocs = (currentCust && currentCust.documents) ? currentCust.documents : [];
+const allDocs = [...new Set([...oldDocs, ...attachments])]; 
+
+// ३. अब नयाँ लिस्टसहित अपडेट (Upsert) गर्ने
+const { error } = await supabase
+    .from('customers')
+    .upsert({
+        messenger_id: psid,
+        customer_name: customerName,
+        phone_number: psid,
+        chat_summary: messageText,
+        platform: 'messenger',
+        documents: allDocs, // यहाँ सबै फाइलको लिस्ट गयो
+        updated_at: new Date().toISOString()
+    }, { onConflict: 'messenger_id' });
 
                 if (error) console.error("Supabase Error:", error);
             }
