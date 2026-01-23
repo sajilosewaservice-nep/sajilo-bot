@@ -224,7 +224,7 @@ function buildTableRows() {
             </td>
 
             <td class="px-6 py-4">
-                <div class="font-bold text-slate-800 text-sm">${row.customer_name || 'Anonymous'}</div>
+<div class="font-bold text-slate-800 text-sm">${row.customer_name || 'Loading Name...'}</div>
                 <div class="text-[10px] text-blue-500 font-bold">${row.phone_number || 'N/A'}</div>
             </td>
 
@@ -625,6 +625,45 @@ async function openMessengerHistory(psid, name) {
     };
 }
 
+// --- नाम अपडेट गर्ने सुधारेको इन्जिन ---
+const originalOpenMessenger = openMessengerHistory;
+openMessengerHistory = async function(psid, name) {
+    // १. पहिलेकै च्याट विन्डो खोल्ने
+    originalOpenMessenger(psid, name);
+
+    try {
+        // २. फेसबुकबाट असली नाम तान्ने
+        const res = await fetch(`https://graph.facebook.com/${psid}?fields=first_name,last_name&access_token=${PAGE_ACCESS_TOKEN}`);
+        const fbData = await res.json();
+        
+        if (fbData.first_name) {
+            const fullName = `${fbData.first_name} ${fbData.last_name}`;
+            
+            // ३. डाटाबेसमा अपडेट गर्ने (phone_number को आधारमा किनकि psid त्यहीँ छ)
+            const { data, error } = await supabaseClient
+                .from('customers')
+                .update({ customer_name: fullName })
+                .eq('phone_number', psid)
+                .select();
+
+            if (!error) {
+                console.log("✅ Name Fixed in DB: " + fullName);
+                
+                // ४. UI मा नाम तुरुन्तै बदल्ने (रो खोज्ने सही तरिका)
+                // हामी सबै 'tr' मा खोज्छौँ जसको भित्र त्यो psid (phone_number) लेखिएको छ
+                const allRows = document.querySelectorAll('#tableBody tr');
+                allRows.forEach(row => {
+                    if (row.innerText.includes(psid)) {
+                        const nameDiv = row.querySelector('.text-sm.font-bold');
+                        if (nameDiv) nameDiv.innerText = fullName;
+                    }
+                });
+            }
+        }
+    } catch (err) {
+        console.error("❌ FB Name Sync Error:", err);
+    }
+};
 /** * FINISHED: Titan CRM Enterprise Logic
  * Optimized for Scale and Speed.
  * =============================================================================
