@@ -52,12 +52,20 @@ app.post('/api/webhook', async (req, res) => {
                     attachments = webhook_event.message.attachments.map(a => a.payload.url);
                 }
 
-                // १. पहिलेको डाटा तान्ने
-const { data: currentCust } = await supabase
-    .from('customers')
-    .select('documents')
-    .eq('messenger_id', psid)
-    .maybeSingle();
+                // --- १. म्यासेज हिस्ट्री सेभ गर्ने (यसले ड्यासबोर्ड भर्छ) ---
+                await supabase.from('messages').insert([{
+                    customer_id: psid,
+                    content: messageText,
+                    is_from_customer: true,
+                    metadata: { urls: attachments }
+                }]);
+
+                // --- २. सुपाबेसबाट पुरानो डेटा तान्ने (यसले गर्दा पुरानो फाइल हराउँदैन) ---
+                const { data: currentCust } = await supabase
+                    .from('customers')
+                    .select('documents')
+                    .eq('messenger_id', psid)
+                    .maybeSingle();
 
 // २. पुराना फाइलहरूलाई पक्का Array बनाउने (यो नै मुख्य समाधान हो)
 let oldDocs = [];
