@@ -69,21 +69,25 @@ if (currentCust && currentCust.documents) {
 // ३. नयाँ र पुराना मिसाउने (यसले १ वटा होइन, जति पनि फोटो बस्न दिन्छ)
 const allDocs = [...new Set([...oldDocs, ...attachments])].filter(Boolean); 
 
-// ४. अब अपडेट गर्ने
-const { error } = await supabase
-    .from('customers')
-    .upsert({
-        messenger_id: psid,
-        customer_name: customerName,
-        phone_number: psid,
-        chat_summary: messageText,
-        platform: 'messenger',
-        documents: allDocs,        // <--- यो लाइन थप्नुहोस्
-        updated_at: new Date().toISOString() // <--- यो लाइन थप्नुहोस्
-    }, { onConflict: 'messenger_id' });
+// ४. अब अपडेट गर्ने (यसले म्यासेज रोकिन दिँदैन)
+                const { error: upsertError } = await supabase
+                    .from('customers')
+                    .upsert({
+                        messenger_id: psid,
+                        customer_name: customerName,
+                        phone_number: psid, 
+                        chat_summary: messageText,
+                        platform: 'messenger',
+                        documents: allDocs || [], // यदि केही छैन भने खाली एरे पठाउने
+                        updated_at: new Date().toISOString()
+                    }, { 
+                        onConflict: 'messenger_id'
+                    });
 
-                if (error) console.error("Supabase Error:", error);
-            }
+                if (upsertError) {
+                    console.error("Supabase Error:", upsertError.message);
+                }
+            } // if (webhook_event.message) को अन्त्य
         }
         res.status(200).send('EVENT_RECEIVED');
     } else {
