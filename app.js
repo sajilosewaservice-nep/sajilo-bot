@@ -348,14 +348,29 @@ async function commitUpdate(id, dataObject, successMessage) {
 function handleRemoteTrigger(payload) {
     console.log("🚀 Realtime Trigger Received:", payload.eventType);
     
+    // १. आवाज बजाउने सानो फङ्सन
+    const playSound = () => {
+        const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+        audio.volume = 0.5;
+        audio.play().catch(e => console.log("Sound blocked: Browser requires user interaction first."));
+    };
+
     if (payload.eventType === 'INSERT') {
-        // नयाँ म्यासेज आउने बित्तिकै लिस्टको सुरुमा थप्ने
         STATE.allData = [payload.new, ...STATE.allData];
-        
-        // नयाँ म्यासेज आएको थाहा पाउन नोटिफिकेसन दिने
-        notify("नयाँ म्यासेज प्राप्त भयो!", "success");
+        notify("नयाँ ग्राहक/म्यासेज प्राप्त भयो!", "success");
+        playSound(); // नयाँ म्यासेज आउँदा घण्टी बज्छ
     } 
     else if (payload.eventType === 'UPDATE') {
+        // २. नोटिफिकेसन कतिखेर दिने? 
+        // यदि नोट फेरियो र त्यो नोट फेर्ने मान्छे 'तपाईँ आफै' होइन भने मात्र घण्टी बजाउने
+        const isNoteChanged = payload.old.operator_instruction !== payload.new.operator_instruction;
+        const isNotMe = payload.new.last_updated_by !== STATE.currentUser.full_name;
+
+        if (isNoteChanged && isNotMe) {
+            notify(`नयाँ नोट: ${payload.new.last_updated_by} ले केही लेख्नुभयो`, "success");
+            playSound(); // अर्को ओपरेटरले नोट लेख्दा घण्टी बज्छ
+        }
+
         STATE.allData = STATE.allData.map(c => c.id === payload.new.id ? payload.new : c);
         flashRow(payload.new.id);
     } 
