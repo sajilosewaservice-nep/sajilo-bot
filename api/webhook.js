@@ -1,113 +1,123 @@
 const fetch = require('node-fetch');
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
-const app = express();
 
+const app = express();
 app.use(express.json());
 
-// १. सुपाबेस कन्फिगरेसन
-const SUPABASE_URL = "https://ratgpvubjrcoipardzdp.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJhdGdwdnVianJjb2lwYXJkemRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzMTg0OTMsImV4cCI6MjA4Mzg5NDQ5M30.t1eofJj9dPK-Psp_oL3LpCWimyz621T21JNpZljEGZk";
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+// १. कन्फिगरेसन (Environment Variables मा राख्नु राम्रो हुन्छ)
+const CONFIG = {
+    SUPABASE_URL: "https://ratgpvubjrcoipardzdp.supabase.co",
+    SUPABASE_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJhdGdwdnVianJjb2lwYXJkemRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzMTg0OTMsImV4cCI6MjA4Mzg5NDQ5M30.t1eofJj9dPK-Psp_oL3LpCWimyz621T21JNpZljEGZk",
+    PAGE_ACCESS_TOKEN: "EAAcaSLIPpeYBQtCvOSrO7r3IWAbylbq3yB7mogGwmZA71nNS7RPzkdnDfe5M8D3vN993LN7nvUN0D1k2ZCmt0dXkn8HjpmbffDKOozGkEk6H3CGXahWZABw6CZAxah9ClHixXpEJBYZC0iTS4OkAQim38IjraOYVz0mziWZA1jex2jOI5NZAz89ZArGjF4fPwa4YVak7YfiF1AZDZD",
+    VERIFY_TOKEN: "titan_crm_2026"
+};
 
-const PAGE_ACCESS_TOKEN = "EAAcaSLIPpeYBQtCvOSrO7r3IWAbylbq3yB7mogGwmZA71nNS7RPzkdnDfe5M8D3vN993LN7nvUN0D1k2ZCmt0dXkn8HjpmbffDKOozGkEk6H3CGXahWZABw6CZAxah9ClHixXpEJBYZC0iTS4OkAQim38IjraOYVz0mziWZA1jex2jOI5NZAz89ZArGjF4fPwa4YVak7YfiF1AZDZD";
+const supabase = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_KEY);
 
-// २. फेसबुक भेरिफिकेसन
+// २. हेल्पर फङ्सन: फेसबुकबाट युजरको विवरण तान्न
+async function getFacebookUserProfile(psid) {
+    try {
+        const response = await fetch(`https://graph.facebook.com/${psid}?fields=first_name,last_name,profile_pic&access_token=${CONFIG.PAGE_ACCESS_TOKEN}`);
+        const data = await response.json();
+        return {
+            name: data.first_name ? `${data.first_name} ${data.last_name || ''}`.trim() : "Messenger User",
+            profilePic: data.profile_pic || null
+        };
+    } catch (error) {
+        console.error("❌ FB Profile Fetch Error:", error);
+        return { name: "Messenger User", profilePic: null };
+    }
+}
+
+// ३. फेसबुक भेरिफिकेसन (Webhook Setup)
 app.get('/api/webhook', (req, res) => {
     const mode = req.query['hub.mode'];
     const token = req.query['hub.verify_token'];
     const challenge = req.query['hub.challenge'];
 
-    if (mode === 'subscribe' && token === "titan_crm_2026") {
+    if (mode === 'subscribe' && token === CONFIG.VERIFY_TOKEN) {
+        console.log("✅ Webhook Verified!");
         return res.status(200).send(challenge);
     }
     res.sendStatus(403);
 });
 
-// ३. नयाँ म्यासेज र नाम सेभ गर्ने इन्जिन
+// ४. मुख्य इन्जिन: म्यासेज रिसिभ र डाटाबेस अपडेट
 app.post('/api/webhook', async (req, res) => {
     const body = req.body;
 
-    if (body.object === 'page') {
-        for (const entry of body.entry) {
-            const webhook_event = entry.messaging[0];
-            const psid = webhook_event.sender.id;
+    if (body.object !== 'page') return res.sendStatus(404);
 
-            if (webhook_event.message) {
-                let customerName = "Messenger User"; 
-                try {
-                    const userRes = await fetch(`https://graph.facebook.com/${psid}?fields=first_name,last_name&access_token=${PAGE_ACCESS_TOKEN}`);
-                    const userData = await userRes.json();
-                    if(userData.first_name) {
-                        customerName = `${userData.first_name} ${userData.last_name || ''}`.trim();
-                    }
-                } catch (err) {
-                    console.error("Name fetch error:", err);
-                }
+    for (const entry of body.entry) {
+        if (!entry.messaging) continue;
 
-                const messageText = webhook_event.message.text || "Sent an attachment";
-                
-                let attachments = [];
-                if (webhook_event.message.attachments) {
-                    attachments = webhook_event.message.attachments.map(a => a.payload.url);
-                }
+        const event = entry.messaging[0];
+        const psid = event.sender.id;
 
-                // --- १. म्यासेज हिस्ट्री सेभ गर्ने (यसले ड्यासबोर्ड भर्छ) ---
-                await supabase.from('messages').insert([{
-                    customer_id: psid,
-                    content: messageText,
-                    is_from_customer: true,
-                    metadata: { urls: attachments }
-                }]);
+        if (event.message) {
+            const messageText = event.message.text || "";
+            let attachments = [];
 
-                // --- २. सुपाबेसबाट पुरानो डेटा तान्ने (यसले गर्दा पुरानो फाइल हराउँदैन) ---
-                const { data: currentCust } = await supabase
-                    .from('customers')
-                    .select('documents')
-                    .eq('messenger_id', psid)
-                    .maybeSingle();
+            if (event.message.attachments) {
+                attachments = event.message.attachments.map(a => a.payload.url);
+            }
 
-// २. पुराना फाइलहरूलाई पक्का Array बनाउने (यो नै मुख्य समाधान हो)
-let oldDocs = [];
-if (currentCust && currentCust.documents) {
-    // यदि पहिलेदेखि नै एरे छ भने लिने, नत्र एरेमा बदल्ने
-    oldDocs = Array.isArray(currentCust.documents) ? currentCust.documents : [currentCust.documents];
-}
+            console.log(`📩 New message from ${psid}: ${messageText || '[Attachment]'}`);
 
-// ३. नयाँ र पुराना मिसाउने (यसले १ वटा होइन, जति पनि फोटो बस्न दिन्छ)
-const allDocs = [...new Set([...oldDocs, ...attachments])].filter(Boolean); 
+            // क) फेसबुक प्रोफाइल र सुपाबेसको पुरानो डाटा एकैसाथ तान्ने (Parallel processing)
+            const [userProfile, { data: existingCustomer }] = await Promise.all([
+                getFacebookUserProfile(psid),
+                supabase.from('customers').select('documents').eq('messenger_id', psid).maybeSingle()
+            ]);
 
-// ४. अब अपडेट गर्ने (यसले म्यासेज रोकिन दिँदैन)
-                const { error: upsertError } = await supabase
-                    .from('customers')
-                    .upsert({
+            // ख) डकुमेन्ट/फोटोहरू मर्ज गर्ने लजिक
+            let oldDocs = existingCustomer?.documents || [];
+            if (!Array.isArray(oldDocs)) oldDocs = [oldDocs];
+            const updatedDocs = [...new Set([...oldDocs, ...attachments])].filter(Boolean);
+
+            // ग) डाटाबेस अपडेट (Customers & Messages)
+            const finalMessage = messageText || (attachments.length > 0 ? "📷 Sent an attachment" : "New Message");
+
+            try {
+                await Promise.all([
+                    // Customers टेबल अपडेट
+                    supabase.from('customers').upsert({
                         messenger_id: psid,
-                        customer_name: customerName,
-                        phone_number: psid, 
-                        chat_summary: messageText,
+                        customer_name: userProfile.name,
+                        chat_summary: finalMessage,
                         platform: 'messenger',
-                        documents: allDocs || [], // यदि केही छैन भने खाली एरे पठाउने
+                        documents: updatedDocs,
                         updated_at: new Date().toISOString()
-                    }, { 
-                        onConflict: 'messenger_id'
-                    });
+                    }, { onConflict: 'messenger_id' }),
 
-                if (upsertError) {
-                    console.error("Supabase Error:", upsertError.message);
-                }
-            } // if (webhook_event.message) को अन्त्य
+                    // Messages (History) टेबल अपडेट
+                    supabase.from('messages').insert([{
+                        customer_id: psid,
+                        content: finalMessage,
+                        is_from_customer: true,
+                        metadata: { urls: attachments, profile_pic: userProfile.profilePic }
+                    }])
+                ]);
+                console.log(`✅ Database updated for ${userProfile.name}`);
+            } catch (dbError) {
+                console.error("❌ Database Update Error:", dbError);
+            }
         }
-        res.status(200).send('EVENT_RECEIVED');
-    } else {
-        res.sendStatus(404);
     }
+    res.status(200).send('EVENT_RECEIVED');
 });
 
-// ४. ड्यासबोर्डबाट रिप्लाई पठाउन
+// ५. ड्यासबोर्डबाट सिधै रिप्लाई पठाउने API
 app.post('/api/direct-reply', async (req, res) => {
     const { psid, messageText } = req.body;
+
+    if (!psid || !messageText) {
+        return res.status(400).json({ error: "Missing psid or messageText" });
+    }
+
     try {
-        const response = await fetch(`https://graph.facebook.com/v19.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`, {
+        const response = await fetch(`https://graph.facebook.com/v21.0/me/messages?access_token=${CONFIG.PAGE_ACCESS_TOKEN}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -115,14 +125,22 @@ app.post('/api/direct-reply', async (req, res) => {
                 message: { text: messageText }
             })
         });
+
         const result = await response.json();
         if (response.ok) {
+            // रिप्लाई म्यासेजलाई पनि हिस्ट्रीमा सेभ गर्ने
+            await supabase.from('messages').insert([{
+                customer_id: psid,
+                content: messageText,
+                is_from_customer: false
+            }]);
+            
             res.status(200).json({ success: true, result });
         } else {
             res.status(500).json({ success: false, error: result });
         }
     } catch (err) {
-        res.status(500).json({ success: false, error: "Internal Server Error" });
+        res.status(500).json({ success: false, error: "Server Error" });
     }
 });
 
