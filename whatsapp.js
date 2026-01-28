@@ -18,10 +18,18 @@ let isAuthenticated = false;
 console.log('🚀 Starting WhatsApp Service...');
 
 const client = new Client({
-    authStrategy: new LocalAuth(),
+    authStrategy: new LocalAuth({ clientId: 'sajilo-bot' }),
     puppeteer: { 
-        headless: true, 
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'] 
+        headless: true,
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-gpu',
+            '--disable-web-resources',
+            '--single-process'
+        ],
+        timeout: 60000
     }
 });
 
@@ -30,17 +38,17 @@ client.on('qr', (qr) => {
     console.log('Scan this QR code with WhatsApp');
     console.log('==========================================\n');
     currentQRCode = qr;
-    isAuthenticated = false;
 });
 
-client.on('ready', () => {
-    console.log('✅ WhatsApp Connected Successfully!');
+client.on('authenticated', () => {
+    console.log('✅ WhatsApp Authenticated!');
     isAuthenticated = true;
     currentQRCode = null;
 });
 
-client.on('auth_failure', (msg) => {
-    console.error('❌ Auth Failed:', msg);
+client.on('ready', () => {
+    console.log('✅ WhatsApp Client Ready!');
+    isAuthenticated = true;
 });
 
 client.on('message', async (msg) => {
@@ -85,7 +93,10 @@ server.listen(PORT, () => {
 });
 
 console.log('⏳ Initializing WhatsApp client...');
-client.initialize();
+client.initialize().catch(err => {
+    console.error('❌ Initialization error:', err);
+    process.exit(1);
+});
 
 process.on('SIGINT', () => {
     console.log('\n🛑 Shutting down...');
