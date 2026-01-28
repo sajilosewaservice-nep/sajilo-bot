@@ -1,117 +1,95 @@
-require('dotenv').config(); 
+require('dotenv').config();
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const { createClient } = require('@supabase/supabase-js');
-const qrcode = require('qrcode-terminal');
+const express = require('express');
+const http = require('http' );
 
-// १. Supabase कनेक्शन सेटअप
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// २. WhatsApp Client सेटअप (LocalAuth ले गर्दा बारम्बार लगइन गर्नु पर्दैन)
+const app = express();
+const server = http.createServer(app );
+const PORT = process.env.PORT || 3000;
+
+let currentQRCode = null;
+let isAuthenticated = false;
+
+console.log('🚀 Starting WhatsApp Service...');
+
 const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: { 
         headless: true, 
-        args: [
-            '--no-sandbox', 
-            '--disable-setuid-sandbox',
-            '--disable-extensions'
-        ] 
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'] 
     }
 });
 
-// ३. QR कोड जेनेरेशन
 client.on('qr', (qr) => {
-    qrcode.generate(qr, {small: true});
-    console.log('-----------------------------------------------------');
-    console.log('Titan CRM: ह्वाट्सएप QR कोड स्क्यान गर्नुहोस्');
-    console.log('-----------------------------------------------------');
+    console.log('\n📱 ========== QR CODE GENERATED ==========');
+    console.log('Scan this QR code with WhatsApp');
+    console.log('==========================================\n');
+    currentQRCode = qr;
+    isAuthenticated = false;
 });
 
-// ४. बोट तयार भएपछि मेसेज दिने
 client.on('ready', () => {
-    console.log('✅ WhatsApp Bot Ready! Listening for messages...');
+    console.log('✅ WhatsApp Connected Successfully!');
+    isAuthenticated = true;
+    currentQRCode = null;
 });
 
-// ५. मुख्य म्यासेज ह्यान्डलर
-client.on('message', async (msg) => {
-    // ग्रुप म्यासेजलाई इग्नोर गर्ने (व्यक्तिगत म्यासेज मात्र लिने)
-    if (msg.from.includes('@g.us')) return;
+client.on('auth_failure', (msg) => {
+    console.error('❌ Auth Failed:', msg);
+});
 
+client.on('message', async (msg) => {
+    if (msg.from.includes('@g.us')) return;
     try {
         const contact = await msg.getContact();
         const customerPhone = contact.number;
-
-        // क) डेटाबेसमा ग्राहक छ कि छैन चेक गर्ने
-        const { data: existingUser } = await supabase
-            .from('customers')
-            .select('status, service, documents')
-            .eq('phone_number', customerPhone)
-            .single();
-
-        let customerData = {
+        const customerData = {
             customer_name: contact.pushname || customerPhone,
             phone_number: customerPhone,
             platform: 'whatsapp',
-            chat_summary: msg.body || (msg.hasMedia ? "📷 Media Received" : "New message"),
-            status: existingUser ? existingUser.status : 'in_progress',
-            service: existingUser ? existingUser.service : 'Other',
+            chat_summary: msg.body || '📷 Media',
+            status: 'in_progress',
+            service: 'Other',
             updated_at: new Date().toISOString()
         };
-
-        // ख) फोटो वा डकुमेन्ट ह्यान्डल गर्ने
-        if (msg.hasMedia) {
-            try {
-                const media = await msg.downloadMedia();
-                if (media && media.data) {
-                    // फाइलको नाम बनाउने (समय र फोन नम्बर मिलाएर)
-                    const fileExtension = media.mimetype.split('/')[1].split(';')[0];
-                    const fileName = `wa_${Date.now()}_${customerPhone}.${fileExtension}`;
-                    const fileBuffer = Buffer.from(media.data, 'base64');
-
-                    // सुपाबेस स्टोरेजमा अपलोड गर्ने
-                    const { error: uploadError } = await supabase.storage
-                        .from('documents') 
-                        .upload(fileName, fileBuffer, { 
-                            contentType: media.mimetype,
-                            upsert: true 
-                        });
-
-                    if (!uploadError) {
-                        const { data: { publicUrl } } = supabase.storage
-                            .from('documents')
-                            .getPublicUrl(fileName);
-                        
-                        // पुराना डकुमेन्टको लिस्टमा नयाँ थप्ने
-                        const currentDocs = existingUser?.documents || [];
-                        customerData.documents = [...currentDocs, publicUrl];
-                        
-                        if(!msg.body) customerData.chat_summary = "📷 New Media Received";
-                    } else {
-                        console.error('⚠️ Upload Error:', uploadError.message);
-                    }
-                }
-            } catch (mediaErr) {
-                console.error('⚠️ Media Processing Error:', mediaErr.message);
-            }
-        }
-
-        // ग) डेटाबेस अपडेट वा नयाँ इन्ट्री (Upsert)
-        const { error: dbError } = await supabase
-            .from('customers')
-            .upsert(customerData, { onConflict: 'phone_number' });
-
-        if (dbError) {
-            console.error('❌ DB Save Error:', dbError.message);
-        } else {
-            console.log(`🚀 WhatsApp Sync Success: ${customerData.customer_name}`);
-        }
-
+        await supabase.from('customers').upsert(customerData, { onConflict: 'phone_number' });
+        console.log(`✅ Synced: ${customerData.customer_name}`);
     } catch (err) {
-        console.error('❌ Critical System Error:', err.message);
+        console.error('❌ Error:', err.message);
     }
 });
 
-// ६. क्लाइन्ट सुरु गर्ने
+app.get('/qr', (req, res) => {
+    if (!currentQRCode) {
+        return res.status(400).json({ 
+            success: false, 
+            error: isAuthenticated ? 'Already authenticated' : 'QR code not ready yet' 
+        });
+    }
+    res.json({ success: true, qr: currentQRCode });
+});
+
+app.get('/status', (req, res) => {
+    res.json({ authenticated: isAuthenticated, hasQR: !!currentQRCode });
+});
+
+server.listen(PORT, () => {
+    console.log(`\n🚀 WhatsApp Service running on http://localhost:${PORT}` );
+    console.log(`📱 QR endpoint: http://localhost:${PORT}/qr` );
+    console.log(`🏥 Status endpoint: http://localhost:${PORT}/status\n` );
+});
+
+console.log('⏳ Initializing WhatsApp client...');
 client.initialize();
+
+process.on('SIGINT', () => {
+    console.log('\n🛑 Shutting down...');
+    client.destroy();
+    server.close();
+    process.exit(0);
+});
