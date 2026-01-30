@@ -7,7 +7,6 @@
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
@@ -15,8 +14,6 @@
         body { font-family: 'Inter', sans-serif; background: #f1f5f9; }
         .custom-scroll::-webkit-scrollbar { width: 6px; }
         .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .row-animate { animation: slideIn 0.3s ease-out forwards; }
     </style>
 </head>
 <body class="text-slate-800">
@@ -24,7 +21,7 @@
     <div id="loginPage" class="hidden min-h-screen flex items-center justify-center bg-slate-900 px-4">
         <div class="bg-white w-full max-w-md rounded-[45px] p-10 shadow-2xl border-b-[10px] border-blue-600">
             <div class="text-center mb-8">
-                <h1 class="text-4xl font-black italic tracking-tighter text-slate-900">TITAN <span class="text-blue-600">CRM</span></h1>
+                <h1 class="text-4xl font-black italic text-slate-900">TITAN <span class="text-blue-600">CRM</span></h1>
                 <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[5px] mt-2">Ultimate RPA Edition</p>
             </div>
             <form id="loginForm" class="space-y-4">
@@ -36,16 +33,16 @@
     </div>
 
     <div id="dashboardPage" class="hidden min-h-screen flex flex-col">
-        <nav class="bg-white/80 backdrop-blur-md border-b sticky top-0 z-[100] px-8 py-4 flex justify-between items-center shadow-sm">
+        <nav class="bg-white/80 backdrop-blur-md border-b sticky top-0 z-[100] px-8 py-4 flex justify-between items-center">
             <div class="flex items-center gap-6">
-                <h2 class="text-2xl font-black italic tracking-tighter">TITAN <span class="text-blue-600">v4</span></h2>
-                <div id="lastUpdate" class="text-[11px] bg-blue-50 text-blue-700 px-4 py-1.5 rounded-full font-black border border-blue-100">LIVE: --:--:--</div>
+                <h2 class="text-2xl font-black italic">TITAN <span class="text-blue-600">v4</span></h2>
+                <div id="lastUpdate" class="text-[11px] bg-blue-50 text-blue-700 px-4 py-1.5 rounded-full font-black border border-blue-100 italic">LIVE: --:--:--</div>
             </div>
             
             <div class="flex items-center gap-4">
                 <div id="reportBtnContainer"></div>
-                <div id="userDisplay" class="hidden md:block text-[11px] font-black text-slate-600 bg-slate-100 px-4 py-2 rounded-2xl border uppercase">OP: --</div>
-                <button onclick="toggleSettingsModal()" class="p-3 bg-slate-900 text-white rounded-2xl hover:scale-110 transition-all shadow-lg">
+                <div id="userDisplay" class="hidden md:block text-[11px] font-black text-slate-600 bg-slate-100 px-4 py-2 rounded-2xl border uppercase tracking-wider">OP: --</div>
+                <button onclick="toggleSettingsModal()" class="p-3 bg-slate-900 text-white rounded-2xl hover:scale-110 transition-all shadow-lg" title="AI Settings">
                     <i class="fas fa-cog text-blue-400"></i>
                 </button>
                 <button id="logoutBtn" class="p-3 bg-red-100 text-red-600 rounded-2xl hover:bg-red-600 hover:text-white transition-all">
@@ -56,23 +53,23 @@
 
         <div class="p-8 grid grid-cols-2 lg:grid-cols-5 gap-6 bg-white/50 border-b">
             <div class="bg-white p-6 rounded-[35px] border border-slate-200">
-                <p class="text-[10px] font-black text-slate-400 uppercase">कुल आम्दानी</p>
+                <p class="text-[10px] font-black text-slate-400 uppercase mb-1">कुल आम्दानी</p>
                 <h3 id="statIncome" class="text-2xl font-black text-emerald-600">Rs. 0</h3>
             </div>
             <div class="bg-white p-6 rounded-[35px] border border-slate-200">
-                <p class="text-[10px] font-black text-slate-400 uppercase">Success</p>
+                <p class="text-[10px] font-black text-slate-400 uppercase mb-1">Success</p>
                 <h3 id="statSuccess" class="text-2xl font-black text-blue-600">0</h3>
             </div>
             <div class="bg-white p-6 rounded-[35px] border border-slate-200">
-                <p class="text-[10px] font-black text-slate-400 uppercase">Pending</p>
+                <p class="text-[10px] font-black text-slate-400 uppercase mb-1">Pending</p>
                 <h3 id="statPending" class="text-2xl font-black text-orange-500">0</h3>
             </div>
             <div class="bg-white p-6 rounded-[35px] border border-slate-200">
-                <p class="text-[10px] font-black text-slate-400 uppercase">Inquiry</p>
+                <p class="text-[10px] font-black text-slate-400 uppercase mb-1">Inquiry</p>
                 <h3 id="statInquiry" class="text-2xl font-black text-slate-500">0</h3>
             </div>
             <div class="bg-white p-6 rounded-[35px] border border-slate-200">
-                <p class="text-[10px] font-black text-slate-400 uppercase">प्रक्रियामा</p>
+                <p class="text-[10px] font-black text-slate-400 uppercase mb-1">प्रक्रियामा</p>
                 <h3 id="statWorking" class="text-2xl font-black text-purple-600">0</h3>
             </div>
         </div>
@@ -84,8 +81,12 @@
                     <input type="text" id="searchInput" placeholder="खोज्नुहोस्..." class="w-full pl-14 pr-8 py-5 bg-white border-2 border-slate-100 rounded-[25px] outline-none focus:border-blue-500 font-bold shadow-xl">
                 </div>
                 <div class="flex flex-col items-end">
-                    <button onclick="syncCoreDatabase()" class="px-8 py-4 bg-white border-2 border-slate-200 rounded-[25px] font-black text-[11px] uppercase tracking-widest mb-2"><i class="fas fa-sync-alt mr-2"></i> Refresh</button>
-                    <div class="text-slate-500 font-black text-[10px] uppercase mr-4">TOTAL: <span id="totalRecords">0</span> RECORDS</div>
+                    <button onclick="syncCoreDatabase()" class="px-8 py-4 bg-white border-2 border-slate-200 rounded-[25px] font-black text-[11px] uppercase mb-2">
+                        <i class="fas fa-sync-alt mr-2"></i> Refresh
+                    </button>
+                    <div class="text-slate-500 font-black text-[10px] uppercase mr-4">
+                        TOTAL: <span id="totalRecords">0</span> RECORDS
+                    </div>
                 </div>
             </div>
 
@@ -94,9 +95,9 @@
                     <table class="w-full text-left">
                         <thead class="bg-slate-900 text-white text-[10px] uppercase font-black">
                             <tr>
-                                <th class="px-8 py-6">मिति</th>
+                                <th class="px-8 py-6">दर्ता मिति</th>
                                 <th class="px-2 py-6 text-center">स्रोत</th>
-                                <th class="px-8 py-6">विवरण</th>
+                                <th class="px-8 py-6">ग्राहक विवरण</th>
                                 <th class="px-6 py-6">सेवा</th>
                                 <th class="px-4 py-6 text-center">RPA</th>
                                 <th class="px-8 py-6">अवस्था</th>
