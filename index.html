@@ -3,161 +3,138 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Titan CRM Enterprise v2.0.1</title>
+    <title>TITAN ENTERPRISE CRM v4.0.0</title>
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap');
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; }
-        
-        /* JS ले खोज्ने आवश्यक क्लासहरू */
-        .status-badge { padding: 6px 12px; border-radius: 8px; font-weight: 800; font-size: 11px; cursor: pointer; border: none; outline: none; transition: all 0.2s; }
-        .status-success { background: #dcfce7; color: #15803d; }
-        .status-in_progress { background: #fef3c7; color: #b45309; }
-        .status-problem { background: #fee2e2; color: #b91c1c; }
-        
-        .summary-box { max-width: 200px; max-height: 60px; overflow-y: auto; font-size: 12px; color: #64748b; line-height: 1.4; }
-        .instruction-area { width: 100%; min-height: 50px; padding: 8px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 12px; outline: none; transition: 0.3s; }
-        .instruction-area:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
-        
-        .income-input { width: 80px; text-align: center; background: transparent; border-bottom: 2px solid transparent; font-weight: 900; outline: none; transition: 0.3s; }
-        .income-input:focus { border-bottom-color: #10b981; }
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-        .file-img { width: 35px; height: 35px; border-radius: 8px; object-fit: cover; cursor: pointer; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-.file-icon { width: 35px; height: 35px; border-radius: 8px; display: flex; align-items: center; justify-content: center; text-decoration: none; border: 1px solid; }
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap');
+        body { font-family: 'Inter', sans-serif; background: #f1f5f9; }
+        
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        
+        .status-badge { transition: all 0.3s ease; }
+        tr:hover .status-badge { transform: scale(1.05); }
+
+        /* Animation for new rows */
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        .row-animate { animation: slideIn 0.4s ease-out forwards; }
     </style>
 </head>
-<body class="text-slate-900">
+<body class="text-slate-800">
 
-    <div id="loginPage" class="min-h-screen flex items-center justify-center bg-slate-50 p-4">
-        <div class="bg-white p-10 rounded-[32px] shadow-2xl w-full max-w-md border border-slate-100">
+    <div id="loginPage" class="hidden min-h-screen flex items-center justify-center bg-slate-900 px-4">
+        <div class="bg-white w-full max-w-md rounded-[45px] p-10 shadow-2xl border-b-[10px] border-blue-600">
             <div class="text-center mb-8">
-                <div class="w-20 h-20 bg-blue-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-blue-100">
-                    <i class="fas fa-shield-alt text-white text-4xl"></i>
-                </div>
-                <h2 class="text-3xl font-black tracking-tight">TITAN CRM</h2>
-                <p class="text-slate-400 font-medium mt-2 text-sm uppercase tracking-widest">Enterprise Access</p>
+                <h1 class="text-4xl font-black italic tracking-tighter text-slate-900">TITAN <span class="text-blue-600">CRM</span></h1>
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[5px] mt-2">Ultimate RPA Edition</p>
             </div>
-            <form id="loginForm" class="space-y-5">
-                <input type="text" id="username" placeholder="Username" class="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none ring-1 ring-slate-200 focus:ring-2 focus:ring-blue-500 outline-none transition" required>
-                <input type="password" id="password" placeholder="Password" class="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none ring-1 ring-slate-200 focus:ring-2 focus:ring-blue-500 outline-none transition" required>
-                <button type="submit" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 transition active:scale-95">Enter System</button>
+            <form id="loginForm" class="space-y-4">
+                <div class="space-y-2">
+                    <label class="text-[11px] font-black text-slate-500 ml-2">USERNAME</label>
+                    <input type="text" id="username" class="w-full p-4 bg-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold transition-all" required>
+                </div>
+                <div class="space-y-2">
+                    <label class="text-[11px] font-black text-slate-500 ml-2">PASSWORD</label>
+                    <input type="password" id="password" class="w-full p-4 bg-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold transition-all" required>
+                </div>
+                <button type="submit" class="w-full bg-blue-600 text-white p-5 rounded-3xl font-black shadow-xl hover:bg-blue-700 transition-all active:scale-95 mt-4 uppercase">Enter Dashboard</button>
             </form>
         </div>
     </div>
 
     <div id="dashboardPage" class="hidden min-h-screen flex flex-col">
-        <header class="bg-white border-b border-slate-100 px-8 py-4 flex justify-between items-center sticky top-0 z-50">
-            <div class="flex items-center gap-4">
-                <div class="p-2 bg-blue-600 rounded-xl text-white"><i class="fas fa-chart-line"></i></div>
-                <div>
-                    <h1 class="font-black text-xl leading-none">TITAN <span class="text-blue-600">v2.0.1</span></h1>
-                    <p id="lastUpdate" class="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-tighter">Syncing...</p>
-                </div>
-            </div>
+        
+        <nav class="bg-white/80 backdrop-blur-md border-b sticky top-0 z-[100] px-8 py-4 flex justify-between items-center">
             <div class="flex items-center gap-6">
-                <div class="text-right hidden sm:block">
-                    <p id="userDisplay" class="text-sm font-black text-slate-800 tracking-tight">Administrator</p>
-                    <span class="text-[9px] bg-emerald-100 text-emerald-600 px-2 py-0.5 rounded-full font-bold">SYSTEM ONLINE</span>
-                </div>
-                <button id="logoutBtn" class="bg-red-50 text-red-600 px-5 py-2.5 rounded-xl text-xs font-black hover:bg-red-600 hover:text-white transition">LOGOUT</button>
-            </div>
-        </header>
-
-        <main class="flex-1 p-6 lg:p-10 max-w-[1600px] mx-auto w-full">
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <div class="bg-white p-6 rounded-[24px] shadow-sm border border-slate-100">
-                    <p class="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Income</p>
-                    <h3 id="statIncome" class="text-2xl font-black text-emerald-600">Rs. 0</h3>
-                </div>
-                <div class="bg-white p-6 rounded-[24px] shadow-sm border border-slate-100">
-                    <p class="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">Success Cases</p>
-                    <h3 id="statSuccess" class="text-2xl font-black text-blue-600">0</h3>
-                </div>
-                <div class="bg-white p-6 rounded-[24px] shadow-sm border border-slate-100">
-                    <p class="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">In Progress</p>
-                    <h3 id="statProgress" class="text-2xl font-black text-amber-500">0</h3>
-                </div>
-                <div class="bg-white p-6 rounded-[24px] shadow-sm border border-slate-100">
-                    <p class="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">Problematic</p>
-                    <h3 id="statProblem" class="text-2xl font-black text-red-500">0</h3>
+                <h2 class="text-2xl font-black italic tracking-tighter">TITAN <span class="text-blue-600">v4</span></h2>
+                <div id="lastUpdate" class="text-[11px] bg-blue-50 text-blue-700 px-4 py-1.5 rounded-full font-black border border-blue-100">
+                    LIVE: --:--:--
                 </div>
             </div>
+            
+            <div class="flex items-center gap-4">
+                <div id="reportBtnContainer"></div> <div id="userDisplay" class="hidden md:block text-[11px] font-black text-slate-600 bg-slate-100 px-4 py-2 rounded-2xl border uppercase tracking-wider">OP: --</div>
+                <button onclick="toggleSettingsModal()" class="p-3 bg-slate-900 text-white rounded-2xl hover:scale-110 transition-all shadow-lg" title="AI Settings">
+                    <i class="fas fa-microchip text-blue-400"></i>
+                </button>
+                <button id="logoutBtn" class="p-3 bg-red-100 text-red-600 rounded-2xl hover:bg-red-600 hover:text-white transition-all">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
+            </div>
+        </nav>
 
-            <div class="bg-white p-4 rounded-[24px] shadow-sm border border-slate-100 mb-6 flex flex-wrap gap-4 items-center">
-                <div class="relative flex-1 min-w-[300px]">
-                    <i class="fas fa-search absolute left-5 top-1/2 -translate-y-1/2 text-slate-300"></i>
-                    <input type="text" id="searchInput" placeholder="Search customer, phone or service..." class="w-full pl-12 pr-6 py-4 bg-slate-50 rounded-2xl border-none outline-none focus:ring-2 focus:ring-blue-500 font-medium transition">
+        <div class="p-8 grid grid-cols-2 lg:grid-cols-5 gap-6 bg-white/50 border-b">
+            <div class="bg-white p-6 rounded-[35px] shadow-sm border border-slate-200">
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">कुल आम्दानी</p>
+                <h3 id="statIncome" class="text-2xl font-black text-emerald-600">Rs. 0</h3>
+            </div>
+            <div class="bg-white p-6 rounded-[35px] shadow-sm border border-slate-200">
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">सफल कार्य (Success)</p>
+                <h3 id="statSuccess" class="text-2xl font-black text-blue-600">0</h3>
+            </div>
+            <div class="bg-white p-6 rounded-[35px] shadow-sm border border-slate-200">
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">बाँकी (Pending)</p>
+                <h3 id="statPending" class="text-2xl font-black text-orange-500">0</h3>
+            </div>
+            <div class="bg-white p-6 rounded-[35px] shadow-sm border border-slate-200">
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">इन्क्वायरी</p>
+                <h3 id="statInquiry" class="text-2xl font-black text-slate-500">0</h3>
+            </div>
+            <div class="bg-white p-6 rounded-[35px] shadow-sm border border-slate-200">
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">प्रक्रियामा</p>
+                <h3 id="statWorking" class="text-2xl font-black text-purple-600">0</h3>
+            </div>
+        </div>
+
+        <main class="p-8 flex-1">
+            <div class="mb-8 flex flex-col md:flex-row gap-4 items-center justify-between">
+                <div class="relative w-full max-w-xl">
+                    <i class="fas fa-search absolute left-6 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input type="text" id="searchInput" placeholder="ग्राहकको नाम वा फोन नम्बर टाइप गर्नुहोस्..." 
+                        class="w-full pl-14 pr-8 py-5 bg-white border-2 border-slate-100 rounded-[25px] outline-none focus:border-blue-500 font-bold text-sm shadow-xl transition-all">
                 </div>
-                <select id="statusFilter" class="px-6 py-4 bg-slate-50 rounded-2xl border-none outline-none font-bold text-sm text-slate-600">
-                    <option value="">All Status</option>
-                    <option value="success">Success</option>
-                    <option value="in_progress">In Progress</option>
-                    <option value="problem">Problem</option>
-                </select>
-                <select id="platformFilter" class="px-6 py-4 bg-slate-50 rounded-2xl border-none outline-none font-bold text-sm text-slate-600">
-                    <option value="">All Platforms</option>
-                    <option value="whatsapp">WhatsApp</option>
-                    <option value="messenger">Messenger</option>
-                </select>
+                <div class="flex gap-4">
+                    <button onclick="syncCoreDatabase()" class="px-8 py-5 bg-white border-2 border-slate-200 rounded-[25px] font-black text-[11px] hover:bg-slate-50 transition-all uppercase tracking-widest">
+                        <i class="fas fa-sync-alt mr-2"></i> Refresh
+                    </button>
+                </div>
             </div>
 
-            <div class="bg-white rounded-[28px] shadow-xl border border-slate-100 overflow-hidden">
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left">
-                        <thead class="bg-slate-900 text-white text-[10px] uppercase tracking-widest font-black">
+            <div class="bg-white rounded-[45px] shadow-2xl border border-slate-100 overflow-hidden">
+                <div class="overflow-x-auto custom-scroll">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-slate-900 text-white text-[10px] uppercase tracking-[2px] font-black">
                             <tr>
-                                <th class="px-6 py-5">Date & Time</th>
-                                <th class="px-4 py-5 text-center">App</th>
-                                <th class="px-6 py-5">Customer Info</th>
-                                <th class="px-6 py-5">Service Type</th>
-                                <th class="px-6 py-5">Chat Summary</th>
-                                <th class="px-6 py-5">System Status</th>
-                                <th class="px-6 py-5">Operator Notes</th>
-                                <th class="px-6 py-5 text-center">Revenue</th>
-                                <th class="px-6 py-5 text-center">Modified By</th>
-                                <th class="px-6 py-5 text-center">Assets</th>
+                                <th class="px-8 py-6">दर्ता मिति</th>
+                                <th class="px-2 py-6 text-center">स्रोत</th>
+                                <th class="px-8 py-6">ग्राहक विवरण</th>
+                                <th class="px-6 py-6">सेवा (Service)</th>
+                                <th class="px-4 py-6 text-center">RPA अटोमेशन</th>
+                                <th class="px-8 py-6">अवस्था (Status)</th>
+                                <th class="px-6 py-6 text-center">नोट (Note)</th>
+                                <th class="px-6 py-6 text-center">पेमेन्ट</th>
+                                <th class="px-4 py-6 text-center">अपरेटर</th>
+                                <th class="px-8 py-6 text-center">डकुमेन्ट</th>
                             </tr>
                         </thead>
                         <tbody id="tableBody" class="divide-y divide-slate-100">
                             </tbody>
                     </table>
                 </div>
-
-                <div class="bg-slate-50/50 px-8 py-6 flex flex-wrap justify-between items-center border-t border-slate-100">
-                    <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                        Total: <span id="totalRecords" class="text-blue-600">0</span> Records
-                    </p>
-                    <div class="flex items-center gap-4">
-                        <button id="prevBtn" class="p-3 rounded-xl bg-white border border-slate-200 hover:bg-blue-600 hover:text-white disabled:opacity-30 transition"><i class="fas fa-chevron-left"></i></button>
-                        <div class="flex items-center font-black text-slate-700">
-                            <input type="number" id="currentPageInput" class="w-10 text-center bg-transparent border-none outline-none text-blue-600" value="1">
-                            <span class="mx-1 text-slate-300">/</span>
-                            <span id="totalPages">1</span>
-                        </div>
-                        <button id="nextBtn" class="p-3 rounded-xl bg-white border border-slate-200 hover:bg-blue-600 hover:text-white disabled:opacity-30 transition"><i class="fas fa-chevron-right"></i></button>
-                    </div>
-                </div>
             </div>
         </main>
     </div>
 
-    <div id="imageModal" class="fixed inset-0 bg-black/90 hidden z-[1000] items-center justify-center p-4">
-        <button onclick="this.parentElement.classList.add('hidden')" class="absolute top-10 right-10 text-white text-4xl">&times;</button>
-        <img id="zoomedImg" src="" class="max-w-full max-h-[90vh] rounded-lg shadow-2xl">
-    </div>
+    <div id="notification-area"></div>
 
-    <script src="app.js"></script>
-    <script>
-        // Lightbox Utility
-        function openImageLightbox(url) {
-            const modal = document.getElementById('imageModal');
-            document.getElementById('zoomedImg').src = url;
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-        }
-    </script>
+    <script src="script.js"></script>
 </body>
 </html>
