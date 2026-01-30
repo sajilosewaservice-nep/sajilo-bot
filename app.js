@@ -382,119 +382,62 @@ function saveSettings() {
 
 }
 
-
-
-// --- ५. CORE TABLE & SYNC ---
-
 function buildTableRows() {
-
     const tableBody = document.getElementById('tableBody');
-
     if(!tableBody) return;
-
     tableBody.innerHTML = '';
-
     const startIndex = (STATE.currentPage - 1) * SYSTEM_CONFIG.PAGE_SIZE;
-
     const items = STATE.filteredData.slice(startIndex, startIndex + SYSTEM_CONFIG.PAGE_SIZE);
 
-
-
     items.forEach(row => {
-
         const tr = document.createElement('tr');
-
         tr.className = 'border-b hover:bg-blue-50/40 transition-all';
-
         tr.innerHTML = `
-
             <td class="px-6 py-5 text-[10px] font-mono text-slate-400">${new Date(row.created_at).toLocaleString('ne-NP')}</td>
-
             <td class="px-2 py-5 text-center text-xl">${row.platform === 'whatsapp' ? '🟢' : '🔵'}</td>
-
             <td class="px-6 py-5">
-
                 <div class="font-bold text-sm text-slate-800">${row.customer_name || 'New Lead'}</div>
-
                 <div class="text-[10px] text-blue-600 font-black tracking-widest">${row.phone_number}</div>
-
             </td>
-
             <td class="px-6 py-5">
-
                 <select class="w-full border rounded-xl p-2 text-xs font-bold bg-slate-50 outline-none" onchange="commitUpdate('${row.id}', {service: this.value}, 'सेवा फेरियो')">
-
                     <option value="PCC" ${row.service==='PCC'?'selected':''}>PCC Report</option>
-
                     <option value="NID" ${row.service==='NID'?'selected':''}>NID Card</option>
-
                     <option value="Passport" ${row.service==='Passport'?'selected':''}>Passport</option>
-
                     <option value="License" ${row.service==='License'?'selected':''}>License</option>
-
                     <option value="Other" ${row.service==='Other'?'selected':''}>Other</option>
-
                 </select>
-
-            </td>
-
-            <td class="px-4 py-5">
-
-                <div class="flex flex-col gap-2">
-
-                    <button onclick="launchAIAutoFill('${row.id}', '${row.service}')" class="bg-orange-500 text-white text-[9px] font-black py-2 px-3 rounded-lg shadow-md hover:bg-orange-600 transition-all">🚀 AUTO-FORM</button>
-
-                    <button onclick="window.open(isNaN('${row.sender_id}') ? 'https://m.me/${row.sender_id}' : 'https://wa.me/${row.sender_id}')" class="bg-blue-600 text-white text-[9px] font-black py-2 px-3 rounded-lg shadow-md hover:bg-blue-700 transition-all">💬 CRM CHAT</button>
-
+                <div class="mt-1">
+                    <input type="text" 
+                        class="w-full text-[9px] font-bold border-b border-dashed outline-none bg-transparent text-blue-600 placeholder:text-slate-300 uppercase" 
+                        placeholder="विवरण (उदा: PAN)" 
+                        value="${row.other_service_name || ''}"
+                        onblur="commitUpdate('${row.id}', {other_service_name: this.value.toUpperCase()}, 'विवरण अपडेट भयो')">
                 </div>
-
             </td>
-
+            <td class="px-4 py-5">
+                <div class="flex flex-col gap-2">
+                    <button onclick="launchAIAutoFill('${row.id}', '${row.service}')" class="bg-orange-500 text-white text-[9px] font-black py-2 px-3 rounded-lg shadow-md hover:bg-orange-600 transition-all">🚀 AUTO-FORM</button>
+                    <button onclick="window.open(isNaN('${row.sender_id}') ? 'https://m.me/${row.sender_id}' : 'https://wa.me/${row.sender_id}')" class="bg-blue-600 text-white text-[9px] font-black py-2 px-3 rounded-lg shadow-md hover:bg-blue-700 transition-all">💬 CRM CHAT</button>
+                </div>
+            </td>
             <td class="px-6 py-5">
-
                 <select class="w-full text-[10px] font-black p-2 rounded-xl border-2" onchange="commitUpdate('${row.id}', {status: this.value}, 'Status Updated')" style="border-color: ${getStatusColor(row.status)}; color: ${getStatusColor(row.status)}">
-
                     <option value="inquiry" ${row.status==='inquiry'?'selected':''}>📩 INQUIRY</option>
-
                     <option value="pending" ${row.status==='pending'?'selected':''}>⏳ PENDING</option>
-
                     <option value="working" ${row.status==='working'?'selected':''}>🛠️ WORKING</option>
-
                     <option value="success" ${row.status==='success'?'selected':''}>✅ SUCCESS</option>
-
                     <option value="problem" ${row.status==='problem'?'selected':''}>❌ PROBLEM</option>
-
                 </select>
-
             </td>
-
             <td class="px-6 py-5"><textarea class="w-full text-[10px] border rounded-lg p-2 outline-none focus:ring-2 focus:ring-blue-400" placeholder="Note..." onblur="commitUpdate('${row.id}', {operator_instruction: this.value}, 'Note Saved')">${row.operator_instruction || ''}</textarea></td>
-
             <td class="px-6 py-5 text-center font-bold text-emerald-600">Rs. <input type="number" class="w-16 border-b-2 border-emerald-100 bg-transparent text-center font-black" value="${row.income || 0}" onblur="commitUpdate('${row.id}', {income: this.value}, 'पेमेन्ट सेभ भयो')"></td>
-
             <td class="px-4 py-5 text-center text-[9px] font-bold text-slate-400 uppercase">${row.last_updated_by || 'SYSTEM'}</td>
-
             <td class="px-6 py-5">${renderFileIcons(row.documents)}</td>
-
         `;
-
         tableBody.appendChild(tr);
-
     });
-
 }
-
-
-
-function getStatusColor(status) {
-
-    const map = { inquiry: '#94a3b8', pending: '#f59e0b', working: '#3b82f6', success: '#10b981', problem: '#ef4444' };
-
-    return map[status] || '#cbd5e1';
-
-}
-
-
 
 async function commitUpdate(id, updates, msg) {
 
@@ -526,37 +469,29 @@ async function syncCoreDatabase() {
 
 }
 
-
-
 function refreshFinancialAnalytics() {
-
     const stats = STATE.allData.reduce((acc, curr) => {
-
-        acc.counts[curr.status] = (acc.counts[curr.status] || 0) + 1;
-
-        if (curr.status === 'success') acc.revenue += (parseFloat(curr.income) || 0);
-
+        // Status लाई सधैँ सानो अक्षरमा तुलना गर्ने (inquiry, pending, success)
+        const s = (curr.status || '').toLowerCase().trim();
+        acc.counts[s] = (acc.counts[s] || 0) + 1;
+        
+        if (s === 'success') {
+            acc.revenue += (parseFloat(curr.income) || 0);
+        }
         return acc;
-
     }, { counts: {}, revenue: 0 });
 
-
-
     const updateUI = (id, val) => { if(document.getElementById(id)) document.getElementById(id).textContent = val; };
-
+    
     updateUI('statIncome', `Rs. ${stats.revenue.toLocaleString()}`);
-
     updateUI('statSuccess', stats.counts['success'] || 0);
-
     updateUI('statPending', stats.counts['pending'] || 0);
-
     updateUI('statInquiry', stats.counts['inquiry'] || 0);
-
     updateUI('statWorking', stats.counts['working'] || 0);
-
+    
+    // Total Records पनि यहाँ थपिएको छ
+    updateUI('totalRecords', STATE.allData.length);
 }
-
-
 
 function startRealtimeBridge() {
 
