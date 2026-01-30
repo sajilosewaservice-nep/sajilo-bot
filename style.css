@@ -1,167 +1,142 @@
-/* * TITAN ENTERPRISE CRM - PREMIUM UI v4.0 
- * Fully Matched with your App.js Logic
- */
+/* =============================================================================
+TITAN ENTERPRISE CRM v4.0.0 - MASTER STYLESHEET
+=============================================================================
+*/
 
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono&display=swap');
 
 :root {
-    --primary-dark: #0f172a;
-    --accent-blue: #3b82f6;
+    --primary: #2563eb;
     --success: #10b981;
+    --pending: #f59e0b;
+    --working: #8b5cf6;
     --danger: #ef4444;
-    --card-bg: #ffffff;
-    --body-bg: #f1f5f9;
+    --bg-main: #f8fafc;
+    --card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
 }
 
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: 'Inter', sans-serif !important;
 }
 
 body {
-    background-color: var(--body-bg);
-    color: var(--primary-dark);
-    line-height: 1.6;
+    background-color: var(--bg-main) !important;
+    color: #1e293b;
 }
 
-/* १. मुख्य ड्यासबोर्ड लेआउट (Full Width) */
-#dashboardPage {
-    padding: 2rem;
-    max-width: 100%;
-    margin: 0 auto;
-    animation: fadeIn 0.5s ease-out;
-}
-
-/* २. माथिका Stats Cards (तपाईँको refreshFinancialAnalytics को लागि) */
+/* १. STATS GRID: ५ वटा कार्डलाई तेर्सो र आकर्षक बनाउने */
 .stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 1.5rem;
-    margin-bottom: 2.5rem;
+    display: grid !important;
+    grid-template-columns: repeat(5, 1fr) !important;
+    gap: 1.5rem !important;
+    margin: 20px 0 !important;
+    padding: 0 2rem !important;
 }
 
 .stat-card {
-    background: var(--card-bg);
-    padding: 1.5rem;
-    border-radius: 24px;
-    border: 1px solid rgba(0,0,0,0.05);
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background: white !important;
+    padding: 1.5rem !important;
+    border-radius: 24px !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: var(--card-shadow) !important;
+    transition: transform 0.2s ease;
     position: relative;
     overflow: hidden;
 }
 
 .stat-card:hover {
-    transform: translateY(-8px);
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    transform: translateY(-5px);
+}
+
+.stat-card p {
+    font-size: 10px !important;
+    font-weight: 800 !important;
+    color: #64748b !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1px !important;
 }
 
 .stat-card h3 {
-    font-size: 1.75rem;
-    font-weight: 800;
-    margin-top: 0.5rem;
+    font-size: 1.6rem !important;
+    font-weight: 800 !important;
+    margin-top: 8px !important;
 }
 
-/* ३. टेबल सेक्सन (Premium Table Design) */
+/* २. TABLE CONTAINER: तपाईँको tableBody सँग मिल्ने */
 .table-container {
-    background: var(--card-bg);
-    border-radius: 30px;
-    border: 3px solid var(--primary-dark);
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
-    overflow: hidden;
-    margin-top: 1rem;
-}
-
-.table-header-box {
-    background: var(--primary-dark);
-    padding: 1.5rem 2rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    color: white;
+    margin: 2rem !important;
+    background: white !important;
+    border-radius: 30px !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.05) !important;
+    overflow: hidden !important;
 }
 
 table {
-    width: 100%;
-    border-collapse: collapse;
+    width: 100% !important;
+    border-collapse: collapse !important;
 }
 
 thead th {
-    background: #1e293b;
-    color: #94a3b8;
-    text-transform: uppercase;
-    font-size: 0.65rem;
-    font-weight: 900;
-    letter-spacing: 0.1rem;
-    padding: 1.25rem 1rem;
-    text-align: left;
+    background: #0f172a !important;
+    color: #f8fafc !important;
+    padding: 20px 15px !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    text-align: left !important;
 }
 
-tbody td {
-    padding: 1.25rem 1rem;
-    border-bottom: 1px solid #f1f5f9;
-    font-size: 0.85rem;
+/* App.js बाट आउने Row को स्टाइल */
+#tableBody tr {
+    border-bottom: 1px solid #f1f5f9 !important;
+    transition: all 0.2s ease !important;
 }
 
-tbody tr:hover {
-    background-color: #f8fafc;
+#tableBody tr:hover {
+    background-color: #f8faff !important;
 }
 
-/* ४. Status Select & Buttons (App.js सँग मिल्ने) */
-select {
-    padding: 0.6rem 1rem;
-    border-radius: 14px;
-    font-weight: 800;
-    font-size: 10px;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: all 0.2s;
-    border: 2px solid transparent;
+#tableBody td {
+    padding: 16px 15px !important;
+    vertical-align: middle !important;
 }
 
-button {
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+/* ३. INPUTS & SELECTS: App.js भित्रका इलिमेन्टहरु */
+select, textarea, input[type="number"] {
+    background: #f8fafc !important;
+    border: 1.5px solid #e2e8f0 !important;
+    border-radius: 12px !important;
+    padding: 8px 12px !important;
+    font-weight: 600 !important;
+    outline: none !important;
+    transition: border-color 0.2s !important;
 }
 
-button:active {
-    transform: scale(0.92);
+select:focus, textarea:focus {
+    border-color: var(--primary) !important;
 }
 
-/* ५. Modals (Report & Gallery) */
-#reportModal, #galleryModal, #settingsModal {
-    backdrop-filter: blur(12px);
+/* ४. SPECIAL ELEMENTS: मोनो फन्ट र डकुमेन्ट आइकन */
+font-mono, .font-mono {
+    font-family: 'JetBrains Mono', monospace !important;
 }
 
-.modal-content {
-    animation: modalSlide 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+/* Notification Styling */
+#notificationZone div {
+    backdrop-filter: blur(10px) !important;
+    border-radius: 20px !important;
 }
 
-/* ६. नोटिफिकेसन पपअप (notify फङ्सनका लागि) */
-.notification-box {
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
-    border: 2px solid rgba(255,255,255,0.1);
+/* RESPONSIVE: साना स्क्रिनमा कार्ड मिलाउने */
+@media (max-width: 1280px) {
+    .stats-grid { grid-template-columns: repeat(3, 1fr) !important; }
 }
 
-/* ७. एनिमेसनहरू */
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes modalSlide {
-    from { opacity: 0; transform: translateY(50px) scale(0.9); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-/* ८. मोबाइलका लागि (Responsive) */
-@media (max-width: 1024px) {
-    .stats-grid { grid-template-columns: repeat(2, 1fr); }
-    #dashboardPage { padding: 1rem; }
-}
-
-@media (max-width: 640px) {
-    .stats-grid { grid-template-columns: 1fr; }
-    .table-header-box { flex-direction: column; gap: 1rem; text-align: center; }
+@media (max-width: 768px) {
+    .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
 }
