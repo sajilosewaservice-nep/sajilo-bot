@@ -43,31 +43,31 @@
         </nav>
 
         <div class="grid grid-cols-2 md:grid-cols-6 gap-4 p-8 stats-grid">
-    <div class="bg-white p-6 rounded-[30px] border-2 border-slate-100 shadow-sm">
-        <p class="text-[10px] font-black text-slate-400 uppercase">कुल आम्दानी</p>
-        <h3 id="statIncome" class="text-2xl font-black text-emerald-600">Rs. 0</h3>
-    </div>
-    <div class="bg-white p-6 rounded-[30px] border-2 border-slate-100 shadow-sm">
-        <p class="text-[10px] font-black text-slate-400 uppercase">Success</p>
-        <h3 id="statSuccess" class="text-2xl font-black text-blue-600">0</h3>
-    </div>
-    <div class="bg-white p-6 rounded-[30px] border-2 border-slate-100 shadow-sm">
-        <p class="text-[10px] font-black text-slate-400 uppercase">Pending</p>
-        <h3 id="statPending" class="text-2xl font-black text-orange-500">0</h3>
-    </div>
-    <div class="bg-white p-6 rounded-[30px] border-2 border-slate-100 shadow-sm">
-        <p class="text-[10px] font-black text-slate-400 uppercase">Inquiry</p>
-        <h3 id="statInquiry" class="text-2xl font-black text-slate-500">0</h3>
-    </div>
-    <div class="bg-white p-6 rounded-[30px] border-2 border-slate-100 shadow-sm">
-        <p class="text-[10px] font-black text-slate-400 uppercase">प्रक्रियामा</p>
-        <h3 id="statWorking" class="text-2xl font-black text-purple-600">0</h3>
-    </div>
-    <div class="bg-white p-6 rounded-[30px] border-2 border-slate-100 shadow-sm">
-        <p class="text-[10px] font-black text-slate-400 uppercase">समस्या (Problem)</p>
-        <h3 id="statProblem" class="text-2xl font-black text-red-600">0</h3>
-    </div>
-</div>
+            <div class="bg-white p-6 rounded-[30px] border-2 border-slate-100 shadow-sm">
+                <p class="text-[10px] font-black text-slate-400 uppercase">कुल आम्दानी</p>
+                <h3 id="statIncome" class="text-2xl font-black text-emerald-600">Rs. 0</h3>
+            </div>
+            <div class="bg-white p-6 rounded-[30px] border-2 border-slate-100 shadow-sm">
+                <p class="text-[10px] font-black text-slate-400 uppercase">Success</p>
+                <h3 id="statSuccess" class="text-2xl font-black text-blue-600">0</h3>
+            </div>
+            <div class="bg-white p-6 rounded-[30px] border-2 border-slate-100 shadow-sm">
+                <p class="text-[10px] font-black text-slate-400 uppercase">Pending</p>
+                <h3 id="statPending" class="text-2xl font-black text-orange-500">0</h3>
+            </div>
+            <div class="bg-white p-6 rounded-[30px] border-2 border-slate-100 shadow-sm">
+                <p class="text-[10px] font-black text-slate-400 uppercase">Inquiry</p>
+                <h3 id="statInquiry" class="text-2xl font-black text-slate-500">0</h3>
+            </div>
+            <div class="bg-white p-6 rounded-[30px] border-2 border-slate-100 shadow-sm">
+                <p class="text-[10px] font-black text-slate-400 uppercase">प्रक्रियामा</p>
+                <h3 id="statWorking" class="text-2xl font-black text-purple-600">0</h3>
+            </div>
+            <div class="bg-white p-6 rounded-[30px] border-2 border-slate-100 shadow-sm">
+                <p class="text-[10px] font-black text-slate-400 uppercase">समस्या (Problem)</p>
+                <h3 id="statProblem" class="text-2xl font-black text-red-600">0</h3>
+            </div>
+        </div>
 
         <div class="px-8 mb-6 flex flex-col md:flex-row gap-4 items-center justify-between">
             <div class="relative w-full max-w-xl">
@@ -94,14 +94,14 @@
                                 <th class="p-5 text-left">सेवा</th>
                                 <th class="p-5 text-center">RPA</th>
                                 <th class="p-5 text-left">अवस्था</th>
-                                <th class="p-5 text-left">नोट</th>
+                                <th class="p-5 text-left text-blue-400">च्याट समरी</th> <th class="p-5 text-left">नोट</th>
                                 <th class="p-5 text-center">पेमेन्ट</th>
                                 <th class="p-5 text-center">अपरेटर</th>
                                 <th class="p-5 text-center">डकुमेन्ट</th>
                             </tr>
                         </thead>
                         <tbody id="tableBody" class="divide-y divide-slate-100">
-                            </tbody>
+                        </tbody>
                     </table>
                 </div>
 
@@ -109,11 +109,9 @@
                     <button onclick="changePage('prev')" class="px-8 py-3 bg-white border-2 border-slate-200 rounded-2xl font-black text-[11px] hover:bg-slate-900 hover:text-white transition-all shadow-sm active:scale-90">
                         <i class="fas fa-chevron-left mr-2"></i> BACK
                     </button>
-                    
                     <div id="pageInfo" class="font-black text-[12px] text-blue-600 tracking-widest uppercase bg-blue-50 px-6 py-2 rounded-full border border-blue-100">
                         PAGE 1
                     </div>
-                    
                     <button onclick="changePage('next')" class="px-8 py-3 bg-white border-2 border-slate-200 rounded-2xl font-black text-[11px] hover:bg-slate-900 hover:text-white transition-all shadow-sm active:scale-90">
                         NEXT <i class="fas fa-chevron-right ml-2"></i>
                     </button>
