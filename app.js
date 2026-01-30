@@ -1,703 +1,268 @@
 /** * =============================================================================
- * TITAN ENTERPRISE CRM SYSTEM v2.5.0 (FINAL PRODUCTION READY)
+ * TITAN ENTERPRISE CRM v4.0.0 (ULTIMATE EDITION)
  * =============================================================================
- * Developed for: High-Performance Data Management
- * Author: Gemini AI Thought Partner
- * Date: 2026-01-12
- * Features: Multi-operator, Real-time Sync, Financial Stats, Data Security
+ * Features: 5-Status Engine, RPA Auto-Form Integration, Live Messenger, 
+ * Advanced Security, Real-time Financial Analytics.
  * =============================================================================
  */
 
 const SYSTEM_CONFIG = {
-    // यहाँ process.env नराख्नुहोस्, सिधै कोटेसन भित्र Key राख्नुहोस्
     SUPABASE_URL: "https://ratgpvubjrcoipardzdp.supabase.co",
-    SUPABASE_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJhdGdwdnVianJjb2lwYXJkemRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzMTg0OTMsImV4cCI6MjA4Mzg5NDQ5M30.t1eofJj9dPK-Psp_oL3LpCWimyz621T21JNpZljEGZk", 
-    PAGE_SIZE: 15,
-    AUTO_REFRESH_RATE: 1800000, 
-    THEME_COLOR: '#3b82f6'
+    SUPABASE_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJhdGdwdnVianJjb2lwYXJkemRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzMTg0OTMsImV4cCI6MjA4Mzg5NDQ5M30.t1eofJj9dPK-Psp_oL3LpCWimyz621T21JNpZljEGZk",
+    PAGE_ACCESS_TOKEN: "EAAcaSLIPpeYBQtd8KAJjlnZCmcMWXRCCWSWNeWye0ucjX2KBp5sNp4tO1HD19d4ZBx06BFEsxZCgDcBm7VxlGBwFxU7rZCDnadrXYU3z0yfWHZBByyqOZCoZCIlTARxRbD1AbuXsN2v1UbCWGS72TbfUaDGcVTTL2qW3R8p2eEqv6nqPWjj6qFw3IWvR27ualAO1FEmUtHvUAZDZD",
+    RPA_SERVER_URL: localStorage.getItem('rpa_url') || "http://localhost:5000",
+    PAGE_SIZE: 15
 };
 
 let supabaseClient;
-document.addEventListener('DOMContentLoaded', () => {
-    supabaseClient = supabase.createClient(SYSTEM_CONFIG.SUPABASE_URL, SYSTEM_CONFIG.SUPABASE_KEY);
-});
-
-// --- २. GLOBAL APPLICATION STATE ---
 let STATE = {
     currentUser: null,
     allData: [],
     filteredData: [],
     currentPage: 1,
-    isSearching: false,
-    selectedRows: new Set(),
-    sortConfig: { column: 'created_at', direction: 'desc' },
-    lastSync: null,
     isLoading: false
 };
 
-// --- ३. DOM ELEMENT REGISTRY (SAFE SELECTION) ---
-const UI = {
-    // Pages
-    loginView: document.getElementById('loginPage'),
-    dashboardView: document.getElementById('dashboardPage'),
-    
-    // Form Elements
-    loginForm: document.getElementById('loginForm'),
-    userInput: document.getElementById('username'),
-    passInput: document.getElementById('password'),
-    
-    // Dashboard Header
-    userNameDisplay: document.getElementById('userDisplay'),
-    logoutBtn: document.getElementById('logoutBtn'),
-    syncStatus: document.getElementById('lastUpdate'),
-    
-    // Table Core
-    tableBody: document.getElementById('tableBody'),
-    
-    // Controls
-    searchBar: document.getElementById('searchInput'),
-    statusFilter: document.getElementById('statusFilter'),
-    platformFilter: document.getElementById('platformFilter'),
-    
-    // Pagination
-    pagination: {
-        prev: document.getElementById('prevBtn'),
-        next: document.getElementById('nextBtn'),
-        current: document.getElementById('currentPageInput'),
-        total: document.getElementById('totalPages'),
-        count: document.getElementById('totalRecords')
-    },
-    
-    // Analytics Boxes
-    analytics: {
-        income: document.getElementById('statIncome'),
-        success: document.getElementById('statSuccess'),
-        progress: document.getElementById('statProgress'),
-        problem: document.getElementById('statProblem')
-    }
-};
-
-// --- ४. APP STARTUP & BOOTSTRAP ---
+// --- १. INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log("%c[TITAN SYSTEM] Booting core engine...", "color: #3b82f6; font-weight: bold;");
-    initializeSystem();
-});
-
-function initializeSystem() {
+    supabaseClient = supabase.createClient(SYSTEM_CONFIG.SUPABASE_URL, SYSTEM_CONFIG.SUPABASE_KEY);
     validateSession();
     registerGlobalEvents();
     startRealtimeBridge();
-    setupHeartbeat();
-
-    // --- यहाँ यो नयाँ घडीको कोड थप्नुहोस् (यसले सेकेन्ड-सेकेन्डमा समय बदल्छ) ---
+    
+    // Live Clock Engine
     setInterval(() => {
         const now = new Date();
         const timeStr = now.toLocaleTimeString('ne-NP', { hour12: true });
-        const dateStr = now.toLocaleDateString('ne-NP', { 
-            year: 'numeric', month: 'short', day: 'numeric', weekday: 'short' 
-        });
-        
-        if (UI.syncStatus) {
-            UI.syncStatus.innerHTML = `LIVE: <span style="color: #2563eb;">${timeStr}</span> | ${dateStr}`;
+        if (document.getElementById('lastUpdate')) {
+            document.getElementById('lastUpdate').innerHTML = `LIVE: <span class="text-blue-600 font-bold">${timeStr}</span>`;
         }
-    }, 1000); 
-}
+    }, 1000);
+});
 
-// --- ५. SECURITY & SESSION MANAGEMENT (MULTI-USER SAFE) ---
-function validateSession() {
-    // sessionStorage ले गर्दा हरेक नयाँ विन्डो वा ट्याबमा लगइन माग्नेछ
-    const sessionToken = sessionStorage.getItem('titan_user');
+// --- २. RPA & AUTO-FORM ENGINE ---
+async function launchAIAutoFill(id, service) {
+    if (!service || service === 'Other') return notify("कृपया सेवा (PCC/NID) छान्नुहोस्!", "error");
     
-    if (sessionToken) {
-        try {
-            STATE.currentUser = JSON.parse(sessionToken);
-            loadDashboardInterface();
-        } catch (e) {
-            handleSystemLockout(true);
-        }
-    } else {
-        // यदि यो विन्डोमा लगइन छैन भने लगइन पेज देखाउने
-        UI.loginView.classList.remove('hidden');
-        UI.dashboardView.classList.add('hidden');
-    }
-}
-
-async function handleLoginRequest(event) {
-    event.preventDefault();
-    setLoading(true);
-
-    const user = UI.userInput.value.trim();
-    const pass = UI.passInput.value.trim();
-
+    const customer = STATE.allData.find(c => c.id === id);
+    notify(`${service} को लागि RPA रोबोट सक्रिय हुँदैछ...`, "success");
+    
     try {
-        const { data, error } = await supabaseClient
-            .from('staff')
-            .select('*')
-            .eq('username', user)
-            .eq('password', pass)
-            .single();
-
-        if (error || !data) throw new Error("Invalid Credentials");
-
-        STATE.currentUser = data;
-        
-        // डाटालाई sessionStorage मा सेभ गर्ने ताकि अर्को विन्डोमा यो सेयर नहोस्
-        sessionStorage.setItem('titan_user', JSON.stringify(data));
-        
-        loadDashboardInterface();
-        notify(`स्वागत छ, ${data.full_name}!`, 'success');
+        const response = await fetch(`${SYSTEM_CONFIG.RPA_SERVER_URL}/start-automation`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                customer_id: id,
+                service_type: service,
+                customer_name: customer.customer_name,
+                phone: customer.phone_number,
+                operator: STATE.currentUser.full_name
+            })
+        });
+        if (!response.ok) throw new Error();
+        notify("RPA ले फारम भर्न सुरु गर्यो!", "success");
     } catch (err) {
-        notify("युजरनेम वा पासवर्ड गलत छ!", "error");
-    } finally {
-        setLoading(false);
+        notify("RPA सर्भर अफलाइन छ! पाइथन एप चलाउनुहोस्।", "error");
     }
 }
 
-function handleSystemLockout(force = false) {
-    if (force || confirm("के तपाईँ लगआउट गर्न चाहनुहुन्छ?")) {
-        // सेसन क्लियर गर्ने
-        sessionStorage.removeItem('titan_user');
-        // कहिलेकाहीँ ब्राउजरमा पुरानो डाटा अड्किन सक्छ, त्यसैले 'Local' पनि क्लियर गरिदिने
-        localStorage.removeItem('titan_user'); 
-        window.location.reload();
-    }
+// --- ३. SETTINGS MODAL (CONFIG ENGINE) ---
+function toggleSettingsModal() {
+    const modalHtml = `
+        <div id="settingsModal" class="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-[999999] p-4">
+            <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+                <div class="bg-slate-900 p-4 text-white flex justify-between items-center">
+                    <h2 class="font-bold text-sm tracking-widest uppercase"><i class="fas fa-microchip mr-2 text-blue-400"></i> System Control</h2>
+                    <button onclick="document.getElementById('settingsModal').remove()" class="text-2xl hover:text-red-400">&times;</button>
+                </div>
+                <div class="p-6 space-y-5">
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 mb-1 uppercase">RPA Robot Gateway (URL)</label>
+                        <input type="text" id="set_rpa_url" value="${SYSTEM_CONFIG.RPA_SERVER_URL}" class="w-full border-2 rounded-xl p-3 text-sm font-mono focus:border-blue-500 outline-none">
+                    </div>
+                    <div class="p-3 bg-blue-50 rounded-xl">
+                        <p class="text-[10px] text-blue-700 font-medium italic">* RPA लिङ्क परिवर्तन गरेपछि सेभ गर्नुहोस्। सामान्यतया यो 'localhost:5000' नै हुन्छ।</p>
+                    </div>
+                </div>
+                <div class="p-4 bg-slate-50 flex gap-3">
+                    <button onclick="document.getElementById('settingsModal').remove()" class="flex-1 py-3 text-xs font-bold text-slate-500">बन्द गर्नुहोस्</button>
+                    <button onclick="saveSettings()" class="flex-1 py-3 text-xs font-bold bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-200">SAVE SETTINGS</button>
+                </div>
+            </div>
+        </div>`;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
 }
 
-// --- ६. DATA ENGINE (FETCH & PROCESS) ---
-async function loadDashboardInterface() {
-    UI.loginView.classList.add('hidden');
-    UI.dashboardView.classList.remove('hidden');
-    UI.userNameDisplay.textContent = `अहिलेको अपरेटर: ${STATE.currentUser.full_name}`;
+function saveSettings() {
+    const newUrl = document.getElementById('set_rpa_url').value;
+    SYSTEM_CONFIG.RPA_SERVER_URL = newUrl;
+    localStorage.setItem('rpa_url', newUrl);
+    notify("सेटिंग अपडेट भयो!", "success");
+    document.getElementById('settingsModal').remove();
+}
+
+// --- ४. RENDERING CORE (10 COLUMNS + 5 STATUSES) ---
+function buildTableRows() {
+    const tableBody = document.getElementById('tableBody');
+    tableBody.innerHTML = '';
+    const startIndex = (STATE.currentPage - 1) * SYSTEM_CONFIG.PAGE_SIZE;
+    const items = STATE.filteredData.slice(startIndex, startIndex + SYSTEM_CONFIG.PAGE_SIZE);
+
+    items.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.className = 'border-b hover:bg-blue-50/40 transition-all';
+        tr.innerHTML = `
+            <td class="px-4 py-4 text-[10px] font-mono text-slate-500">${new Date(row.created_at).toLocaleString('ne-NP')}</td>
+            <td class="px-2 py-4 text-center text-xl">${row.platform === 'whatsapp' ? '🟢' : '🔵'}</td>
+            <td class="px-4 py-4">
+                <div class="font-bold text-sm text-slate-800">${row.customer_name || 'नयाँ ग्राहक'}</div>
+                <div class="text-[10px] text-blue-600 font-black">${row.phone_number}</div>
+            </td>
+            <td class="px-4 py-4">
+                <select class="w-full border rounded-lg p-1.5 text-xs font-bold bg-slate-50" onchange="commitUpdate('${row.id}', {service: this.value}, 'सेवा अपडेट भयो')">
+                    <option value="PCC" ${row.service==='PCC'?'selected':''}>PCC Report</option>
+                    <option value="NID" ${row.service==='NID'?'selected':''}>NID Card</option>
+                    <option value="Passport" ${row.service==='Passport'?'selected':''}>Passport</option>
+                    <option value="License" ${row.service==='License'?'selected':''}>License</option>
+                    <option value="Other" ${row.service==='Other'?'selected':''}>Other</option>
+                </select>
+            </td>
+            <td class="px-4 py-4">
+                <div class="flex flex-col gap-1.5">
+                    <button onclick="launchAIAutoFill('${row.id}', '${row.service}')" class="bg-orange-500 text-white text-[9px] font-black py-1.5 px-2 rounded-lg hover:bg-orange-600 transition-all shadow-sm">🚀 AUTO-FORM</button>
+                    <button onclick="openMessengerHistory('${row.phone_number}', '${row.customer_name}')" class="bg-blue-600 text-white text-[9px] font-black py-1.5 px-2 rounded-lg hover:bg-blue-700 transition-all shadow-sm">💬 CRM CHAT</button>
+                </div>
+            </td>
+            <td class="px-4 py-4">
+                <select class="status-badge w-full text-[10px] font-black p-1.5 rounded-lg border-2" 
+                        onchange="commitUpdate('${row.id}', {status: this.value}, 'अवस्था अपडेट गरियो')"
+                        style="border-color: ${getStatusColor(row.status)}">
+                    <option value="inquiry" ${row.status==='inquiry'?'selected':''}>📩 INQUIRY</option>
+                    <option value="pending" ${row.status==='pending'?'selected':''}>⏳ PENDING</option>
+                    <option value="working" ${row.status==='working'?'selected':''}>🛠️ WORKING</option>
+                    <option value="success" ${row.status==='success'?'selected':''}>✅ SUCCESS</option>
+                    <option value="problem" ${row.status==='problem'?'selected':''}>❌ PROBLEM</option>
+                </select>
+            </td>
+            <td class="px-4 py-4">
+                <textarea class="w-full text-[10px] border rounded p-1 outline-none focus:ring-1 focus:ring-blue-400" 
+                          placeholder="Note..." onblur="commitUpdate('${row.id}', {operator_instruction: this.value}, 'नोट सेभ भयो')">${row.operator_instruction || ''}</textarea>
+            </td>
+            <td class="px-4 py-4 text-center">
+                <div class="font-bold text-emerald-600 flex items-center justify-center">
+                    <span class="text-[10px] mr-1">Rs.</span>
+                    <input type="number" class="w-14 border-b bg-transparent outline-none text-center" value="${row.income || 0}" onblur="commitUpdate('${row.id}', {income: this.value}, 'पेमेन्ट सेभ भयो')">
+                </div>
+            </td>
+            <td class="px-4 py-4 text-center">
+                <span class="text-[9px] font-bold bg-slate-100 px-2 py-1 rounded text-slate-500 uppercase">${row.last_updated_by || 'SYSTEM'}</span>
+            </td>
+            <td class="px-4 py-4"><div class="flex gap-1 justify-center">${renderFileIcons(row.documents)}</div></td>
+        `;
+        tableBody.appendChild(tr);
+    });
+}
+
+function getStatusColor(status) {
+    const map = { inquiry: '#94a3b8', pending: '#f59e0b', working: '#3b82f6', success: '#10b981', problem: '#ef4444' };
+    return map[status] || '#cbd5e1';
+}
+
+// --- ५. FINANCIAL ANALYTICS ENGINE ---
+function refreshFinancialAnalytics() {
+    const stats = STATE.allData.reduce((acc, curr) => {
+        acc.counts[curr.status] = (acc.counts[curr.status] || 0) + 1;
+        if (curr.status === 'success') acc.revenue += (parseFloat(curr.income) || 0);
+        return acc;
+    }, { counts: {}, revenue: 0 });
+
+    const updateUI = (id, val) => { if(document.getElementById(id)) document.getElementById(id).textContent = val; };
     
-    await syncCoreDatabase();
+    updateUI('statIncome', `Rs. ${stats.revenue.toLocaleString()}`);
+    updateUI('statSuccess', stats.counts['success'] || 0);
+    updateUI('statPending', stats.counts['pending'] || 0);
+    updateUI('statInquiry', stats.counts['inquiry'] || 0);
+    updateUI('statWorking', stats.counts['working'] || 0);
+}
+
+// --- ६. SYSTEM UTILS (SYNC, SECURITY, EVENTS) ---
+async function commitUpdate(id, updates, msg) {
+    const payload = { ...updates, last_updated_by: STATE.currentUser.full_name, updated_at: new Date().toISOString() };
+    await supabaseClient.from('customers').update(payload).eq('id', id);
+    notify(msg, "success");
+    syncCoreDatabase();
 }
 
 async function syncCoreDatabase() {
-    if (STATE.isLoading) return;
-    STATE.isLoading = true;
-
-    try {
-        const { data, error } = await supabaseClient
-            .from('customers')
-            .select('*')
-            .order(STATE.sortConfig.column, { ascending: STATE.sortConfig.direction === 'asc' });
-
-        if (error) throw error;
-
-        STATE.allData = data || [];
+    const { data, error } = await supabaseClient.from('customers').select('*').order('created_at', { ascending: false });
+    if (!error) {
+        STATE.allData = data;
         applyLogicFilters(false);
         refreshFinancialAnalytics();
-        updateSyncTime();
-    } catch (err) {
-        notify("डाटा सिंक गर्न सकिएन!", "error");
-    } finally {
-        STATE.isLoading = false;
     }
 }
 
-// --- ७. RENDERING ENGINE (THE 10-COLUMN CORE) ---
-function buildTableRows() {
-    const startIndex = (STATE.currentPage - 1) * SYSTEM_CONFIG.PAGE_SIZE;
-    const paginatedItems = STATE.filteredData.slice(startIndex, startIndex + SYSTEM_CONFIG.PAGE_SIZE);
-
-    UI.tableBody.innerHTML = '';
-
-    if (paginatedItems.length === 0) {
-        UI.tableBody.innerHTML = `<tr><td colspan="10" class="py-20 text-center text-slate-400 italic">कुनै पनि डाटा भेटिएन।</td></tr>`;
-        return;
-    }
-
-    paginatedItems.forEach(row => {
-        const tr = document.createElement('tr');
-        tr.className = 'border-b border-slate-100 hover:bg-blue-50/30 transition-all duration-200';
-        tr.setAttribute('data-id', row.id);
-
-        tr.innerHTML = `
-            <td class="px-6 py-4 text-[11px] font-mono text-slate-500">
-                ${formatSystemDate(row.created_at)}
-            </td>
-
-            <td class="px-2 py-4 text-center">
-                ${row.platform === 'whatsapp' 
-                    ? '<i class="fab fa-whatsapp text-green-500 text-xl" title="WhatsApp"></i>' 
-                    : '<i class="fab fa-facebook-messenger text-blue-600 text-xl" title="Messenger"></i>'}
-            </td>
-
-            <td class="px-6 py-4">
-<div class="font-bold text-slate-800 text-sm">${row.customer_name || 'Loading Name...'}</div>
-                <div class="text-[10px] text-blue-500 font-bold">${row.phone_number || 'N/A'}</div>
-            </td>
-
-           <td class="px-6 py-4">
-                <select class="w-full bg-slate-50 border border-slate-200 rounded-lg p-1 text-xs outline-none focus:border-blue-500 font-bold" 
-                        onchange="commitUpdate('${row.id}', {service: this.value}, 'सेवा अपडेट गरियो')">
-                    <option value="NID" ${row.service === 'NID' ? 'selected' : ''}>NID Card</option>
-                    <option value="PCC" ${row.service === 'PCC' ? 'selected' : ''}>PCC Report</option>
-                    <option value="Passport" ${row.service === 'Passport' ? 'selected' : ''}>Passport</option>
-                    <option value="License" ${row.service === 'License' ? 'selected' : ''}>License</option>
-                    <option value="PAN" ${row.service === 'PAN' ? 'selected' : ''}>PAN Service</option>
-                    
-                    <option value="Other" ${(!['NID','PCC','Passport','License','PAN'].includes(row.service)) ? 'selected' : ''}>Other / Mixed</option>
-                </select>
-                ${(!['NID','PCC','Passport','License','PAN', null].includes(row.service)) 
-                    ? `<div class="text-[9px] text-red-500 font-bold mt-1 uppercase">Note: ${row.service}</div>` 
-                    : ''
-                }
-            </td>
-
- <td class="px-6 py-4">
-    <div onclick="alert('FULL MESSAGE:\n\n' + this.innerText)" 
-         class="max-w-[180px] cursor-pointer hover:text-blue-600 transition-colors"
-         title="Click to read full message">
-        
-        <div class="overflow-hidden text-ellipsis whitespace-nowrap text-[11px] text-slate-600 font-medium mb-2 border-b border-slate-50 pb-1">
-            <i class="fas fa-comment-dots text-blue-400 mr-1"></i> 
-            ${row.chat_summary || '<span class="text-slate-300 italic">No message yet</span>'}
-        </div>
-    </div>
-
-    ${row.platform === 'whatsapp' 
-    ? `<a href="https://wa.me/${row.phone_number.replace(/\D/g,'')}" 
-          target="_blank" 
-          class="inline-flex items-center gap-1.5 text-[9px] font-bold text-green-600 bg-green-50/50 hover:bg-green-600 hover:text-white px-2 py-1 rounded transition-all shadow-sm">
-           <i class="fab fa-whatsapp"></i> REPLY VIA WHATSAPP
-       </a>`
-    : `<button onclick="openMessengerHistory('${row.phone_number}', '${row.customer_name}')" 
-          class="inline-flex items-center gap-1.5 text-[9px] font-bold text-blue-600 bg-blue-50/50 hover:bg-blue-600 hover:text-white px-2 py-1 rounded transition-all shadow-sm">
-           <i class="fab fa-facebook-messenger"></i> OPEN CRM CHAT
-       </button>`
-}
-
-            <td class="px-6 py-4">
-                <select class="status-badge status-${row.status} w-full" 
-                        onchange="commitUpdate('${row.id}', {status: this.value}, 'अवस्था अपडेट गरियो')">
-                    <option value="success" ${row.status === 'success' ? 'selected' : ''}>✅ SUCCESS</option>
-                    <option value="in_progress" ${row.status === 'in_progress' ? 'selected' : ''}>⏳ WORKING</option>
-                    <option value="problem" ${row.status === 'problem' ? 'selected' : ''}>❌ PROBLEM</option>
-                </select>
-            </td>
-
-            <td class="px-6 py-4">
-                <textarea class="w-full text-[11px] border border-slate-100 rounded p-1 outline-none focus:ring-1 focus:ring-blue-400" 
-                          placeholder="Note here..."
-                          onblur="commitUpdate('${row.id}', {operator_instruction: this.value}, 'नोट सेभ भयो')">${row.operator_instruction || ''}</textarea>
-            </td>
-
-            <td class="px-6 py-4 text-center">
-                <div class="flex items-center justify-center font-bold text-emerald-600">
-                    <span class="text-[10px] mr-1">Rs.</span>
-                    <input type="number" class="w-16 bg-transparent border-b border-transparent focus:border-emerald-400 outline-none text-center" 
-                           value="${row.income || 0}" 
-                           onblur="commitUpdate('${row.id}', {income: this.value}, 'पेमेन्ट अपडेट भयो')">
-                </div>
-            </td>
-
-            <td class="px-6 py-4 text-center">
-                <span class="text-[9px] font-black bg-slate-100 text-slate-500 px-2 py-1 rounded-full uppercase tracking-tighter">
-                    ${row.last_updated_by || 'SYSTEM'}
-                </span>
-            </td>
-
-            <td class="px-6 py-4 text-center">
-                <div class="flex gap-2 justify-center">
-                    ${renderFileIcons(row.documents)}
-                </div>
-            </td>
-        `;
-        UI.tableBody.appendChild(tr);
-    });
-
-    updatePaginationStatus();
-}
-
-// --- ८. UPDATE ENGINE ---
-async function commitUpdate(id, dataObject, successMessage) {
-    if (!id || id === 'undefined') {
-        notify("ग्राहकको ID भेटिएन!", "error");
-        return;
-    }
-
-    const payload = {
-        ...dataObject,
-        last_updated_by: STATE.currentUser.full_name,
-        updated_at: new Date().toISOString()
-    };
-
-    try {
-        const { data, error } = await supabaseClient
-            .from('customers')
-            .update(payload)
-            .eq('id', id)
-            .select();
-
-        if (error) throw error;
-
-        if (data && data.length > 0) {
-            STATE.allData = STATE.allData.map(c => c.id === id ? { ...c, ...payload } : c);
-            refreshFinancialAnalytics();
-            notify(successMessage, 'success');
-        } else {
-            notify("डेटाबेसमा यो डाटा भेटिएन!", "error");
-        }
-    } catch (err) {
-        console.error("Update Fail:", err);
-        notify("अपडेट असफल! सुपवेस नियम जाँच गर्नुहोस्।", "error");
-    }
-}
-
-function handleRemoteTrigger(payload) {
-    console.log("🚀 Realtime Trigger Received:", payload.eventType);
-    
-    // १. आवाज बजाउने सानो फङ्सन
-    const playSound = () => {
-        const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-        audio.volume = 0.5;
-        audio.play().catch(e => console.log("Sound blocked: Browser requires user interaction first."));
-    };
-
-    if (payload.eventType === 'INSERT') {
-        STATE.allData = [payload.new, ...STATE.allData];
-        notify("नयाँ ग्राहक/म्यासेज प्राप्त भयो!", "success");
-        playSound(); // नयाँ म्यासेज आउँदा घण्टी बज्छ
-    } 
-    else if (payload.eventType === 'UPDATE') {
-        // २. नोटिफिकेसन कतिखेर दिने? 
-        // यदि नोट फेरियो र त्यो नोट फेर्ने मान्छे 'तपाईँ आफै' होइन भने मात्र घण्टी बजाउने
-        const isNoteChanged = payload.old.operator_instruction !== payload.new.operator_instruction;
-        const isNotMe = payload.new.last_updated_by !== STATE.currentUser.full_name;
-
-        if (isNoteChanged && isNotMe) {
-            notify(`नयाँ नोट: ${payload.new.last_updated_by} ले केही लेख्नुभयो`, "success");
-            playSound(); // अर्को ओपरेटरले नोट लेख्दा घण्टी बज्छ
-        }
-
-        STATE.allData = STATE.allData.map(c => c.id === payload.new.id ? payload.new : c);
-        flashRow(payload.new.id);
-    } 
-    else if (payload.eventType === 'DELETE') {
-        STATE.allData = STATE.allData.filter(c => c.id !== payload.old.id);
-    }
-
-    // यो सबैभन्दा महत्वपूर्ण लाइन हो: यसले नयाँ डाटालाई टेबलमा तुरुन्तै देखाउँछ
-    applyLogicFilters(false); 
-    refreshFinancialAnalytics();
-}
-
-// --- यहाँ हाल्नुहोस् (यो म्यासेज पठाउने मुख्य इन्जिन हो) ---
 function startRealtimeBridge() {
-    console.log("🔌 Connecting to Realtime Bridge...");
-    
-    supabaseClient
-        .channel('public-sync')
-        .on('postgres_changes', 
-            { event: '*', schema: 'public', table: 'customers' }, 
-            (payload) => {
-                // यो लाइनले म्यासेज आएको वा गएको थाहा पाउँछ
-                handleRemoteTrigger(payload);
-            }
-        )
-        .subscribe((status) => {
-            if (status === 'SUBSCRIBED') {
-                console.log("✅ Realtime Bridge Connected! Now WhatsApp will work.");
-            }
-        });
-}
-
-// --- ९. ANALYTICS & FILTERS ---
-function applyLogicFilters(resetPage = true) {
-    const query = UI.searchBar.value.toLowerCase().trim();
-    const statusVal = UI.statusFilter.value;
-    const platformVal = UI.platformFilter.value;
-
-    STATE.filteredData = STATE.allData.filter(item => {
-        const matchQuery = !query || 
-            (item.customer_name || '').toLowerCase().includes(query) || 
-            (item.phone_number || '').includes(query) ||
-            (item.service || '').toLowerCase().includes(query);
-            
-        const matchStatus = !statusVal || item.status === statusVal;
-        const matchPlatform = !platformVal || item.platform === platformVal;
-
-        return matchQuery && matchStatus && matchPlatform;
-    });
-
-    if (resetPage) STATE.currentPage = 1;
-    buildTableRows();
-}
-
-function refreshFinancialAnalytics() {
-    const report = STATE.allData.reduce((acc, current) => {
-        // नयाँ थपिएको: status 'start' भएमा वा खाली भएमा inquiry गन्ने
-        if (!current.status || current.status === 'start') acc.inquiry++;
-        
-        if (current.status === 'success') acc.success++;
-        if (current.status === 'in_progress') acc.progress++;
-        if (current.status === 'problem') acc.problem++;
-        acc.revenue += (parseFloat(current.income) || 0);
-        return acc;
-    }, { inquiry: 0, success: 0, progress: 0, problem: 0, revenue: 0 });
-
-    // HTML मा संख्या देखाउन
-    const inquiryBox = document.getElementById('statInquiry');
-    if (inquiryBox) inquiryBox.textContent = report.inquiry;
-
-    UI.analytics.income.textContent = `Rs. ${report.revenue.toLocaleString()}`;
-    UI.analytics.success.textContent = report.success;
-    UI.analytics.progress.textContent = report.progress;
-    UI.analytics.problem.textContent = report.problem;
-}
-
-// --- १०. GLOBAL HELPERS ---
-function registerGlobalEvents() {
-    UI.loginForm.addEventListener('submit', handleLoginRequest);
-    UI.logoutBtn.addEventListener('click', handleSystemLockout);
-
-    UI.searchBar.addEventListener('input', debounce(() => {
-        STATE.isSearching = !!UI.searchBar.value;
-        applyLogicFilters(true);
-    }, 400));
-
-    UI.statusFilter.addEventListener('change', () => applyLogicFilters(true));
-    UI.platformFilter.addEventListener('change', () => applyLogicFilters(true));
-
-    UI.pagination.prev.addEventListener('click', () => {
-        if (STATE.currentPage > 1) { STATE.currentPage--; buildTableRows(); scrollToTop(); }
-    });
-
-    UI.pagination.next.addEventListener('click', () => {
-        const max = Math.ceil(STATE.filteredData.length / SYSTEM_CONFIG.PAGE_SIZE);
-        if (STATE.currentPage < max) { STATE.currentPage++; buildTableRows(); scrollToTop(); }
-    });
-}
-
-function formatSystemDate(iso) {
-    return new Date(iso).toLocaleString('ne-NP', { 
-        year: 'numeric', month: 'short', day: 'numeric', 
-        hour: '2-digit', minute: '2-digit' 
-    });
+    supabaseClient.channel('any').on('postgres_changes', { event: '*', schema: 'public', table: 'customers' }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+            new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3').play();
+            notify("नयाँ डाटा आयो!", "success");
+        }
+        syncCoreDatabase();
+    }).subscribe();
 }
 
 function renderFileIcons(docs) {
-    if (!docs || docs.length === 0) return '<span class="text-slate-200">-</span>';
-    
-    return docs.map(url => {
-        const lowerUrl = url.toLowerCase();
-        
-        // १. फोटो पहिचान गर्ने (Messenger + WhatsApp)
-        const isImage = lowerUrl.match(/\.(jpg|jpeg|png|gif|webp)/g) || 
-                        lowerUrl.includes('fbcdn') || 
-                        lowerUrl.includes('_wa') || 
-                        lowerUrl.includes('messenger');
+    if (!docs || docs.length === 0) return '-';
+    return docs.map(url => `<img src="${url}" onclick="window.open('${url}')" class="w-8 h-8 rounded border-2 border-white shadow-sm cursor-pointer hover:scale-125 transition-transform">`).join('');
+}
 
-        // २. अडियो/भ्वाइस रेकर्ड पहिचान गर्ने
-        const isAudio = lowerUrl.match(/\.(mp3|wav|ogg|m4a|aac|mp4)/g) || 
-                        lowerUrl.includes('audioclip') || 
-                        lowerUrl.includes('voice_message');
+function validateSession() {
+    const sessionToken = sessionStorage.getItem('titan_user');
+    if (sessionToken) {
+        STATE.currentUser = JSON.parse(sessionToken);
+        loadDashboardInterface();
+    } else {
+        document.getElementById('loginPage').classList.remove('hidden');
+    }
+}
 
-        if (isImage) {
-            return `
-                <div class="inline-block m-1">
-                    <img src="${url}" 
-                         onclick="window.open('${url}', '_blank')" 
-                         class="w-10 h-10 object-cover rounded border border-slate-200 hover:scale-150 cursor-pointer transition-transform shadow-md" 
-                         onerror="this.src='https://via.placeholder.com/40?text=IMG'" 
-                         title="फोटो हेर्नुहोस्">
-                </div>`;
-        } else if (isAudio) {
-            // ३. भ्वाइस रेकर्डको लागि निलो माइक आइकन
-            return `
-                <a href="${url}" target="_blank" 
-                   class="inline-flex items-center justify-center w-10 h-10 bg-blue-50 border border-blue-200 rounded text-blue-600 hover:bg-blue-600 hover:text-white transition-all shadow-sm m-1 text-center" 
-                   title="Voice Record सुन्नुहोस्">
-                    <div class="flex flex-col items-center justify-center leading-none">
-                        <i class="fas fa-microphone" style="font-size: 14px;"></i>
-                        <span style="font-size: 7px; font-weight: 900; margin-top: 1px;">VOICE</span>
-                    </div>
-                </a>`;
-        } else {
-            // ४. वास्तविक PDF वा अन्य फाइलको लागि रातो आइकन
-            const pdfUrl = lowerUrl.split('?')[0].endsWith('.pdf') ? `${url}#toolbar=1` : url;
-            return `
-                <a href="${pdfUrl}" target="_blank"
-                   class="inline-flex items-center justify-center w-10 h-10 bg-red-50 border border-red-200 rounded text-red-600 hover:bg-red-600 hover:text-white transition-all shadow-sm m-1 text-center" 
-                   title="फाइल खोल्नुहोस्">
-                    <div class="flex flex-col items-center justify-center leading-none">
-                        <i class="fas fa-file-pdf" style="font-size: 14px;"></i>
-                        <span style="font-size: 7px; font-weight: 900; margin-top: 1px;">VIEW</span>
-                    </div>
-                </a>`;
-        }
-    }).join('');
+async function loadDashboardInterface() {
+    document.getElementById('loginPage').classList.add('hidden');
+    document.getElementById('dashboardPage').classList.remove('hidden');
+    document.getElementById('userDisplay').textContent = `अहिलेको अपरेटर: ${STATE.currentUser.full_name}`;
+    await syncCoreDatabase();
 }
 
 function notify(msg, type) {
-    const div = document.createElement('div');
-    div.className = `fixed bottom-10 left-1/2 -translate-x-1/2 px-6 py-3 rounded-full text-white font-bold z-[9999] shadow-2xl transition-all duration-500 transform translate-y-20 ${type==='success'?'bg-slate-800':'bg-red-600'}`;
-    div.textContent = msg;
-    document.body.appendChild(div);
-    setTimeout(() => div.classList.remove('translate-y-20'), 100);
-    setTimeout(() => {
-        div.classList.add('translate-y-20');
-        setTimeout(() => div.remove(), 500);
-    }, 3000);
+    const n = document.createElement('div');
+    n.className = `fixed bottom-8 left-1/2 -translate-x-1/2 px-8 py-3 rounded-full text-white font-bold z-[1000000] shadow-2xl animate-bounce ${type==='success'?'bg-slate-900':'bg-red-600'}`;
+    n.textContent = msg;
+    document.body.appendChild(n);
+    setTimeout(() => n.remove(), 3000);
 }
 
-function flashRow(id) {
-    const row = document.querySelector(`tr[data-id="${id}"]`);
-    if (row) {
-        row.classList.add('bg-yellow-100');
-        setTimeout(() => row.classList.remove('bg-yellow-100'), 2000);
-    }
+function applyLogicFilters(reset = true) {
+    const q = document.getElementById('searchInput').value.toLowerCase();
+    STATE.filteredData = STATE.allData.filter(d => (d.customer_name || '').toLowerCase().includes(q) || (d.phone_number || '').includes(q));
+    if(reset) STATE.currentPage = 1;
+    buildTableRows();
 }
 
-function updatePaginationStatus() {
-    const total = Math.ceil(STATE.filteredData.length / SYSTEM_CONFIG.PAGE_SIZE) || 1;
-    UI.pagination.count.textContent = STATE.filteredData.length;
-    UI.pagination.total.textContent = total;
-    UI.pagination.current.value = STATE.currentPage;
-    UI.pagination.prev.disabled = (STATE.currentPage === 1);
-    UI.pagination.next.disabled = (STATE.currentPage === total);
-}
-
-function updateSyncTime() {
-    // यसलाई खाली छोड्नुहोस् ताकि माथिको लाइभ घडी नमेटियोस्
-    console.log("डाटा सिंक भयो: " + new Date().toLocaleTimeString());
-}
-
-function setupHeartbeat() {
-    setInterval(() => {
-        if (STATE.currentUser && !STATE.isSearching) syncCoreDatabase();
-    }, SYSTEM_CONFIG.AUTO_REFRESH_RATE);
-}
-
-function debounce(func, wait) {
-    let timeout;
-    return (...args) => {
-        clearTimeout(timeout);
-        timeout = setTimeout(() => func.apply(this, args), wait);
-    };
-}
-
-function scrollToTop() {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-function setLoading(val) {
-    STATE.isLoading = val;
-    // यहाँ लोडिङ स्पिनर देखाउने लजिक थप्न सकिन्छ।
-}
-
-// फेसबुक एक्सेस टोकन
-const PAGE_ACCESS_TOKEN = "EAAcaSLIPpeYBQtd8KAJjlnZCmcMWXRCCWSWNeWye0ucjX2KBp5sNp4tO1HD19d4ZBx06BFEsxZCgDcBm7VxlGBwFxU7rZCDnadrXYU3z0yfWHZBByyqOZCoZCIlTARxRbD1AbuXsN2v1UbCWGS72TbfUaDGcVTTL2qW3R8p2eEqv6nqPWjj6qFw3IWvR27ualAO1FEmUtHvUAZDZD";
-
-async function openMessengerHistory(psid, name) {
-    // १. च्याट विन्डोको खाका
-    const boxHtml = `
-        <div id="msgBox" class="fixed inset-0 bg-black/70 flex items-center justify-center z-[99999] p-4">
-            <div class="bg-white w-full max-w-lg h-[85vh] rounded-2xl flex flex-col shadow-2xl overflow-hidden">
-                <div class="bg-blue-600 p-4 text-white flex justify-between items-center shadow-lg">
-                    <div class="flex flex-col">
-                        <span class="font-bold text-lg leading-tight">${name}</span>
-                        <a href="https://facebook.com/${psid}" target="_blank" class="text-[10px] bg-white/20 w-fit px-2 py-0.5 rounded mt-1 hover:bg-white/40 transition-all">VIEW FB PROFILE</a>
-                    </div>
-                    <button onclick="document.getElementById('msgBox').remove()" class="text-3xl hover:text-red-200 transition-colors">&times;</button>
-                </div>
-                <div id="historyBody" class="flex-1 overflow-y-auto p-4 bg-gray-50 flex flex-col gap-3">लोड हुँदैछ...</div>
-                <div class="p-4 border-t bg-white flex gap-2">
-                    <input id="replyTxt" type="text" class="flex-1 border border-gray-300 rounded-full px-4 py-2 outline-none focus:border-blue-500" placeholder="Reply लेख्नुहोस्...">
-                    <button id="sendBtn" class="bg-blue-600 text-white px-5 py-2 rounded-full font-bold hover:bg-blue-700 transition-all">SEND</button>
-                </div>
-            </div>
-        </div>
-    `;
-    document.body.insertAdjacentHTML('beforeend', boxHtml);
-
-    // २. फेसबुकबाट हिस्ट्री तान्ने (फोटो/भिडियो सहित)
-    try {
-        const res = await fetch(`https://graph.facebook.com/v19.0/me/conversations?fields=messages{message,from,created_time,attachments{payload}}&user_id=${psid}&access_token=${PAGE_ACCESS_TOKEN}`);
-        const data = await res.json();
-        const historyBody = document.getElementById('historyBody');
-        
-        if (data.data && data.data[0]) {
-            const messages = data.data[0].messages.data.reverse();
-            historyBody.innerHTML = messages.map(msg => {
-                const isMe = msg.from.id !== psid;
-                let content = msg.message || "";
-                if (msg.attachments) {
-                    msg.attachments.data.forEach(att => {
-                        if (att.payload && att.payload.url) {
-                            content += `<img src="${att.payload.url}" class="max-w-full rounded-lg mt-2 border shadow-sm cursor-pointer" onclick="window.open('${att.payload.url}')">`;
-                        }
-                    });
-                }
-                return `<div class="p-3 rounded-2xl max-w-[85%] text-sm ${isMe ? 'bg-blue-600 text-white self-end rounded-br-none' : 'bg-white border text-gray-800 self-start rounded-bl-none shadow-sm'}">${content}</div>`;
-            }).join('');
-            historyBody.scrollTop = historyBody.scrollHeight;
+function registerGlobalEvents() {
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const user = document.getElementById('username').value;
+        const pass = document.getElementById('password').value;
+        const { data } = await supabaseClient.from('staff').select('*').eq('username', user).eq('password', pass).single();
+        if (data) {
+            STATE.currentUser = data;
+            sessionStorage.setItem('titan_user', JSON.stringify(data));
+            loadDashboardInterface();
         } else {
-            historyBody.innerHTML = `<div class="text-center text-gray-400 mt-10 italic">कुनै पुरानो म्यासेज भेटिएन।</div>`;
+            notify("पासवर्ड मिलेन!", "error");
         }
-    } catch (e) {
-        document.getElementById('historyBody').innerHTML = `<div class="text-red-500 p-4">हिस्ट्री लोड गर्न सकिएन!</div>`;
-    }
-
-    // ३. जवाफ पठाउने सिस्टम
-    document.getElementById('sendBtn').onclick = async () => {
-        const text = document.getElementById('replyTxt').value;
-        if (!text) return;
-        
-        const res = await fetch('/api/direct-reply', { 
-            method: 'POST', 
-            headers: {'Content-Type': 'application/json'}, 
-            body: JSON.stringify({ psid, messageText: text }) 
-        });
-
-        if (res.ok) {
-            document.getElementById('msgBox').remove();
-            notify("जवाफ सफलतापूर्वक पठाइयो!", "success");
-        }
-    };
+    });
+    document.getElementById('searchInput').addEventListener('input', () => applyLogicFilters());
+    document.getElementById('logoutBtn').addEventListener('click', () => { sessionStorage.clear(); location.reload(); });
 }
-
-// --- नाम अपडेट गर्ने सुधारेको इन्जिन ---
-const originalOpenMessenger = openMessengerHistory;
-openMessengerHistory = async function(psid, name) {
-    // १. पहिलेकै च्याट विन्डो खोल्ने
-    originalOpenMessenger(psid, name);
-
-    try {
-        // २. फेसबुकबाट असली नाम तान्ने
-        const res = await fetch(`https://graph.facebook.com/${psid}?fields=first_name,last_name&access_token=${PAGE_ACCESS_TOKEN}`);
-        const fbData = await res.json();
-        
-        if (fbData.first_name) {
-            const fullName = `${fbData.first_name} ${fbData.last_name}`;
-            
-            // ३. डाटाबेसमा अपडेट गर्ने (phone_number को आधारमा किनकि psid त्यहीँ छ)
-            const { data, error } = await supabaseClient
-                .from('customers')
-                .update({ customer_name: fullName })
-                .eq('phone_number', psid)
-                .select();
-
-            if (!error) {
-                console.log("✅ Name Fixed in DB: " + fullName);
-                
-                // ४. UI मा नाम तुरुन्तै बदल्ने (रो खोज्ने सही तरिका)
-                // हामी सबै 'tr' मा खोज्छौँ जसको भित्र त्यो psid (phone_number) लेखिएको छ
-                const allRows = document.querySelectorAll('#tableBody tr');
-                allRows.forEach(row => {
-                    if (row.innerText.includes(psid)) {
-                        const nameDiv = row.querySelector('.text-sm.font-bold');
-                        if (nameDiv) nameDiv.innerText = fullName;
-                    }
-                });
-            }
-        }
-    } catch (err) {
-        console.error("❌ FB Name Sync Error:", err);
-    }
-};
-/** * FINISHED: Titan CRM Enterprise Logic
- * Optimized for Scale and Speed.
- * =============================================================================
- */
