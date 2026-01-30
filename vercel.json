@@ -10,14 +10,14 @@
       "use": "@vercel/static"
     },
     {
-      "src": "script.js",
+      "src": "app.js",
       "use": "@vercel/static"
     }
   ],
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
     { 
-      "source": "/((?!script\\.js|style\\.css|.*\\.png|.*\\.jpg).*)", 
+      "source": "/((?!app\\.js|style\\.css|.*\\.png|.*\\.jpg|.*\\.mp3).*)", 
       "destination": "/index.html" 
     }
   ]
