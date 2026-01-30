@@ -437,6 +437,12 @@ function buildTableRows() {
                     <option value="problem" ${row.status==='problem'?'selected':''}>❌ PRB</option>
                 </select>
             </td>
+           <td class="p-2">
+    <div class="text-[10px] font-bold text-blue-700 bg-blue-50 p-2 rounded-xl border border-blue-100 italic min-w-[120px]">
+        <i class="fas fa-robot mr-1 opacity-50"></i>
+        ${row.chat_summary || 'विवरण प्राप्त हुँदै...'}
+    </div>
+</td>
             <td class="p-2"><textarea class="w-full text-[9px] border rounded p-1 h-8 outline-none" onblur="commitUpdate('${row.id}', {operator_instruction: this.value}, 'Note Saved')">${row.operator_instruction || ''}</textarea></td>
             <td class="p-2 text-center font-bold text-emerald-600 text-[10px]">Rs.<input type="number" class="w-10 bg-transparent text-center font-black" value="${row.income || 0}" onblur="commitUpdate('${row.id}', {income: this.value}, 'Saved')"></td>
             <td class="p-2 text-center text-[8px] font-bold text-slate-400 uppercase">${row.last_updated_by || 'SYS'}</td>
