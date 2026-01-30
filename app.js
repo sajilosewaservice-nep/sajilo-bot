@@ -224,8 +224,6 @@ function showFinancialReport() {
 
     const oneMonthAgo = new Date(now.getFullYear(), now.getMonth(), 1);
 
-
-
     const stats = STATE.allData.reduce((acc, curr) => {
 
         const date = new Date(curr.created_at);
@@ -416,10 +414,12 @@ function buildTableRows() {
             <td class="p-2">
                 <select class="w-full border p-1 rounded text-[10px] font-bold" onchange="commitUpdate('${row.id}', {service: this.value}, 'सेवा फेरियो')">
                     <option value="PCC" ${row.service==='PCC'?'selected':''}>PCC</option>
-                    <option value="NID" ${row.service==='NID'?'selected':''}>NID</option>
-                    <option value="Passport" ${row.service==='Passport'?'selected':''}>Passport</option>
-                    <option value="Other" ${row.service==='Other'?'selected':''}>Other</option>
-                </select>
+<option value="NID" ${row.service==='NID'?'selected':''}>NID</option>
+<option value="Passport" ${row.service==='Passport'?'selected':''}>Passport</option>
+<option value="License" ${row.service==='License'?'selected':''}>License</option>
+<option value="PAN" ${row.service==='PAN'?'selected':''}>PAN</option>
+<option value="Other" ${row.service==='Other'?'selected':''}>Other</option>
+</select>
                 <input type="text" class="w-full text-[9px] border-b border-dotted outline-none mt-1" placeholder="More..." value="${row.other_service_name || ''}" onblur="commitUpdate('${row.id}', {other_service_name: this.value.toUpperCase()}, 'Saved')">
             </td>
             <td class="p-2">
