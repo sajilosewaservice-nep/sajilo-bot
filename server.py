@@ -9,7 +9,7 @@ import json
 import time
 
 # १. AI & SERVER CONFIG
-genai.configure(api_key="तपाईँको_GEMINI_API_KEY_यहाँ")
+genai.configure(api_key="AIzaSyAsLmTXn6j_1SBirtXDRl9oclQh80064RY")
 ai_model = genai.GenerativeModel('gemini-pro')
 
 app = flask.Flask(__name__)
