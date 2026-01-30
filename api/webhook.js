@@ -1,3 +1,9 @@
+/**
+ * TITAN MESSENGER ENGINE v4.0.0 (SYNC READY)
+ * -----------------------------------------
+ * यो कोडले फेसबुक म्यासेन्जरका म्यासेजहरूलाई सिधै सुपवेसमा सिंक गर्छ।
+ */
+
 const fetch = require('node-fetch');
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
@@ -5,17 +11,17 @@ const { createClient } = require('@supabase/supabase-js');
 const app = express();
 app.use(express.json());
 
-// १. कन्फिगरेसन (Environment Variables मा राख्नु राम्रो हुन्छ)
+// १. कन्फिगरेसन (Config)
 const CONFIG = {
     SUPABASE_URL: "https://ratgpvubjrcoipardzdp.supabase.co",
     SUPABASE_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJhdGdwdnVianJjb2lwYXJkemRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzMTg0OTMsImV4cCI6MjA4Mzg5NDQ5M30.t1eofJj9dPK-Psp_oL3LpCWimyz621T21JNpZljEGZk",
-    PAGE_ACCESS_TOKEN: "EAAcaSLIPpeYBQtCvOSrO7r3IWAbylbq3yB7mogGwmZA71nNS7RPzkdnDfe5M8D3vN993LN7nvUN0D1k2ZCmt0dXkn8HjpmbffDKOozGkEk6H3CGXahWZABw6CZAxah9ClHixXpEJBYZC0iTS4OkAQim38IjraOYVz0mziWZA1jex2jOI5NZAz89ZArGjF4fPwa4YVak7YfiF1AZDZD",
+    PAGE_ACCESS_TOKEN: "EAAcaSLIPpeYBQtd8KAJjlnZCmcMWXRCCWSWNeWye0ucjX2KBp5sNp4tO1HD19d4ZBx06BFEsxZCgDcBm7VxlGBwFxU7rZCDnadrXYU3z0yfWHZBByyqOZCoZCIlTARxRbD1AbuXsN2v1UbCWGS72TbfUaDGcVTTL2qW3R8p2eEqv6nqPWjj6qFw3IWvR27ualAO1FEmUtHvUAZDZD",
     VERIFY_TOKEN: "titan_crm_2026"
 };
 
 const supabase = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_KEY);
 
-// २. हेल्पर फङ्सन: फेसबुकबाट युजरको विवरण तान्न
+// २. फेसबुक प्रोफाइल तान्ने फङ्सन
 async function getFacebookUserProfile(psid) {
     try {
         const response = await fetch(`https://graph.facebook.com/${psid}?fields=first_name,last_name,profile_pic&access_token=${CONFIG.PAGE_ACCESS_TOKEN}`);
@@ -25,28 +31,27 @@ async function getFacebookUserProfile(psid) {
             profilePic: data.profile_pic || null
         };
     } catch (error) {
-        console.error("❌ FB Profile Fetch Error:", error);
+        console.error("❌ Profile Fetch Error:", error);
         return { name: "Messenger User", profilePic: null };
     }
 }
 
-// ३. फेसबुक भेरिफिकेसन (Webhook Setup)
+// ३. फेसबुक भेरिफिकेसन (GET Method)
 app.get('/api/webhook', (req, res) => {
     const mode = req.query['hub.mode'];
     const token = req.query['hub.verify_token'];
     const challenge = req.query['hub.challenge'];
 
     if (mode === 'subscribe' && token === CONFIG.VERIFY_TOKEN) {
-        console.log("✅ Webhook Verified!");
+        console.log("✅ Messenger Webhook Verified!");
         return res.status(200).send(challenge);
     }
     res.sendStatus(403);
 });
 
-// ४. मुख्य इन्जिन: म्यासेज रिसिभ र डाटाबेस अपडेट
+// ४. मुख्य इन्जिन: म्यासेज रिसिभ र CRM सिंक (POST Method)
 app.post('/api/webhook', async (req, res) => {
     const body = req.body;
-
     if (body.object !== 'page') return res.sendStatus(404);
 
     for (const entry of body.entry) {
@@ -58,40 +63,41 @@ app.post('/api/webhook', async (req, res) => {
         if (event.message) {
             const messageText = event.message.text || "";
             let attachments = [];
-
             if (event.message.attachments) {
                 attachments = event.message.attachments.map(a => a.payload.url);
             }
 
-            console.log(`📩 New message from ${psid}: ${messageText || '[Attachment]'}`);
-
-            // क) फेसबुक प्रोफाइल र सुपाबेसको पुरानो डाटा एकैसाथ तान्ने (Parallel processing)
+            // क) पुराना विवरण र फेसबुक प्रोफाइल तान्ने
             const [userProfile, { data: existingCustomer }] = await Promise.all([
                 getFacebookUserProfile(psid),
-                supabase.from('customers').select('documents').eq('messenger_id', psid).maybeSingle()
+                supabase.from('customers').select('*').eq('phone_number', psid).maybeSingle()
             ]);
 
-            // ख) डकुमेन्ट/फोटोहरू मर्ज गर्ने लजिक
+            // ख) डकुमेन्टहरू मर्ज गर्ने
             let oldDocs = existingCustomer?.documents || [];
-            if (!Array.isArray(oldDocs)) oldDocs = [oldDocs];
             const updatedDocs = [...new Set([...oldDocs, ...attachments])].filter(Boolean);
 
-            // ग) डाटाबेस अपडेट (Customers & Messages)
             const finalMessage = messageText || (attachments.length > 0 ? "📷 Sent an attachment" : "New Message");
+
+            // ग) TITAN v4.0.0 Logic: नयाँलाई 'inquiry' मा राख्ने, पुरानाको 'status' जोगाउने
+            const customerData = {
+                phone_number: psid, // Messenger ID लाई नै Phone Number को रूपमा प्रयोग गरिएको
+                customer_name: userProfile.name,
+                chat_summary: finalMessage,
+                platform: 'messenger',
+                status: existingCustomer ? existingCustomer.status : 'inquiry', // v4.0.0 Logic
+                service: existingCustomer ? existingCustomer.service : 'Other',
+                documents: updatedDocs,
+                last_updated_by: 'MESSENGER_BOT',
+                updated_at: new Date().toISOString()
+            };
 
             try {
                 await Promise.all([
-                    // Customers टेबल अपडेट
-                    supabase.from('customers').upsert({
-                        messenger_id: psid,
-                        customer_name: userProfile.name,
-                        chat_summary: finalMessage,
-                        platform: 'messenger',
-                        documents: updatedDocs,
-                        updated_at: new Date().toISOString()
-                    }, { onConflict: 'messenger_id' }),
-
-                    // Messages (History) टेबल अपडेट
+                    // Customers टेबल सिंक
+                    supabase.from('customers').upsert(customerData, { onConflict: 'phone_number' }),
+                    
+                    // History को लागि Messages टेबलमा इन्सर्ट
                     supabase.from('messages').insert([{
                         customer_id: psid,
                         content: finalMessage,
@@ -99,23 +105,18 @@ app.post('/api/webhook', async (req, res) => {
                         metadata: { urls: attachments, profile_pic: userProfile.profilePic }
                     }])
                 ]);
-                console.log(`✅ Database updated for ${userProfile.name}`);
-            } catch (dbError) {
-                console.error("❌ Database Update Error:", dbError);
+                console.log(`✅ CRM Synced: ${userProfile.name} [${customerData.status}]`);
+            } catch (err) {
+                console.error("❌ Sync Error:", err.message);
             }
         }
     }
     res.status(200).send('EVENT_RECEIVED');
 });
 
-// ५. ड्यासबोर्डबाट सिधै रिप्लाई पठाउने API
+// ५. ड्यासबोर्डबाट रिप्लाई पठाउने API
 app.post('/api/direct-reply', async (req, res) => {
     const { psid, messageText } = req.body;
-
-    if (!psid || !messageText) {
-        return res.status(400).json({ error: "Missing psid or messageText" });
-    }
-
     try {
         const response = await fetch(`https://graph.facebook.com/v21.0/me/messages?access_token=${CONFIG.PAGE_ACCESS_TOKEN}`, {
             method: 'POST',
@@ -126,22 +127,21 @@ app.post('/api/direct-reply', async (req, res) => {
             })
         });
 
-        const result = await response.json();
         if (response.ok) {
-            // रिप्लाई म्यासेजलाई पनि हिस्ट्रीमा सेभ गर्ने
             await supabase.from('messages').insert([{
                 customer_id: psid,
                 content: messageText,
                 is_from_customer: false
             }]);
-            
-            res.status(200).json({ success: true, result });
+            res.status(200).json({ success: true });
         } else {
-            res.status(500).json({ success: false, error: result });
+            const err = await response.json();
+            res.status(500).json({ success: false, error: err });
         }
     } catch (err) {
         res.status(500).json({ success: false, error: "Server Error" });
     }
 });
 
-module.exports = app;
+const PORT = process.env.PORT || 4000;
+app.listen(PORT, () => console.log(`🚀 Messenger Webhook Engine running on port ${PORT}`));
