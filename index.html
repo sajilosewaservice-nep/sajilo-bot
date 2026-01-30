@@ -13,19 +13,10 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap');
         body { font-family: 'Inter', sans-serif; background: #f1f5f9; }
-        
         .custom-scroll::-webkit-scrollbar { width: 6px; }
         .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        
-        .status-badge { transition: all 0.3s ease; }
-        tr:hover .status-badge { transform: scale(1.05); }
-
-        /* Animation for new rows */
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateX(-10px); }
-            to { opacity: 1; transform: translateX(0); }
-        }
-        .row-animate { animation: slideIn 0.4s ease-out forwards; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .row-animate { animation: slideIn 0.3s ease-out forwards; }
     </style>
 </head>
 <body class="text-slate-800">
@@ -37,33 +28,25 @@
                 <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[5px] mt-2">Ultimate RPA Edition</p>
             </div>
             <form id="loginForm" class="space-y-4">
-                <div class="space-y-2">
-                    <label class="text-[11px] font-black text-slate-500 ml-2">USERNAME</label>
-                    <input type="text" id="username" class="w-full p-4 bg-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold transition-all" required>
-                </div>
-                <div class="space-y-2">
-                    <label class="text-[11px] font-black text-slate-500 ml-2">PASSWORD</label>
-                    <input type="password" id="password" class="w-full p-4 bg-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold transition-all" required>
-                </div>
-                <button type="submit" class="w-full bg-blue-600 text-white p-5 rounded-3xl font-black shadow-xl hover:bg-blue-700 transition-all active:scale-95 mt-4 uppercase">Enter Dashboard</button>
+                <input type="text" id="username" placeholder="USERNAME" class="w-full p-4 bg-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold" required>
+                <input type="password" id="password" placeholder="PASSWORD" class="w-full p-4 bg-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold" required>
+                <button type="submit" class="w-full bg-blue-600 text-white p-5 rounded-3xl font-black shadow-xl hover:bg-blue-700 transition-all uppercase">Enter Dashboard</button>
             </form>
         </div>
     </div>
 
     <div id="dashboardPage" class="hidden min-h-screen flex flex-col">
-        
-        <nav class="bg-white/80 backdrop-blur-md border-b sticky top-0 z-[100] px-8 py-4 flex justify-between items-center">
+        <nav class="bg-white/80 backdrop-blur-md border-b sticky top-0 z-[100] px-8 py-4 flex justify-between items-center shadow-sm">
             <div class="flex items-center gap-6">
                 <h2 class="text-2xl font-black italic tracking-tighter">TITAN <span class="text-blue-600">v4</span></h2>
-                <div id="lastUpdate" class="text-[11px] bg-blue-50 text-blue-700 px-4 py-1.5 rounded-full font-black border border-blue-100">
-                    LIVE: --:--:--
-                </div>
+                <div id="lastUpdate" class="text-[11px] bg-blue-50 text-blue-700 px-4 py-1.5 rounded-full font-black border border-blue-100">LIVE: --:--:--</div>
             </div>
             
             <div class="flex items-center gap-4">
-                <div id="reportBtnContainer"></div> <div id="userDisplay" class="hidden md:block text-[11px] font-black text-slate-600 bg-slate-100 px-4 py-2 rounded-2xl border uppercase tracking-wider">OP: --</div>
-                <button onclick="toggleSettingsModal()" class="p-3 bg-slate-900 text-white rounded-2xl hover:scale-110 transition-all shadow-lg" title="AI Settings">
-                    <i class="fas fa-microchip text-blue-400"></i>
+                <div id="reportBtnContainer"></div>
+                <div id="userDisplay" class="hidden md:block text-[11px] font-black text-slate-600 bg-slate-100 px-4 py-2 rounded-2xl border uppercase">OP: --</div>
+                <button onclick="toggleSettingsModal()" class="p-3 bg-slate-900 text-white rounded-2xl hover:scale-110 transition-all shadow-lg">
+                    <i class="fas fa-cog text-blue-400"></i>
                 </button>
                 <button id="logoutBtn" class="p-3 bg-red-100 text-red-600 rounded-2xl hover:bg-red-600 hover:text-white transition-all">
                     <i class="fas fa-sign-out-alt"></i>
@@ -72,24 +55,24 @@
         </nav>
 
         <div class="p-8 grid grid-cols-2 lg:grid-cols-5 gap-6 bg-white/50 border-b">
-            <div class="bg-white p-6 rounded-[35px] shadow-sm border border-slate-200">
-                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">कुल आम्दानी</p>
+            <div class="bg-white p-6 rounded-[35px] border border-slate-200">
+                <p class="text-[10px] font-black text-slate-400 uppercase">कुल आम्दानी</p>
                 <h3 id="statIncome" class="text-2xl font-black text-emerald-600">Rs. 0</h3>
             </div>
-            <div class="bg-white p-6 rounded-[35px] shadow-sm border border-slate-200">
-                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">सफल कार्य (Success)</p>
+            <div class="bg-white p-6 rounded-[35px] border border-slate-200">
+                <p class="text-[10px] font-black text-slate-400 uppercase">Success</p>
                 <h3 id="statSuccess" class="text-2xl font-black text-blue-600">0</h3>
             </div>
-            <div class="bg-white p-6 rounded-[35px] shadow-sm border border-slate-200">
-                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">बाँकी (Pending)</p>
+            <div class="bg-white p-6 rounded-[35px] border border-slate-200">
+                <p class="text-[10px] font-black text-slate-400 uppercase">Pending</p>
                 <h3 id="statPending" class="text-2xl font-black text-orange-500">0</h3>
             </div>
-            <div class="bg-white p-6 rounded-[35px] shadow-sm border border-slate-200">
-                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">इन्क्वायरी</p>
+            <div class="bg-white p-6 rounded-[35px] border border-slate-200">
+                <p class="text-[10px] font-black text-slate-400 uppercase">Inquiry</p>
                 <h3 id="statInquiry" class="text-2xl font-black text-slate-500">0</h3>
             </div>
-            <div class="bg-white p-6 rounded-[35px] shadow-sm border border-slate-200">
-                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">प्रक्रियामा</p>
+            <div class="bg-white p-6 rounded-[35px] border border-slate-200">
+                <p class="text-[10px] font-black text-slate-400 uppercase">प्रक्रियामा</p>
                 <h3 id="statWorking" class="text-2xl font-black text-purple-600">0</h3>
             </div>
         </div>
@@ -98,42 +81,39 @@
             <div class="mb-8 flex flex-col md:flex-row gap-4 items-center justify-between">
                 <div class="relative w-full max-w-xl">
                     <i class="fas fa-search absolute left-6 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                    <input type="text" id="searchInput" placeholder="ग्राहकको नाम वा फोन नम्बर टाइप गर्नुहोस्..." 
-                        class="w-full pl-14 pr-8 py-5 bg-white border-2 border-slate-100 rounded-[25px] outline-none focus:border-blue-500 font-bold text-sm shadow-xl transition-all">
+                    <input type="text" id="searchInput" placeholder="खोज्नुहोस्..." class="w-full pl-14 pr-8 py-5 bg-white border-2 border-slate-100 rounded-[25px] outline-none focus:border-blue-500 font-bold shadow-xl">
                 </div>
-                <div class="flex gap-4">
-                    <button onclick="syncCoreDatabase()" class="px-8 py-5 bg-white border-2 border-slate-200 rounded-[25px] font-black text-[11px] hover:bg-slate-50 transition-all uppercase tracking-widest">
-                        <i class="fas fa-sync-alt mr-2"></i> Refresh
-                    </button>
+                <div class="flex flex-col items-end">
+                    <button onclick="syncCoreDatabase()" class="px-8 py-4 bg-white border-2 border-slate-200 rounded-[25px] font-black text-[11px] uppercase tracking-widest mb-2"><i class="fas fa-sync-alt mr-2"></i> Refresh</button>
+                    <div class="text-slate-500 font-black text-[10px] uppercase mr-4">TOTAL: <span id="totalRecords">0</span> RECORDS</div>
                 </div>
             </div>
 
-            <div class="bg-white rounded-[45px] shadow-2xl border border-slate-100 overflow-hidden">
+            <div class="bg-white rounded-[45px] shadow-2xl border overflow-hidden">
                 <div class="overflow-x-auto custom-scroll">
-                    <table class="w-full text-left border-collapse">
-                        <thead class="bg-slate-900 text-white text-[10px] uppercase tracking-[2px] font-black">
+                    <table class="w-full text-left">
+                        <thead class="bg-slate-900 text-white text-[10px] uppercase font-black">
                             <tr>
-                                <th class="px-8 py-6">दर्ता मिति</th>
+                                <th class="px-8 py-6">मिति</th>
                                 <th class="px-2 py-6 text-center">स्रोत</th>
-                                <th class="px-8 py-6">ग्राहक विवरण</th>
-                                <th class="px-6 py-6">सेवा (Service)</th>
-                                <th class="px-4 py-6 text-center">RPA अटोमेशन</th>
-                                <th class="px-8 py-6">अवस्था (Status)</th>
-                                <th class="px-6 py-6 text-center">नोट (Note)</th>
+                                <th class="px-8 py-6">विवरण</th>
+                                <th class="px-6 py-6">सेवा</th>
+                                <th class="px-4 py-6 text-center">RPA</th>
+                                <th class="px-8 py-6">अवस्था</th>
+                                <th class="px-6 py-6 text-center">नोट</th>
                                 <th class="px-6 py-6 text-center">पेमेन्ट</th>
                                 <th class="px-4 py-6 text-center">अपरेटर</th>
                                 <th class="px-8 py-6 text-center">डकुमेन्ट</th>
                             </tr>
                         </thead>
-                        <tbody id="tableBody" class="divide-y divide-slate-100">
-                            </tbody>
+                        <tbody id="tableBody" class="divide-y divide-slate-100"></tbody>
                     </table>
                 </div>
             </div>
         </main>
     </div>
 
-    <div id="notification-area"></div>
+    <div id="notificationZone"></div>
 
     <script src="script.js"></script>
 </body>
