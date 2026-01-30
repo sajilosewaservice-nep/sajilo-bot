@@ -395,60 +395,55 @@ function getStatusColor(status) {
 }
 
 function buildTableRows() {
-    const tableBody = document.getElementById('tableBody');
-    if(!tableBody) return;
-    tableBody.innerHTML = '';
-    const startIndex = (STATE.currentPage - 1) * SYSTEM_CONFIG.PAGE_SIZE;
-    const items = STATE.filteredData.slice(startIndex, startIndex + SYSTEM_CONFIG.PAGE_SIZE);
+    const tableBody = document.getElementById('tableBody');
+    if(!tableBody) return;
+    tableBody.innerHTML = '';
+    
+    const startIndex = (STATE.currentPage - 1) * SYSTEM_CONFIG.PAGE_SIZE;
+    const items = STATE.filteredData.slice(startIndex, startIndex + SYSTEM_CONFIG.PAGE_SIZE);
 
-    items.forEach(row => {
-        const tr = document.createElement('tr');
-        tr.className = 'border-b hover:bg-blue-50/40 transition-all';
-        tr.innerHTML = `
-            <td class="px-6 py-5 text-[10px] font-mono text-slate-400">${new Date(row.created_at).toLocaleString('ne-NP')}</td>
-            <td class="px-2 py-5 text-center text-xl">${row.platform === 'whatsapp' ? '🟢' : '🔵'}</td>
-            <td class="px-6 py-5">
-                <div class="font-bold text-sm text-slate-800">${row.customer_name || 'New Lead'}</div>
-                <div class="text-[10px] text-blue-600 font-black tracking-widest">${row.phone_number}</div>
-            </td>
-            <td class="px-6 py-5">
-                <select class="w-full border rounded-xl p-2 text-xs font-bold bg-slate-50 outline-none" onchange="commitUpdate('${row.id}', {service: this.value}, 'सेवा फेरियो')">
-                    <option value="PCC" ${row.service==='PCC'?'selected':''}>PCC Report</option>
-                    <option value="NID" ${row.service==='NID'?'selected':''}>NID Card</option>
-                    <option value="Passport" ${row.service==='Passport'?'selected':''}>Passport</option>
-                    <option value="License" ${row.service==='License'?'selected':''}>License</option>
-                    <option value="Other" ${row.service==='Other'?'selected':''}>Other</option>
-                </select>
-                <div class="mt-1">
-                    <input type="text" 
-                        class="w-full text-[9px] font-bold border-b border-dashed outline-none bg-transparent text-blue-600 placeholder:text-slate-300 uppercase" 
-                        placeholder="विवरण (उदा: PAN)" 
-                        value="${row.other_service_name || ''}"
-                        onblur="commitUpdate('${row.id}', {other_service_name: this.value.toUpperCase()}, 'विवरण अपडेट भयो')">
-                </div>
-            </td>
-            <td class="px-4 py-5">
-                <div class="flex flex-col gap-2">
-                    <button onclick="launchAIAutoFill('${row.id}', '${row.service}')" class="bg-orange-500 text-white text-[9px] font-black py-2 px-3 rounded-lg shadow-md hover:bg-orange-600 transition-all">🚀 AUTO-FORM</button>
-                    <button onclick="window.open(isNaN('${row.sender_id}') ? 'https://m.me/${row.sender_id}' : 'https://wa.me/${row.sender_id}')" class="bg-blue-600 text-white text-[9px] font-black py-2 px-3 rounded-lg shadow-md hover:bg-blue-700 transition-all">💬 CRM CHAT</button>
-                </div>
-            </td>
-            <td class="px-6 py-5">
-                <select class="w-full text-[10px] font-black p-2 rounded-xl border-2" onchange="commitUpdate('${row.id}', {status: this.value}, 'Status Updated')" style="border-color: ${getStatusColor(row.status)}; color: ${getStatusColor(row.status)}">
-                    <option value="inquiry" ${row.status==='inquiry'?'selected':''}>📩 INQUIRY</option>
-                    <option value="pending" ${row.status==='pending'?'selected':''}>⏳ PENDING</option>
-                    <option value="working" ${row.status==='working'?'selected':''}>🛠️ WORKING</option>
-                    <option value="success" ${row.status==='success'?'selected':''}>✅ SUCCESS</option>
-                    <option value="problem" ${row.status==='problem'?'selected':''}>❌ PROBLEM</option>
-                </select>
-            </td>
-            <td class="px-6 py-5"><textarea class="w-full text-[10px] border rounded-lg p-2 outline-none focus:ring-2 focus:ring-blue-400" placeholder="Note..." onblur="commitUpdate('${row.id}', {operator_instruction: this.value}, 'Note Saved')">${row.operator_instruction || ''}</textarea></td>
-            <td class="px-6 py-5 text-center font-bold text-emerald-600">Rs. <input type="number" class="w-16 border-b-2 border-emerald-100 bg-transparent text-center font-black" value="${row.income || 0}" onblur="commitUpdate('${row.id}', {income: this.value}, 'पेमेन्ट सेभ भयो')"></td>
-            <td class="px-4 py-5 text-center text-[9px] font-bold text-slate-400 uppercase">${row.last_updated_by || 'SYSTEM'}</td>
-            <td class="px-6 py-5">${renderFileIcons(row.documents)}</td>
-        `;
-        tableBody.appendChild(tr);
-    });
+    items.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.className = 'border-b hover:bg-slate-50 transition-colors';
+        
+        tr.innerHTML = `
+            <td class="p-2 text-[10px] font-mono text-slate-500">${new Date(row.created_at).toLocaleDateString('ne-NP')}</td>
+            <td class="p-1 text-center">${row.platform === 'whatsapp' ? '🟢' : '🔵'}</td>
+            <td class="p-2">
+                <div class="font-bold text-[11px] truncate max-w-[100px]">${row.customer_name || 'New Lead'}</div>
+                <div class="text-[9px] text-blue-600 font-bold">${row.phone_number}</div>
+            </td>
+            <td class="p-2">
+                <select class="w-full border p-1 rounded text-[10px] font-bold" onchange="commitUpdate('${row.id}', {service: this.value}, 'सेवा फेरियो')">
+                    <option value="PCC" ${row.service==='PCC'?'selected':''}>PCC</option>
+                    <option value="NID" ${row.service==='NID'?'selected':''}>NID</option>
+                    <option value="Passport" ${row.service==='Passport'?'selected':''}>Passport</option>
+                    <option value="Other" ${row.service==='Other'?'selected':''}>Other</option>
+                </select>
+                <input type="text" class="w-full text-[9px] border-b border-dotted outline-none mt-1" placeholder="More..." value="${row.other_service_name || ''}" onblur="commitUpdate('${row.id}', {other_service_name: this.value.toUpperCase()}, 'Saved')">
+            </td>
+            <td class="p-2">
+                <div class="flex flex-col gap-1">
+                    <button onclick="launchAIAutoFill('${row.id}', '${row.service}')" class="bg-orange-500 text-white text-[8px] font-black py-1 px-2 rounded">🚀 AUTO</button>
+                    <button onclick="window.open(isNaN('${row.sender_id}') ? 'https://m.me/${row.sender_id}' : 'https://wa.me/${row.sender_id}')" class="bg-blue-600 text-white text-[8px] font-black py-1 px-2 rounded">💬 CHAT</button>
+                </div>
+            </td>
+            <td class="p-2">
+                <select class="w-full text-[9px] font-black p-1 rounded border-2" onchange="commitUpdate('${row.id}', {status: this.value}, 'Status Updated')" style="border-color: ${getStatusColor(row.status)}; color: ${getStatusColor(row.status)}">
+                    <option value="inquiry" ${row.status==='inquiry'?'selected':''}>📩 INQ</option>
+                    <option value="pending" ${row.status==='pending'?'selected':''}>⏳ PND</option>
+                    <option value="working" ${row.status==='working'?'selected':''}>🛠️ WRK</option>
+                    <option value="success" ${row.status==='success'?'selected':''}>✅ SUC</option>
+                    <option value="problem" ${row.status==='problem'?'selected':''}>❌ PRB</option>
+                </select>
+            </td>
+            <td class="p-2"><textarea class="w-full text-[9px] border rounded p-1 h-8 outline-none" onblur="commitUpdate('${row.id}', {operator_instruction: this.value}, 'Note Saved')">${row.operator_instruction || ''}</textarea></td>
+            <td class="p-2 text-center font-bold text-emerald-600 text-[10px]">Rs.<input type="number" class="w-10 bg-transparent text-center font-black" value="${row.income || 0}" onblur="commitUpdate('${row.id}', {income: this.value}, 'Saved')"></td>
+            <td class="p-2 text-center text-[8px] font-bold text-slate-400 uppercase">${row.last_updated_by || 'SYS'}</td>
+            <td class="p-2">${renderFileIcons(row.documents)}</td>
+        `;
+        tableBody.appendChild(tr);
+    });
 }
 
 async function commitUpdate(id, updates, msg) {
@@ -463,7 +458,23 @@ async function commitUpdate(id, updates, msg) {
 
 }
 
+function changePage(direction) {
+    const maxPage = Math.ceil(STATE.filteredData.length / SYSTEM_CONFIG.PAGE_SIZE);
+    if (direction === 'next' && STATE.currentPage < maxPage) {
+        STATE.currentPage++;
+    } else if (direction === 'prev' && STATE.currentPage > 1) {
+        STATE.currentPage--;
+    }
+    buildTableRows();
+    updatePaginationUI();
+}
 
+function updatePaginationUI() {
+    const pageDisplay = document.getElementById('pageInfo');
+    if(pageDisplay) {
+        pageDisplay.textContent = `PAGE ${STATE.currentPage}`;
+    }
+}
 
 async function syncCoreDatabase() {
 
