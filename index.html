@@ -11,7 +11,7 @@
     
     <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="bg-slate-50">
 
     <div id="loginPage" class="hidden min-h-screen flex items-center justify-center bg-[#0f172a]">
         <div class="bg-white w-full max-w-md rounded-[45px] p-10 shadow-2xl border-b-[10px] border-blue-600">
@@ -37,67 +37,83 @@
             <div class="flex items-center gap-4">
                 <div id="reportBtnContainer"></div>
                 <div id="userDisplay" class="hidden md:block text-[11px] font-black text-slate-600 bg-slate-100 px-4 py-2 rounded-2xl border uppercase">OP: --</div>
-                <button onclick="toggleSettingsModal()" class="p-3 bg-slate-900 text-white rounded-2xl"><i class="fas fa-cog text-blue-400"></i></button>
-                <button id="logoutBtn" class="p-3 bg-red-100 text-red-600 rounded-2xl"><i class="fas fa-power-off"></i></button>
+                <button onclick="toggleSettingsModal()" class="p-3 bg-slate-900 text-white rounded-2xl transition-transform active:scale-90"><i class="fas fa-cog text-blue-400"></i></button>
+                <button id="logoutBtn" class="p-3 bg-red-100 text-red-600 rounded-2xl transition-transform active:scale-90"><i class="fas fa-power-off"></i></button>
             </div>
         </nav>
 
-        <div class="stats-grid">
-            <div class="stat-card">
-                <p>कुल आम्दानी</p>
-                <h3 id="statIncome" class="text-emerald-600">Rs. 0</h3>
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4 p-8 stats-grid">
+            <div class="bg-white p-6 rounded-[30px] border-2 border-slate-100 shadow-sm">
+                <p class="text-[10px] font-black text-slate-400 uppercase">कुल आम्दानी</p>
+                <h3 id="statIncome" class="text-2xl font-black text-emerald-600">Rs. 0</h3>
             </div>
-            <div class="stat-card">
-                <p>Success</p>
-                <h3 id="statSuccess" class="text-blue-600">0</h3>
+            <div class="bg-white p-6 rounded-[30px] border-2 border-slate-100 shadow-sm">
+                <p class="text-[10px] font-black text-slate-400 uppercase">Success</p>
+                <h3 id="statSuccess" class="text-2xl font-black text-blue-600">0</h3>
             </div>
-            <div class="stat-card">
-                <p>Pending</p>
-                <h3 id="statPending" class="text-orange-500">0</h3>
+            <div class="bg-white p-6 rounded-[30px] border-2 border-slate-100 shadow-sm">
+                <p class="text-[10px] font-black text-slate-400 uppercase">Pending</p>
+                <h3 id="statPending" class="text-2xl font-black text-orange-500">0</h3>
             </div>
-            <div class="stat-card">
-                <p>Inquiry</p>
-                <h3 id="statInquiry" class="text-slate-500">0</h3>
+            <div class="bg-white p-6 rounded-[30px] border-2 border-slate-100 shadow-sm">
+                <p class="text-[10px] font-black text-slate-400 uppercase">Inquiry</p>
+                <h3 id="statInquiry" class="text-2xl font-black text-slate-500">0</h3>
             </div>
-            <div class="stat-card">
-                <p>प्रक्रियामा</p>
-                <h3 id="statWorking" class="text-purple-600">0</h3>
+            <div class="bg-white p-6 rounded-[30px] border-2 border-slate-100 shadow-sm">
+                <p class="text-[10px] font-black text-slate-400 uppercase">प्रक्रियामा</p>
+                <h3 id="statWorking" class="text-2xl font-black text-purple-600">0</h3>
             </div>
         </div>
 
-        <div class="px-8 mb-6 flex flex-col md:row gap-4 items-center justify-between">
+        <div class="px-8 mb-6 flex flex-col md:flex-row gap-4 items-center justify-between">
             <div class="relative w-full max-w-xl">
                 <i class="fas fa-search absolute left-6 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                <input type="text" id="searchInput" placeholder="खोज्नुहोस्..." class="w-full pl-14 pr-8 py-4 bg-white border-2 border-slate-100 rounded-[20px] outline-none focus:border-blue-500 font-bold shadow-lg">
+                <input type="text" id="searchInput" placeholder="ग्राहकको नाम वा फोन नम्बर खोज्नुहोस्..." class="w-full pl-14 pr-8 py-4 bg-white border-2 border-slate-100 rounded-[25px] outline-none focus:border-blue-500 font-bold shadow-lg transition-all">
             </div>
             <div class="flex items-center gap-4">
-                <button onclick="syncCoreDatabase()" class="px-6 py-3 bg-white border-2 border-slate-200 rounded-[20px] font-black text-[11px] uppercase shadow-md">
+                <button onclick="syncCoreDatabase()" class="px-6 py-4 bg-white border-2 border-slate-200 rounded-[20px] font-black text-[11px] uppercase shadow-md hover:bg-slate-50 transition-all active:scale-95">
                     <i class="fas fa-sync-alt mr-2 text-blue-600"></i> Refresh
                 </button>
-                <div id="totalRecords" class="text-slate-500 font-black text-[10px] uppercase">TOTAL: 0 RECORDS</div>
+                <div id="totalRecords" class="text-slate-500 font-black text-[10px] uppercase bg-slate-200 px-4 py-2 rounded-full">TOTAL: 0 RECORDS</div>
             </div>
         </div>
 
-        <div class="table-container shadow-xl">
-            <div class="overflow-x-auto">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>दर्ता मिति</th>
-                            <th class="text-center">स्रोत</th>
-                            <th>ग्राहक विवरण</th>
-                            <th>सेवा</th>
-                            <th class="text-center">RPA</th>
-                            <th>अवस्था</th>
-                            <th>नोट</th>
-                            <th class="text-center">पेमेन्ट</th>
-                            <th class="text-center">अपरेटर</th>
-                            <th class="text-center">डकुमेन्ट</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tableBody">
-                        </tbody>
-                </table>
+        <div class="px-8 pb-10">
+            <div class="bg-white rounded-[40px] shadow-2xl overflow-hidden border-2 border-slate-100 table-container">
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-slate-900 text-white text-[10px] uppercase tracking-wider">
+                            <tr>
+                                <th class="p-5 text-left">दर्ता मिति</th>
+                                <th class="p-5 text-center">स्रोत</th>
+                                <th class="p-5 text-left">ग्राहक विवरण</th>
+                                <th class="p-5 text-left">सेवा</th>
+                                <th class="p-5 text-center">RPA</th>
+                                <th class="p-5 text-left">अवस्था</th>
+                                <th class="p-5 text-left">नोट</th>
+                                <th class="p-5 text-center">पेमेन्ट</th>
+                                <th class="p-5 text-center">अपरेटर</th>
+                                <th class="p-5 text-center">डकुमेन्ट</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody" class="divide-y divide-slate-100">
+                            </tbody>
+                    </table>
+                </div>
+
+                <div class="flex items-center justify-between p-6 bg-slate-50 border-t-2 border-slate-100">
+                    <button onclick="changePage('prev')" class="px-8 py-3 bg-white border-2 border-slate-200 rounded-2xl font-black text-[11px] hover:bg-slate-900 hover:text-white transition-all shadow-sm active:scale-90">
+                        <i class="fas fa-chevron-left mr-2"></i> BACK
+                    </button>
+                    
+                    <div id="pageInfo" class="font-black text-[12px] text-blue-600 tracking-widest uppercase bg-blue-50 px-6 py-2 rounded-full border border-blue-100">
+                        PAGE 1
+                    </div>
+                    
+                    <button onclick="changePage('next')" class="px-8 py-3 bg-white border-2 border-slate-200 rounded-2xl font-black text-[11px] hover:bg-slate-900 hover:text-white transition-all shadow-sm active:scale-90">
+                        NEXT <i class="fas fa-chevron-right ml-2"></i>
+                    </button>
+                </div>
             </div>
         </div>
     </div>

@@ -459,20 +459,29 @@ async function commitUpdate(id, updates, msg) {
 }
 
 function changePage(direction) {
-    const maxPage = Math.ceil(STATE.filteredData.length / SYSTEM_CONFIG.PAGE_SIZE);
+    const totalItems = STATE.filteredData.length;
+    const maxPage = Math.ceil(totalItems / SYSTEM_CONFIG.PAGE_SIZE) || 1;
+
     if (direction === 'next' && STATE.currentPage < maxPage) {
         STATE.currentPage++;
     } else if (direction === 'prev' && STATE.currentPage > 1) {
         STATE.currentPage--;
+    } else {
+        return; // केही नगर्ने
     }
+
     buildTableRows();
     updatePaginationUI();
+    window.scrollTo({ top: 0, behavior: 'smooth' }); // पेज फेरिएपछि माथि सार्ने
 }
 
 function updatePaginationUI() {
     const pageDisplay = document.getElementById('pageInfo');
+    const totalItems = STATE.filteredData.length;
+    const maxPage = Math.ceil(totalItems / SYSTEM_CONFIG.PAGE_SIZE) || 1;
+
     if(pageDisplay) {
-        pageDisplay.textContent = `PAGE ${STATE.currentPage}`;
+        pageDisplay.innerHTML = `PAGE <span style="color: #2563eb; font-weight: 900;">${STATE.currentPage}</span> / ${maxPage}`;
     }
 }
 
@@ -611,21 +620,25 @@ function notify(msg, type) {
 
 }
 
-
-
 function applyLogicFilters(reset = true) {
+    const searchInput = document.getElementById('searchInput');
+    const q = searchInput ? searchInput.value.toLowerCase() : '';
+    
+    // सुधार: यदि सर्च खाली छ भने सबै डाटा देखाउने, नत्र फिल्टर गर्ने
+    if (!q) {
+        STATE.filteredData = [...STATE.allData];
+    } else {
+        STATE.filteredData = STATE.allData.filter(d => 
+            (d.customer_name || '').toLowerCase().includes(q) || 
+            (d.phone_number || '').includes(q)
+        );
+    }
 
-    const q = document.getElementById('searchInput').value.toLowerCase();
-
-    STATE.filteredData = STATE.allData.filter(d => (d.customer_name || '').toLowerCase().includes(q) || (d.phone_number || '').includes(q));
-
-    if(reset) STATE.currentPage = 1;
-
-    buildTableRows();
-
+    if(reset) STATE.currentPage = 1;
+    
+    buildTableRows();
+    updatePaginationUI(); // यो थप्नुहोस् ताकि पेज नम्बर अपडेट होस्
 }
-
-
 
 function registerGlobalEvents() {
 
