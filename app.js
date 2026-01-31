@@ -67,21 +67,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 // --- २. RPA & AI MASTER ENGINE ---
 
 async function launchAIAutoFill(id, service) {
+    // १. सुरुमै सेवा चेक गर्ने
     if (!service || service === 'Other') return notify("कृपया सेवा (PCC/NID) छान्नुहोस्!", "error");
 
     const customer = STATE.allData.find(c => c.id === id);
     
-    // १. टिक लगाएका फोटोहरू मात्र मेमोरीबाट तान्ने
+    // २. टिक लगाएका फोटोहरू मेमोरीबाट तान्ने
     const selectedKey = `selected_docs_${id}`;
     const selectedDocs = JSON.parse(localStorage.getItem(selectedKey) || "[]");
     
-    // २. यदि फोटो छानिएको छ भने छानिएका मात्र पठाउने, छैन भने सबै पठाउने (Default)
+    // ३. यदि फोटो छानिएको छ भने छानिएका मात्र पठाउने, छैन भने सबै पठाउने
     const finalDocs = selectedDocs.length > 0 ? selectedDocs : customer.documents;
 
     const aiRules = localStorage.getItem('ai_rules') || "फारम बुद्धिमानीपूर्वक भर्नु।";
     notify(`${service} को लागि AI ले ${finalDocs.length} फोटो प्रयोग गर्दैछ...`, "success");
 
-   try {
+    try {
         const response = await fetch(`${SYSTEM_CONFIG.RPA_SERVER_URL}/start-automation`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -93,8 +94,10 @@ async function launchAIAutoFill(id, service) {
             })
         });
 
-        // --- यहाँ भित्र यसरी राख्नुहोस् ---
-        if (!response.ok) throw new Error("Server Error");
+        // ४. सर्भर रेस्पोन्स चेक गर्ने (मैले थप्न लगाएको सही ठाउँ यही हो)
+        if (!response.ok) {
+            throw new Error("Server Error");
+        }
 
         const result = await response.json();
         if (result.status === "ai_error") {
@@ -102,24 +105,12 @@ async function launchAIAutoFill(id, service) {
         } else {
             notify("RPA र AI दुवै सक्रिय छन्!", "success");
         }
-        // ------------------------------
 
     } catch (err) {
         notify("पाइथन RPA सर्भर अफलाइन छ!", "error");
     }
-} // फङ्सन यहाँ बन्द हुन्छ
+}
 
-// यो ११२ देखि १२२ सम्मको भागलाई हटाउनुहोस् (Delete it):
-// CRM को launchAIAutoFill भित्र यो थप्नुहोस्
-if (!response.ok) {
-    throw new Error("Server Error");
-}
-const result = await response.json();
-if (result.status === "ai_error") {
-    notify("AI मा समस्या आयो, तर रोबोट खुल्दैछ!", "error");
-} else {
-    notify("RPA र AI दुवै सक्रिय छन्!", "success");
-}
 
 // --- ३. MULTIMEDIA ENGINE (Voice, PDF, Gallery) ---
 
