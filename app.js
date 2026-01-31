@@ -194,168 +194,200 @@ function togglePhotoSelection(id, url, el) {
 
 // --- ४. ANALYTICS & SETTINGS ---
 
+// १. रिपोर्ट सच्याइएको फङ्सन
 function showFinancialReport() {
+    const now = new Date();
+    // हप्ता र महिनाको सुरुवाती समय सही निकाल्ने
+    const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    const now = new Date();
+    const stats = STATE.allData.reduce((acc, curr) => {
+        const date = new Date(curr.created_at);
+        const amt = parseFloat(curr.income) || 0;
+        const status = (curr.status || '').toLowerCase();
 
-    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        if (status === 'success') {
+            acc.total += amt;
+            if (date >= startOfWeek) acc.weekly += amt;
+            if (date >= startOfMonth) acc.monthly += amt;
+        }
+        return acc;
+    }, { total: 0, weekly: 0, monthly: 0 });
 
-    const oneMonthAgo = new Date(now.getFullYear(), now.getMonth(), 1);
-
-    const stats = STATE.allData.reduce((acc, curr) => {
-
-        const date = new Date(curr.created_at);
-
-        const amt = parseFloat(curr.income) || 0;
-
-        
-
-        if (curr.status === 'success') {
-
-            acc.total += amt;
-
-            if (date >= oneWeekAgo) acc.weekly += amt;
-
-            if (date >= oneMonthAgo) acc.monthly += amt;
-
-        }
-
-        return acc;
-
-    }, { total: 0, weekly: 0, monthly: 0 });
-
-
-
-    const modalHtml = `
-
-        <div id="reportModal" class="fixed inset-0 bg-slate-900/90 backdrop-blur-md flex items-center justify-center z-[999999] p-4">
-
-            <div class="bg-white w-full max-w-md rounded-[40px] shadow-2xl overflow-hidden border-4 border-slate-900 animate-in slide-in-from-bottom duration-300">
-
-                <div class="bg-slate-900 p-8 text-white">
-
-                    <h2 class="text-2xl font-black italic">FINANCIAL <span class="text-emerald-400">REPORT</span></h2>
-
-                    <p class="text-[10px] text-slate-400 uppercase tracking-widest mt-1">Real-time Business Tracking</p>
-
-                </div>
-
-                <div class="p-8 space-y-4">
-
-                    <div class="flex justify-between items-center p-4 bg-emerald-50 rounded-2xl border-2 border-emerald-100">
-
-                        <span class="text-xs font-black text-emerald-700 uppercase">यो हप्ताको कमाइ:</span>
-
-                        <span class="text-xl font-black text-emerald-800">Rs. ${stats.weekly.toLocaleString()}</span>
-
-                    </div>
-
-                    <div class="flex justify-between items-center p-4 bg-blue-50 rounded-2xl border-2 border-blue-100">
-
-                        <span class="text-xs font-black text-blue-700 uppercase">यो महिनाको कमाइ:</span>
-
-                        <span class="text-xl font-black text-blue-800">Rs. ${stats.monthly.toLocaleString()}</span>
-
-                    </div>
-
-                    <div class="flex justify-between items-center p-4 bg-slate-100 rounded-2xl">
-
-                        <span class="text-xs font-black text-slate-600 uppercase">कुल जम्मा (Life-time):</span>
-
-                        <span class="text-xl font-black text-slate-900">Rs. ${stats.total.toLocaleString()}</span>
-
-                    </div>
-
-                </div>
-
-                <div class="p-6 bg-slate-50 border-t">
-
-                    <button onclick="document.getElementById('reportModal').remove()" class="w-full py-4 bg-slate-900 text-white rounded-2xl font-black shadow-xl hover:bg-slate-800 transition-all">बन्द गर्नुहोस्</button>
-
-                </div>
-
-            </div>
-
-        </div>`;
-
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
-
+    const modalHtml = `
+        <div id="reportModal" class="fixed inset-0 bg-slate-900/90 backdrop-blur-md flex items-center justify-center z-[999999] p-4">
+            <div class="bg-white w-full max-w-md rounded-[40px] shadow-2xl overflow-hidden border-4 border-slate-900">
+                <div class="bg-slate-900 p-6 text-white text-center">
+                    <h2 class="text-xl font-black italic">FINANCIAL REPORT</h2>
+                </div>
+                <div class="p-8 space-y-4">
+                    <div class="flex justify-between p-4 bg-emerald-50 rounded-2xl border-2 border-emerald-100">
+                        <span class="text-xs font-black text-emerald-700">यो हप्ता:</span>
+                        <span class="text-xl font-black text-emerald-800">Rs. ${stats.weekly.toLocaleString()}</span>
+                    </div>
+                    <div class="flex justify-between p-4 bg-blue-50 rounded-2xl border-2 border-blue-100">
+                        <span class="text-xs font-black text-blue-700">यो महिना:</span>
+                        <span class="text-xl font-black text-blue-800">Rs. ${stats.monthly.toLocaleString()}</span>
+                    </div>
+                    <div class="flex justify-between p-4 bg-slate-100 rounded-2xl">
+                        <span class="text-xs font-black text-slate-600">कुल जम्मा:</span>
+                        <span class="text-xl font-black text-slate-900">Rs. ${stats.total.toLocaleString()}</span>
+                    </div>
+                </div>
+                <div class="p-6 bg-slate-50 border-t">
+                    <button onclick="document.getElementById('reportModal').remove()" class="w-full py-4 bg-slate-900 text-white rounded-2xl font-black">बन्द गर्नुहोस्</button>
+                </div>
+            </div>
+        </div>`;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
 }
 
+// २. सर्विस अनुसार रुल थप्न मिल्ने सेटिङ मोडाल
+function toggleSettingsModal() {
+    const rpaUrl = localStorage.getItem('rpa_url') || "http://localhost:5000";
+    const masterRules = localStorage.getItem('ai_rules_master') || "सबै फारमको लागि साझा नियम...";
+    const nidRules = localStorage.getItem('ai_rules_nid') || "";
+    const pccRules = localStorage.getItem('ai_rules_pcc') || "";
 
+    const modalHtml = `
+        <div id="settingsModal" class="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[999999] p-4">
+            <div class="bg-white w-full max-w-2xl rounded-[30px] shadow-2xl overflow-hidden border-4 border-slate-900">
+                <div class="bg-slate-900 p-5 text-white flex justify-between items-center">
+                    <h2 class="font-black italic text-sm">TITAN AI CONTROL PANEL</h2>
+                    <button onclick="document.getElementById('settingsModal').remove()" class="text-2xl">&times;</button>
+                </div>
+                
+                <div class="p-6 space-y-6 max-h-[65vh] overflow-y-auto bg-slate-50">
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-500 uppercase mb-2">🤖 RPA Server URL</label>
+                        <input type="text" id="set_rpa_url" value="${rpaUrl}" class="w-full bg-white border-2 rounded-xl p-3 text-xs outline-none">
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <h3 class="text-blue-600 font-black text-[11px] uppercase border-b pb-1">AI Master Rules (Instructions)</h3>
+                        <div>
+                            <label class="text-[9px] font-bold text-slate-400">MAIN MASTER RULES</label>
+                            <textarea id="set_rules_master" rows="3" class="w-full border-2 rounded-xl p-3 text-xs outline-none focus:border-blue-500">${masterRules}</textarea>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-[9px] font-bold text-orange-500">NID SPECIFIC RULES</label>
+                                <textarea id="set_rules_nid" rows="3" class="w-full border-2 rounded-xl p-3 text-xs outline-none focus:border-orange-500" placeholder="NID को लागि मात्र...">${nidRules}</textarea>
+                            </div>
+                            <div>
+                                <label class="text-[9px] font-bold text-emerald-500">PCC SPECIFIC RULES</label>
+                                <textarea id="set_rules_pcc" rows="3" class="w-full border-2 rounded-xl p-3 text-xs outline-none focus:border-emerald-500" placeholder="PCC को लागि मात्र...">${pccRules}</textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-5 bg-white border-t flex gap-4">
+                    <button onclick="document.getElementById('settingsModal').remove()" class="flex-1 py-4 font-black text-slate-400 uppercase text-xs">Cancel</button>
+                    <button onclick="saveSettings()" class="flex-[2] py-4 bg-blue-600 text-white rounded-2xl font-black shadow-xl hover:bg-blue-700 text-xs">SAVE ALL SETTINGS</button>
+                </div>
+            </div>
+        </div>`;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+// ३. नयाँ सेटिङ सेभ गर्ने फङ्सन
+function saveSettings() {
+    localStorage.setItem('rpa_url', document.getElementById('set_rpa_url').value);
+    localStorage.setItem('ai_rules_master', document.getElementById('set_rules_master').value);
+    localStorage.setItem('ai_rules_nid', document.getElementById('set_rules_nid').value);
+    localStorage.setItem('ai_rules_pcc', document.getElementById('set_rules_pcc').value);
+    
+    notify("सबै रुल र सेटिङ सेभ भयो!", "success");
+    document.getElementById('settingsModal').remove();
+    setTimeout(() => location.reload(), 500); // कन्फिगरेसन अपडेट गर्न रिलोड
+}
+
+// --- ४. SETTINGS & AI LOGIC (Final Merged Version) ---
 
 function toggleSettingsModal() {
+    const rpaUrl = localStorage.getItem('rpa_url') || "http://localhost:5000";
+    const master = localStorage.getItem('ai_rules_master') || "";
+    const nid = localStorage.getItem('ai_rules_nid') || "";
+    const pcc = localStorage.getItem('ai_rules_pcc') || "";
 
-    const aiRules = localStorage.getItem('ai_rules') || "१. नाम ठुलो अक्षरमा लेख्नु।\n२. ठेगाना नागरिकता अनुसार मिलाउनु।";
-
-    const modalHtml = `
-
-        <div id="settingsModal" class="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[999999] p-4">
-
-            <div class="bg-white w-full max-w-xl rounded-[40px] shadow-2xl overflow-hidden border-4 border-slate-900 animate-in zoom-in duration-200">
-
-                <div class="bg-slate-900 p-6 text-white flex justify-between items-center">
-
-                    <h2 class="font-black italic">TITAN <span class="text-blue-400">AI CONTROL PANEL</span></h2>
-
-                    <button onclick="document.getElementById('settingsModal').remove()" class="text-3xl hover:text-red-400">&times;</button>
-
-                </div>
-
-                <div class="p-8 space-y-6">
-
-                    <div>
-
-                        <label class="block text-[11px] font-black text-slate-500 uppercase tracking-widest mb-2">🤖 RPA Server URL</label>
-
-                        <input type="text" id="set_rpa_url" value="${SYSTEM_CONFIG.RPA_SERVER_URL}" class="w-full bg-slate-100 border-2 rounded-2xl p-4 font-mono text-sm outline-none focus:border-blue-500">
-
-                    </div>
-
-                    <div>
-
-                        <label class="block text-[11px] font-black text-blue-600 uppercase tracking-widest mb-2">🧠 AI Master Rules (Instructions)</label>
-
-                        <textarea id="set_ai_rules" rows="6" class="w-full bg-blue-50 border-2 border-blue-100 rounded-2xl p-4 text-sm font-medium outline-none focus:border-blue-500">${aiRules}</textarea>
-
-                    </div>
-
-                </div>
-
-                <div class="p-6 bg-slate-50 border-t flex gap-4">
-
-                    <button onclick="document.getElementById('settingsModal').remove()" class="flex-1 py-4 font-black text-slate-400 uppercase">Cancel</button>
-
-                    <button onclick="saveSettings()" class="flex-[2] py-4 bg-blue-600 text-white rounded-2xl font-black shadow-xl">SAVE SETTINGS</button>
-
-                </div>
-
-            </div>
-
-        </div>`;
-
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
-
+    const modalHtml = `
+        <div id="settingsModal" class="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[999999] p-4">
+            <div class="bg-white w-full max-w-2xl rounded-[30px] shadow-2xl overflow-hidden border-4 border-slate-900">
+                <div class="bg-slate-900 p-5 text-white flex justify-between items-center">
+                    <h2 class="font-black italic text-sm text-blue-400">TITAN AI CONTROL PANEL</h2>
+                    <button onclick="document.getElementById('settingsModal').remove()" class="text-2xl">&times;</button>
+                </div>
+                <div class="p-6 space-y-4 max-h-[65vh] overflow-y-auto bg-slate-50">
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-500 uppercase mb-1">🤖 RPA Server URL</label>
+                        <input type="text" id="set_rpa_url" value="${rpaUrl}" class="w-full border-2 rounded-xl p-3 text-xs outline-none focus:border-blue-500">
+                    </div>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="text-[9px] font-bold text-blue-600 uppercase">Master Rules (All Forms)</label>
+                            <textarea id="set_rules_master" rows="3" class="w-full border-2 rounded-xl p-3 text-xs outline-none focus:border-blue-500">${master}</textarea>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-[9px] font-bold text-orange-500 uppercase">NID Rules</label>
+                                <textarea id="set_rules_nid" rows="3" class="w-full border-2 rounded-xl p-3 text-xs outline-none focus:border-orange-500">${nid}</textarea>
+                            </div>
+                            <div>
+                                <label class="text-[9px] font-bold text-emerald-500 uppercase">PCC Rules</label>
+                                <textarea id="set_rules_pcc" rows="3" class="w-full border-2 rounded-xl p-3 text-xs outline-none focus:border-emerald-500">${pcc}</textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-5 bg-white border-t flex gap-4">
+                    <button onclick="document.getElementById('settingsModal').remove()" class="flex-1 py-3 font-black text-slate-400 uppercase text-[10px]">Cancel</button>
+                    <button onclick="saveSettings()" class="flex-[2] py-3 bg-blue-600 text-white rounded-xl font-black shadow-lg text-[10px]">SAVE ALL SETTINGS</button>
+                </div>
+            </div>
+        </div>`;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
 }
 
-
-
 function saveSettings() {
+    localStorage.setItem('rpa_url', document.getElementById('set_rpa_url').value);
+    localStorage.setItem('ai_rules_master', document.getElementById('set_rules_master').value);
+    localStorage.setItem('ai_rules_nid', document.getElementById('set_rules_nid').value);
+    localStorage.setItem('ai_rules_pcc', document.getElementById('set_rules_pcc').value);
+    
+    notify("सेटिङ सुरक्षित गरियो!", "success");
+    document.getElementById('settingsModal').remove();
+    setTimeout(() => { location.reload(); }, 1000);
+}
 
-    const newUrl = document.getElementById('set_rpa_url').value;
+// सुधारिएको Launch Function (यसले अब सेटिङबाट सही रुल तान्छ)
+async function launchAIAutoFill(id, service) {
+    if (!service || service === 'Other') return notify("कृपया सेवा (PCC/NID) छान्नुहोस्!", "error");
+    const customer = STATE.allData.find(c => c.id === id);
+    
+    // यहाँबाट मास्टर र स्पेसिफिक रुल जोडेर पठाउने
+    const master = localStorage.getItem('ai_rules_master') || "";
+    const specific = (service === 'NID') ? localStorage.getItem('ai_rules_nid') : (service === 'PCC' ? localStorage.getItem('ai_rules_pcc') : "");
+    const finalRules = `${master}\n${specific}`;
 
-    const newRules = document.getElementById('set_ai_rules').value;
+    const selectedDocs = JSON.parse(localStorage.getItem(`selected_docs_${id}`) || "[]");
+    const finalDocs = selectedDocs.length > 0 ? selectedDocs : customer.documents;
 
-    SYSTEM_CONFIG.RPA_SERVER_URL = newUrl;
-
-    localStorage.setItem('rpa_url', newUrl);
-
-    localStorage.setItem('ai_rules', newRules);
-
-    notify("सेटिंग सेभ भयो!", "success");
-
-    document.getElementById('settingsModal').remove();
-
+    try {
+        const response = await fetch(`${SYSTEM_CONFIG.RPA_SERVER_URL}/start-automation`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                customer_data: { ...customer, documents: finalDocs }, 
+                service_type: service,
+                ai_instructions: finalRules,
+                operator: STATE.currentUser.full_name
+            })
+        });
+        if (response.ok) notify("RPA र AI सक्रिय भयो!", "success");
+    } catch (err) {
+        notify("RPA सर्भर अफलाइन छ!", "error");
+    }
 }
 
 function getStatusColor(status) {
