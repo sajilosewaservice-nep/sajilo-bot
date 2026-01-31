@@ -67,47 +67,39 @@ document.addEventListener('DOMContentLoaded', async () => {
 // --- २. RPA & AI MASTER ENGINE ---
 
 async function launchAIAutoFill(id, service) {
+    if (!service || service === 'Other') return notify("कृपया सेवा (PCC/NID) छान्नुहोस्!", "error");
 
-    if (!service || service === 'Other') return notify("कृपया सेवा (PCC/NID) छान्नुहोस्!", "error");
+    const customer = STATE.allData.find(c => c.id === id);
+    
+    // १. टिक लगाएका फोटोहरू मात्र मेमोरीबाट तान्ने
+    const selectedKey = `selected_docs_${id}`;
+    const selectedDocs = JSON.parse(localStorage.getItem(selectedKey) || "[]");
+    
+    // २. यदि फोटो छानिएको छ भने छानिएका मात्र पठाउने, छैन भने सबै पठाउने (Default)
+    const finalDocs = selectedDocs.length > 0 ? selectedDocs : customer.documents;
 
-    const customer = STATE.allData.find(c => c.id === id);
+    const aiRules = localStorage.getItem('ai_rules') || "फारम बुद्धिमानीपूर्वक भर्नु।";
+    notify(`${service} को लागि AI ले ${finalDocs.length} फोटो प्रयोग गर्दैछ...`, "success");
 
-    const aiRules = localStorage.getItem('ai_rules') || "फारम बुद्धिमानीपूर्वक भर्नु।";
+    try {
+        const response = await fetch(`${SYSTEM_CONFIG.RPA_SERVER_URL}/start-automation`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                // ३. यहाँ customer भित्रको 'documents' लाई 'finalDocs' ले बदलिदिने
+                customer_data: { ...customer, documents: finalDocs }, 
+                service_type: service,
+                ai_instructions: aiRules,
+                operator: STATE.currentUser.full_name
+            })
+        });
 
-    notify(`${service} को लागि AI रोबोट सुरु भयो...`, "success");
-
-    try {
-
-        const response = await fetch(`${SYSTEM_CONFIG.RPA_SERVER_URL}/start-automation`, {
-
-            method: 'POST',
-
-            headers: { 'Content-Type': 'application/json' },
-
-            body: JSON.stringify({
-
-                customer_data: customer,
-
-                service_type: service,
-
-                ai_instructions: aiRules,
-
-                operator: STATE.currentUser.full_name
-
-            })
-
-        });
-
-        if (!response.ok) throw new Error();
-
-        notify("RPA ले काम सुरु गर्यो!", "success");
-
-    } catch (err) {
+        if (!response.ok) throw new Error();
+        notify("RPA ले काम सुरु गर्यो!", "success");
+    } catch (err) {
         notify("पाइथन RPA सर्भर अफलाइन छ!", "error");
     }
 }
-
-// CRM को launchAIAutoFill भित्र यो थप्नुहोस्
 
 // CRM को launchAIAutoFill भित्र यो थप्नुहोस्
 if (!response.ok) {
@@ -123,72 +115,82 @@ if (result.status === "ai_error") {
 
 // --- ३. MULTIMEDIA ENGINE (Voice, PDF, Gallery) ---
 
-function renderFileIcons(docs) {
+function renderFileIcons(docs, id) { // यहाँ id थपिएको छ
+    if (!docs || docs.length === 0) return '<span class="text-slate-300 italic text-[9px]">No Docs</span>';
 
-    if (!docs || docs.length === 0) return '<span class="text-slate-300 italic text-[9px]">No Docs</span>';
+    const images = docs.filter(url => url.match(/\.(jpg|jpeg|png|webp|gif)/i));
+    const audios = docs.filter(url => url.match(/\.(mp3|wav|ogg|m4a)/i));
+    const pdfs = docs.filter(url => url.match(/\.(pdf)/i));
 
-    const images = docs.filter(url => url.match(/\.(jpg|jpeg|png|webp|gif)/i));
+    let html = `<div class="flex flex-wrap gap-2 items-center justify-center">`;
 
-    const audios = docs.filter(url => url.match(/\.(mp3|wav|ogg|m4a)/i));
+    if (images.length > 0) {
+        // यहाँ '${id}' मात्र लेख्दा पुग्छ किनकि हामीले माथि id पास गरेका छौँ
+        html += `
+            <div class="relative cursor-pointer group" onclick="openGallery(${JSON.stringify(images).replace(/"/g, '&quot;')}, '${id}')">
+                <img src="${images[0]}" class="w-10 h-10 rounded-lg border-2 border-white shadow-md object-cover group-hover:scale-110 transition-transform">
+                ${images.length > 1 ? `<div class="absolute -top-2 -right-2 bg-blue-600 text-white text-[9px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-white shadow-lg">+${images.length - 1}</div>` : ''}
+            </div>`;
+    }
 
-    const pdfs = docs.filter(url => url.match(/\.(pdf)/i));
+    pdfs.forEach(url => {
+        html += `<button onclick="window.open('${url}')" class="text-red-500 hover:scale-125 transition-all p-1"><i class="fas fa-file-pdf text-xl"></i></button>`;
+    });
 
-    let html = `<div class="flex flex-wrap gap-2 items-center justify-center">`;
+    audios.forEach(url => {
+        html += `<button onclick="new Audio('${url}').play(); notify('अडियो प्ले हुँदैछ...','success')" class="text-emerald-500 hover:scale-125 transition-all p-1"><i class="fas fa-play-circle text-xl"></i></button>`;
+    });
 
-    if (images.length > 0) {
-
-        html += `
-
-            <div class="relative cursor-pointer group" onclick="openGallery(${JSON.stringify(images).replace(/"/g, '&quot;')})">
-
-                <img src="${images[0]}" class="w-10 h-10 rounded-lg border-2 border-white shadow-md object-cover group-hover:scale-110 transition-transform">
-
-                ${images.length > 1 ? `<div class="absolute -top-2 -right-2 bg-blue-600 text-white text-[9px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-white shadow-lg">+${images.length - 1}</div>` : ''}
-
-            </div>`;
-
-    }
-
-    pdfs.forEach(url => {
-
-        html += `<button onclick="window.open('${url}')" class="text-red-500 hover:scale-125 transition-all p-1"><i class="fas fa-file-pdf text-xl"></i></button>`;
-
-    });
-
-    audios.forEach(url => {
-
-        html += `<button onclick="new Audio('${url}').play(); notify('अडियो प्ले हुँदैछ...','success')" class="text-emerald-500 hover:scale-125 transition-all p-1"><i class="fas fa-play-circle text-xl"></i></button>`;
-
-    });
-
-    return html + `</div>`;
-
+    return html + `</div>`;
 }
 
-function openGallery(images) {
+function openGallery(images, id) {
+    const selectedKey = `selected_docs_${id}`;
+    let selectedDocs = JSON.parse(localStorage.getItem(selectedKey) || "[]");
 
-    const modalHtml = `
+    const modalHtml = `
+        <div id="galleryModal" class="fixed inset-0 bg-black/95 z-[9999999] flex flex-col p-6 animate-in fade-in">
+            <div class="flex justify-between items-center text-white mb-6">
+                <div>
+                    <h2 class="font-black tracking-widest uppercase text-sm italic text-blue-400">Customer Documents</h2>
+                    <p class="text-[10px] text-slate-400">फारमको लागि फोटो छान्नुहोस् (Tick ✅ लगाउनुहोस्)</p>
+                </div>
+                <button onclick="document.getElementById('galleryModal').remove()" class="text-4xl hover:text-red-500">&times;</button>
+            </div>
+            <div class="flex-1 overflow-y-auto grid grid-cols-2 md:grid-cols-4 gap-4">
+                ${images.map(img => {
+                    const isChecked = selectedDocs.includes(img) ? 'checked' : '';
+                    const borderColor = isChecked ? 'border-blue-500' : 'border-white/10';
+                    return `
+                    <div class="relative rounded-2xl overflow-hidden border-4 ${borderColor} bg-slate-800 transition-all">
+                        <img src="${img}" class="w-full h-64 object-cover cursor-zoom-in" onclick="window.open('${img}')">
+                        <div class="absolute top-3 left-3 scale-[1.8]">
+                            <input type="checkbox" value="${img}" ${isChecked} 
+                                onchange="togglePhotoSelection('${id}', '${img}', this)"
+                                class="cursor-pointer accent-blue-500">
+                        </div>
+                    </div>`;
+                }).join('')}
+            </div>
+            <div class="p-4 flex justify-end">
+                <button onclick="document.getElementById('galleryModal').remove()" class="bg-blue-600 text-white px-10 py-3 rounded-2xl font-black shadow-lg hover:bg-blue-700 transition-all">DONE</button>
+            </div>
+        </div>`;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
 
-        <div id="galleryModal" class="fixed inset-0 bg-black/95 z-[9999999] flex flex-col p-6 animate-in fade-in">
-
-            <div class="flex justify-between items-center text-white mb-6">
-
-                <h2 class="font-black tracking-widest uppercase text-sm italic">Customer Documents</h2>
-
-                <button onclick="document.getElementById('galleryModal').remove()" class="text-4xl hover:text-red-500">&times;</button>
-
-            </div>
-
-            <div class="flex-1 overflow-y-auto grid grid-cols-2 md:grid-cols-4 gap-4">
-
-                ${images.map(img => `<img src="${img}" class="w-full h-64 object-cover rounded-2xl border-2 border-white/10 hover:border-blue-500 transition-all cursor-zoom-in" onclick="window.open('${img}')">`).join('')}
-
-            </div>
-
-        </div>`;
-
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
-
+// यो सानो फङ्सन पनि कतै खाली ठाउँमा टाँसिदिनुहोस्, जसले टिक लगाएको याद राख्छ
+function togglePhotoSelection(id, url, el) {
+    const key = `selected_docs_${id}`;
+    let selected = JSON.parse(localStorage.getItem(key) || "[]");
+    if (el.checked) {
+        if (!selected.includes(url)) selected.push(url);
+        el.closest('div').parentElement.style.borderColor = '#3b82f6';
+    } else {
+        selected = selected.filter(item => item !== url);
+        el.closest('div').parentElement.style.borderColor = 'rgba(255,255,255,0.1)';
+    }
+    localStorage.setItem(key, JSON.stringify(selected));
 }
 
 // --- ४. ANALYTICS & SETTINGS ---
@@ -424,7 +426,7 @@ function buildTableRows() {
             <td class="p-2"><textarea class="w-full text-[9px] border rounded p-1 h-8 outline-none" onblur="commitUpdate('${row.id}', {operator_instruction: this.value}, 'Note Saved')">${row.operator_instruction || ''}</textarea></td>
             <td class="p-2 text-center font-bold text-emerald-600 text-[10px]">Rs.<input type="number" class="w-10 bg-transparent text-center font-black" value="${row.income || 0}" onblur="commitUpdate('${row.id}', {income: this.value}, 'Saved')"></td>
             <td class="p-2 text-center text-[8px] font-bold text-slate-400 uppercase">${row.last_updated_by || 'SYS'}</td>
-            <td class="p-2">${renderFileIcons(row.documents)}</td>
+            <td class="p-2">${renderFileIcons(row.documents, row.id)}</td>
         `;
         tableBody.appendChild(tr);
     });
