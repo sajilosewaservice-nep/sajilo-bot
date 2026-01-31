@@ -81,12 +81,11 @@ async function launchAIAutoFill(id, service) {
     const aiRules = localStorage.getItem('ai_rules') || "फारम बुद्धिमानीपूर्वक भर्नु।";
     notify(`${service} को लागि AI ले ${finalDocs.length} फोटो प्रयोग गर्दैछ...`, "success");
 
-    try {
+   try {
         const response = await fetch(`${SYSTEM_CONFIG.RPA_SERVER_URL}/start-automation`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                // ३. यहाँ customer भित्रको 'documents' लाई 'finalDocs' ले बदलिदिने
                 customer_data: { ...customer, documents: finalDocs }, 
                 service_type: service,
                 ai_instructions: aiRules,
@@ -94,18 +93,27 @@ async function launchAIAutoFill(id, service) {
             })
         });
 
-        if (!response.ok) throw new Error();
-        notify("RPA ले काम सुरु गर्यो!", "success");
+        // --- यहाँ भित्र यसरी राख्नुहोस् ---
+        if (!response.ok) throw new Error("Server Error");
+
+        const result = await response.json();
+        if (result.status === "ai_error") {
+            notify("AI मा समस्या आयो, तर रोबोट खुल्दैछ!", "error");
+        } else {
+            notify("RPA र AI दुवै सक्रिय छन्!", "success");
+        }
+        // ------------------------------
+
     } catch (err) {
         notify("पाइथन RPA सर्भर अफलाइन छ!", "error");
     }
-}
+} // फङ्सन यहाँ बन्द हुन्छ
 
+// यो ११२ देखि १२२ सम्मको भागलाई हटाउनुहोस् (Delete it):
 // CRM को launchAIAutoFill भित्र यो थप्नुहोस्
 if (!response.ok) {
     throw new Error("Server Error");
 }
-
 const result = await response.json();
 if (result.status === "ai_error") {
     notify("AI मा समस्या आयो, तर रोबोट खुल्दैछ!", "error");
@@ -512,7 +520,7 @@ updateUI('statWorking', stats.counts['working'] || 0);
 updateUI('statProblem', stats.counts['problem'] || 0); 
 
 updateUI('totalRecords', `TOTAL: ${STATE.allData.length} RECORDS`);
-} // <--- यो बन्द गर्ने ब्र्याकेट अनिवार्य चाहिन्छ, तपाईँको माथिको कोडमा यो छुटेको थियो।
+}
 
 function startRealtimeBridge() {
 
