@@ -6,8 +6,6 @@
 
  */
 
-
-
 const SYSTEM_CONFIG = {
 
     SUPABASE_URL: "https://ratgpvubjrcoipardzdp.supabase.co",
@@ -19,8 +17,6 @@ const SYSTEM_CONFIG = {
     PAGE_SIZE: 15
 
 };
-
-
 
 let supabaseClient;
 
@@ -38,8 +34,6 @@ let STATE = {
 
 };
 
-
-
 // --- १. INITIALIZATION ---
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -51,8 +45,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     registerGlobalEvents();
 
     startRealtimeBridge();
-
-    
 
     // Live Clock Update
 
@@ -72,25 +64,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 });
 
-
-
 // --- २. RPA & AI MASTER ENGINE ---
 
 async function launchAIAutoFill(id, service) {
 
     if (!service || service === 'Other') return notify("कृपया सेवा (PCC/NID) छान्नुहोस्!", "error");
 
-    
-
     const customer = STATE.allData.find(c => c.id === id);
 
     const aiRules = localStorage.getItem('ai_rules') || "फारम बुद्धिमानीपूर्वक भर्नु।";
 
-    
-
     notify(`${service} को लागि AI रोबोट सुरु भयो...`, "success");
-
-    
 
     try {
 
@@ -119,14 +103,23 @@ async function launchAIAutoFill(id, service) {
         notify("RPA ले काम सुरु गर्यो!", "success");
 
     } catch (err) {
-
-        notify("पाइथन RPA सर्भर अफलाइन छ!", "error");
-
-    }
-
+        notify("पाइथन RPA सर्भर अफलाइन छ!", "error");
+    }
 }
 
+// CRM को launchAIAutoFill भित्र यो थप्नुहोस्
 
+// CRM को launchAIAutoFill भित्र यो थप्नुहोस्
+if (!response.ok) {
+    throw new Error("Server Error");
+}
+
+const result = await response.json();
+if (result.status === "ai_error") {
+    notify("AI मा समस्या आयो, तर रोबोट खुल्दैछ!", "error");
+} else {
+    notify("RPA र AI दुवै सक्रिय छन्!", "success");
+}
 
 // --- ३. MULTIMEDIA ENGINE (Voice, PDF, Gallery) ---
 
@@ -134,19 +127,13 @@ function renderFileIcons(docs) {
 
     if (!docs || docs.length === 0) return '<span class="text-slate-300 italic text-[9px]">No Docs</span>';
 
-    
-
     const images = docs.filter(url => url.match(/\.(jpg|jpeg|png|webp|gif)/i));
 
     const audios = docs.filter(url => url.match(/\.(mp3|wav|ogg|m4a)/i));
 
     const pdfs = docs.filter(url => url.match(/\.(pdf)/i));
 
-
-
     let html = `<div class="flex flex-wrap gap-2 items-center justify-center">`;
-
-
 
     if (images.length > 0) {
 
@@ -162,15 +149,11 @@ function renderFileIcons(docs) {
 
     }
 
-
-
     pdfs.forEach(url => {
 
         html += `<button onclick="window.open('${url}')" class="text-red-500 hover:scale-125 transition-all p-1"><i class="fas fa-file-pdf text-xl"></i></button>`;
 
     });
-
-
 
     audios.forEach(url => {
 
@@ -178,13 +161,9 @@ function renderFileIcons(docs) {
 
     });
 
-
-
     return html + `</div>`;
 
 }
-
-
 
 function openGallery(images) {
 
@@ -211,8 +190,6 @@ function openGallery(images) {
     document.body.insertAdjacentHTML('beforeend', modalHtml);
 
 }
-
-
 
 // --- ४. ANALYTICS & SETTINGS ---
 
@@ -553,8 +530,6 @@ function startRealtimeBridge() {
 
 }
 
-
-
 // --- ६. AUTH & GLOBAL EVENTS ---
 
 function validateSession() {
@@ -575,15 +550,11 @@ function validateSession() {
 
 }
 
-
-
 async function loadDashboardInterface() {
 
     document.getElementById('loginPage').classList.add('hidden');
 
     document.getElementById('dashboardPage').classList.remove('hidden');
-
-    
 
     // Set Operator Name
 
@@ -592,8 +563,6 @@ async function loadDashboardInterface() {
         document.getElementById('userDisplay').textContent = `OP: ${STATE.currentUser.full_name}`;
 
     }
-
-
 
     // --- थपिएको: Financial Report बटनलाई प्रोग्रामेटिक रूपमा सक्रिय गर्ने ---
 
@@ -605,13 +574,9 @@ async function loadDashboardInterface() {
 
     }
 
-
-
     await syncCoreDatabase();
 
 }
-
-
 
 function notify(msg, type) {
 
