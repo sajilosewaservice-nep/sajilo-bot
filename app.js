@@ -242,67 +242,6 @@ function showFinancialReport() {
     document.body.insertAdjacentHTML('beforeend', modalHtml);
 }
 
-// २. सर्विस अनुसार रुल थप्न मिल्ने सेटिङ मोडाल
-function toggleSettingsModal() {
-    const rpaUrl = localStorage.getItem('rpa_url') || "http://localhost:5000";
-    const masterRules = localStorage.getItem('ai_rules_master') || "सबै फारमको लागि साझा नियम...";
-    const nidRules = localStorage.getItem('ai_rules_nid') || "";
-    const pccRules = localStorage.getItem('ai_rules_pcc') || "";
-
-    const modalHtml = `
-        <div id="settingsModal" class="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[999999] p-4">
-            <div class="bg-white w-full max-w-2xl rounded-[30px] shadow-2xl overflow-hidden border-4 border-slate-900">
-                <div class="bg-slate-900 p-5 text-white flex justify-between items-center">
-                    <h2 class="font-black italic text-sm">TITAN AI CONTROL PANEL</h2>
-                    <button onclick="document.getElementById('settingsModal').remove()" class="text-2xl">&times;</button>
-                </div>
-                
-                <div class="p-6 space-y-6 max-h-[65vh] overflow-y-auto bg-slate-50">
-                    <div>
-                        <label class="block text-[10px] font-black text-slate-500 uppercase mb-2">🤖 RPA Server URL</label>
-                        <input type="text" id="set_rpa_url" value="${rpaUrl}" class="w-full bg-white border-2 rounded-xl p-3 text-xs outline-none">
-                    </div>
-                    
-                    <div class="space-y-4">
-                        <h3 class="text-blue-600 font-black text-[11px] uppercase border-b pb-1">AI Master Rules (Instructions)</h3>
-                        <div>
-                            <label class="text-[9px] font-bold text-slate-400">MAIN MASTER RULES</label>
-                            <textarea id="set_rules_master" rows="3" class="w-full border-2 rounded-xl p-3 text-xs outline-none focus:border-blue-500">${masterRules}</textarea>
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="text-[9px] font-bold text-orange-500">NID SPECIFIC RULES</label>
-                                <textarea id="set_rules_nid" rows="3" class="w-full border-2 rounded-xl p-3 text-xs outline-none focus:border-orange-500" placeholder="NID को लागि मात्र...">${nidRules}</textarea>
-                            </div>
-                            <div>
-                                <label class="text-[9px] font-bold text-emerald-500">PCC SPECIFIC RULES</label>
-                                <textarea id="set_rules_pcc" rows="3" class="w-full border-2 rounded-xl p-3 text-xs outline-none focus:border-emerald-500" placeholder="PCC को लागि मात्र...">${pccRules}</textarea>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="p-5 bg-white border-t flex gap-4">
-                    <button onclick="document.getElementById('settingsModal').remove()" class="flex-1 py-4 font-black text-slate-400 uppercase text-xs">Cancel</button>
-                    <button onclick="saveSettings()" class="flex-[2] py-4 bg-blue-600 text-white rounded-2xl font-black shadow-xl hover:bg-blue-700 text-xs">SAVE ALL SETTINGS</button>
-                </div>
-            </div>
-        </div>`;
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
-}
-
-// ३. नयाँ सेटिङ सेभ गर्ने फङ्सन
-function saveSettings() {
-    localStorage.setItem('rpa_url', document.getElementById('set_rpa_url').value);
-    localStorage.setItem('ai_rules_master', document.getElementById('set_rules_master').value);
-    localStorage.setItem('ai_rules_nid', document.getElementById('set_rules_nid').value);
-    localStorage.setItem('ai_rules_pcc', document.getElementById('set_rules_pcc').value);
-    
-    notify("सबै रुल र सेटिङ सेभ भयो!", "success");
-    document.getElementById('settingsModal').remove();
-    setTimeout(() => location.reload(), 500); // कन्फिगरेसन अपडेट गर्न रिलोड
-}
-
 // --- ४. SETTINGS & AI LOGIC (Final Merged Version) ---
 
 function toggleSettingsModal() {
@@ -310,32 +249,49 @@ function toggleSettingsModal() {
     const master = localStorage.getItem('ai_rules_master') || "";
     const nid = localStorage.getItem('ai_rules_nid') || "";
     const pcc = localStorage.getItem('ai_rules_pcc') || "";
+    const passport = localStorage.getItem('ai_rules_passport') || "";
+    const license = localStorage.getItem('ai_rules_license') || "";
+    const pan = localStorage.getItem('ai_rules_pan') || "";
 
     const modalHtml = `
         <div id="settingsModal" class="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[999999] p-4">
-            <div class="bg-white w-full max-w-2xl rounded-[30px] shadow-2xl overflow-hidden border-4 border-slate-900">
+            <div class="bg-white w-full max-w-3xl rounded-[30px] shadow-2xl overflow-hidden border-4 border-slate-900">
                 <div class="bg-slate-900 p-5 text-white flex justify-between items-center">
-                    <h2 class="font-black italic text-sm text-blue-400">TITAN AI CONTROL PANEL</h2>
+                    <h2 class="font-black italic text-sm text-blue-400">TITAN AI CONTROL PANEL (ALL SERVICES)</h2>
                     <button onclick="document.getElementById('settingsModal').remove()" class="text-2xl">&times;</button>
                 </div>
-                <div class="p-6 space-y-4 max-h-[65vh] overflow-y-auto bg-slate-50">
+                <div class="p-6 space-y-4 max-h-[70vh] overflow-y-auto bg-slate-50">
                     <div>
                         <label class="block text-[10px] font-black text-slate-500 uppercase mb-1">🤖 RPA Server URL</label>
                         <input type="text" id="set_rpa_url" value="${rpaUrl}" class="w-full border-2 rounded-xl p-3 text-xs outline-none focus:border-blue-500">
                     </div>
+                    
                     <div class="space-y-4">
                         <div>
-                            <label class="text-[9px] font-bold text-blue-600 uppercase">Master Rules (All Forms)</label>
-                            <textarea id="set_rules_master" rows="3" class="w-full border-2 rounded-xl p-3 text-xs outline-none focus:border-blue-500">${master}</textarea>
+                            <label class="text-[9px] font-bold text-blue-600 uppercase">Master Rules (सबैमा लागु हुने साझा नियम)</label>
+                            <textarea id="set_rules_master" rows="2" class="w-full border-2 rounded-xl p-3 text-xs outline-none focus:border-blue-500">${master}</textarea>
                         </div>
-                        <div class="grid grid-cols-2 gap-4">
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label class="text-[9px] font-bold text-orange-500 uppercase">NID Rules</label>
-                                <textarea id="set_rules_nid" rows="3" class="w-full border-2 rounded-xl p-3 text-xs outline-none focus:border-orange-500">${nid}</textarea>
+                                <textarea id="set_rules_nid" rows="2" class="w-full border-2 rounded-xl p-3 text-xs outline-none focus:border-orange-500">${nid}</textarea>
                             </div>
                             <div>
                                 <label class="text-[9px] font-bold text-emerald-500 uppercase">PCC Rules</label>
-                                <textarea id="set_rules_pcc" rows="3" class="w-full border-2 rounded-xl p-3 text-xs outline-none focus:border-emerald-500">${pcc}</textarea>
+                                <textarea id="set_rules_pcc" rows="2" class="w-full border-2 rounded-xl p-3 text-xs outline-none focus:border-emerald-500">${pcc}</textarea>
+                            </div>
+                            <div>
+                                <label class="text-[9px] font-bold text-blue-500 uppercase">Passport Rules</label>
+                                <textarea id="set_rules_passport" rows="2" class="w-full border-2 rounded-xl p-3 text-xs outline-none focus:border-blue-500">${passport}</textarea>
+                            </div>
+                            <div>
+                                <label class="text-[9px] font-bold text-red-500 uppercase">License Rules</label>
+                                <textarea id="set_rules_license" rows="2" class="w-full border-2 rounded-xl p-3 text-xs outline-none focus:border-red-500">${license}</textarea>
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="text-[9px] font-bold text-indigo-500 uppercase">PAN Rules</label>
+                                <textarea id="set_rules_pan" rows="2" class="w-full border-2 rounded-xl p-3 text-xs outline-none focus:border-indigo-500">${pan}</textarea>
                             </div>
                         </div>
                     </div>
