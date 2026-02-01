@@ -64,54 +64,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 });
 
-// --- २. RPA & AI MASTER ENGINE ---
-
-async function launchAIAutoFill(id, service) {
-    // १. सुरुमै सेवा चेक गर्ने
-    if (!service || service === 'Other') return notify("कृपया सेवा (PCC/NID) छान्नुहोस्!", "error");
-
-    const customer = STATE.allData.find(c => c.id === id);
-    
-    // २. टिक लगाएका फोटोहरू मेमोरीबाट तान्ने
-    const selectedKey = `selected_docs_${id}`;
-    const selectedDocs = JSON.parse(localStorage.getItem(selectedKey) || "[]");
-    
-    // ३. यदि फोटो छानिएको छ भने छानिएका मात्र पठाउने, छैन भने सबै पठाउने
-    const finalDocs = selectedDocs.length > 0 ? selectedDocs : customer.documents;
-
-    const aiRules = localStorage.getItem('ai_rules') || "फारम बुद्धिमानीपूर्वक भर्नु।";
-    notify(`${service} को लागि AI ले ${finalDocs.length} फोटो प्रयोग गर्दैछ...`, "success");
-
-    try {
-        const response = await fetch(`${SYSTEM_CONFIG.RPA_SERVER_URL}/start-automation`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                customer_data: { ...customer, documents: finalDocs }, 
-                service_type: service,
-                ai_instructions: aiRules,
-                operator: STATE.currentUser.full_name
-            })
-        });
-
-        // ४. सर्भर रेस्पोन्स चेक गर्ने (मैले थप्न लगाएको सही ठाउँ यही हो)
-        if (!response.ok) {
-            throw new Error("Server Error");
-        }
-
-        const result = await response.json();
-        if (result.status === "ai_error") {
-            notify("AI मा समस्या आयो, तर रोबोट खुल्दैछ!", "error");
-        } else {
-            notify("RPA र AI दुवै सक्रिय छन्!", "success");
-        }
-
-    } catch (err) {
-        notify("पाइथन RPA सर्भर अफलाइन छ!", "error");
-    }
-}
-
-
 // --- ३. MULTIMEDIA ENGINE (Voice, PDF, Gallery) ---
 
 function renderFileIcons(docs, id) { // यहाँ id थपिएको छ
@@ -310,8 +262,11 @@ function saveSettings() {
     localStorage.setItem('ai_rules_master', document.getElementById('set_rules_master').value);
     localStorage.setItem('ai_rules_nid', document.getElementById('set_rules_nid').value);
     localStorage.setItem('ai_rules_pcc', document.getElementById('set_rules_pcc').value);
+    localStorage.setItem('ai_rules_passport', document.getElementById('set_rules_passport').value);
+    localStorage.setItem('ai_rules_license', document.getElementById('set_rules_license').value);
+    localStorage.setItem('ai_rules_pan', document.getElementById('set_rules_pan').value);
     
-    notify("सेटिङ सुरक्षित गरियो!", "success");
+    notify("सबै सेटिङहरू सुरक्षित गरियो!", "success");
     document.getElementById('settingsModal').remove();
     setTimeout(() => { location.reload(); }, 1000);
 }
@@ -380,18 +335,18 @@ function buildTableRows() {
             <td class="p-2">
                 <select class="w-full border p-1 rounded text-[10px] font-bold" onchange="commitUpdate('${row.id}', {service: this.value}, 'सेवा फेरियो')">
                     <option value="PCC" ${row.service==='PCC'?'selected':''}>PCC</option>
-<option value="NID" ${row.service==='NID'?'selected':''}>NID</option>
-<option value="Passport" ${row.service==='Passport'?'selected':''}>Passport</option>
-<option value="License" ${row.service==='License'?'selected':''}>License</option>
-<option value="PAN" ${row.service==='PAN'?'selected':''}>PAN</option>
-<option value="Other" ${row.service==='Other'?'selected':''}>Other</option>
-</select>
+                    <option value="NID" ${row.service==='NID'?'selected':''}>NID</option>
+                    <option value="Passport" ${row.service==='Passport'?'selected':''}>Passport</option>
+                    <option value="License" ${row.service==='License'?'selected':''}>License</option>
+                    <option value="PAN" ${row.service==='PAN'?'selected':''}>PAN</option>
+                    <option value="Other" ${row.service==='Other'?'selected':''}>Other</option>
+                </select>
                 <input type="text" class="w-full text-[9px] border-b border-dotted outline-none mt-1" placeholder="More..." value="${row.other_service_name || ''}" onblur="commitUpdate('${row.id}', {other_service_name: this.value.toUpperCase()}, 'Saved')">
             </td>
             <td class="p-2">
                 <div class="flex flex-col gap-1">
-                    <button onclick="launchAIAutoFill('${row.id}', '${row.service}')" class="bg-orange-500 text-white text-[8px] font-black py-1 px-2 rounded">🚀 AUTO</button>
-                    <button onclick="window.open(isNaN('${row.sender_id}') ? 'https://m.me/${row.sender_id}' : 'https://wa.me/${row.sender_id}')" class="bg-blue-600 text-white text-[8px] font-black py-1 px-2 rounded">💬 CHAT</button>
+                    <button onclick="launchAIAutoFill('${row.id}', '${row.service}')" class="bg-orange-500 text-white text-[8px] font-black py-1 px-2 rounded hover:scale-105 transition-transform">🚀 AUTO</button>
+                    <button onclick="window.open(isNaN('${row.sender_id}') ? 'https://m.me/${row.sender_id}' : 'https://wa.me/${row.sender_id}')" class="bg-blue-600 text-white text-[8px] font-black py-1 px-2 rounded hover:scale-105 transition-transform">💬 CHAT</button>
                 </div>
             </td>
             <td class="p-2">
@@ -403,20 +358,71 @@ function buildTableRows() {
                     <option value="problem" ${row.status==='problem'?'selected':''}>❌ PRB</option>
                 </select>
             </td>
-           <td class="p-2">
-    <textarea 
-        class="w-full text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-100 rounded-xl p-2 outline-none h-12 resize-none shadow-inner leading-tight" 
-        placeholder="च्याट समरी यहाँ लेख्नुहोस्..."
-        onblur="commitUpdate('${row.id}', {chat_summary: this.value}, 'Summary Saved')"
-    >${row.chat_summary || ''}</textarea>
-</td>
-            <td class="p-2"><textarea class="w-full text-[9px] border rounded p-1 h-8 outline-none" onblur="commitUpdate('${row.id}', {operator_instruction: this.value}, 'Note Saved')">${row.operator_instruction || ''}</textarea></td>
+            <td class="p-2">
+                <textarea 
+                    class="w-full text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-100 rounded-xl p-2 outline-none h-12 resize-none shadow-inner leading-tight" 
+                    placeholder="च्याट समरी..."
+                    onblur="commitUpdate('${row.id}', {chat_summary: this.value}, 'Summary Saved')"
+                >${row.chat_summary || ''}</textarea>
+            </td>
+            <td class="p-2">
+                <div 
+                    onclick="openLargeNote('${row.id}', \`${(row.operator_instruction || '').replace(/`/g, '\\`').replace(/\n/g, '<br>')}\`)"
+                    class="w-full text-[9px] border rounded-lg p-2 h-12 overflow-hidden cursor-pointer bg-white hover:bg-blue-50 transition-all shadow-sm border-slate-200"
+                >
+                    <div class="font-black text-blue-500 mb-1">📋 AI LOGS:</div>
+                    <div class="line-clamp-2 text-slate-600">${row.operator_instruction || 'Click to view...'}</div>
+                </div>
+            </td>
             <td class="p-2 text-center font-bold text-emerald-600 text-[10px]">Rs.<input type="number" class="w-10 bg-transparent text-center font-black" value="${row.income || 0}" onblur="commitUpdate('${row.id}', {income: this.value}, 'Saved')"></td>
             <td class="p-2 text-center text-[8px] font-bold text-slate-400 uppercase">${row.last_updated_by || 'SYS'}</td>
             <td class="p-2">${renderFileIcons(row.documents, row.id)}</td>
         `;
         tableBody.appendChild(tr);
     });
+}
+
+function openLargeNote(id, content) {
+    const modalHtml = `
+        <div id="noteModal" class="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-[9999999] flex items-center justify-center p-4 animate-in fade-in duration-200">
+            <div class="bg-white w-full max-w-2xl rounded-[30px] shadow-2xl overflow-hidden border-4 border-slate-900 flex flex-col max-h-[85vh]">
+                
+                <div class="bg-slate-900 p-5 text-white flex justify-between items-center">
+                    <div class="flex items-center gap-3">
+                        <div class="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
+                        <h2 class="font-black italic text-sm tracking-widest uppercase">Titan AI Process Logs</h2>
+                    </div>
+                    <button onclick="document.getElementById('noteModal').remove()" class="text-3xl hover:text-red-500 transition-colors">&times;</button>
+                </div>
+
+                <div class="p-6 overflow-y-auto flex-1 bg-slate-50 space-y-4 font-mono text-xs" id="modalScrollBody">
+                    <div class="bg-blue-100 border-l-4 border-blue-600 p-4 rounded-r-xl text-blue-900 whitespace-pre-wrap leading-relaxed shadow-sm">
+                        ${content || 'अहिलेसम्म कुनै लग रेकर्ड गरिएको छैन।'}
+                    </div>
+                </div>
+
+                <div class="p-4 bg-white border-t border-slate-200 flex flex-col gap-3">
+                    <textarea id="manualNoteInput" class="w-full border-2 border-slate-200 rounded-2xl p-3 text-xs outline-none focus:border-blue-500 h-20 resize-none" placeholder="यहाँ केही लेख्नुहोस् (उदा: ok)...">${content.replace(/<br>/g, '\n')}</textarea>
+                    <div class="flex gap-2">
+                        <button onclick="document.getElementById('noteModal').remove()" class="flex-1 py-3 font-black text-slate-400 uppercase text-[10px]">Close</button>
+                        <button onclick="saveManualNote('${id}')" class="flex-[2] py-3 bg-slate-900 text-white rounded-xl font-black shadow-lg text-[10px] hover:bg-blue-700 transition-all">UPDATE NOTE / SEND OK</button>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // सधैँ तल (Latest message) मा स्क्रोल गर्ने
+    const body = document.getElementById('modalScrollBody');
+    body.scrollTop = body.scrollHeight;
+}
+
+// नोट सेभ गर्ने सानो फङ्सन
+async function saveManualNote(id) {
+    const newVal = document.getElementById('manualNoteInput').value;
+    await commitUpdate(id, { operator_instruction: newVal }, "Note Updated!");
+    document.getElementById('noteModal').remove();
 }
 
 async function commitUpdate(id, updates, msg) {
