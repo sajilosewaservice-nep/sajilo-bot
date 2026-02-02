@@ -1,27 +1,27 @@
 import os
-import os
-from dotenv import load_dotenv
-load_dotenv() # यसले तपाईँको .env फाइलबाट डाटा तान्छ
 import time
 import json
 import logging
 import threading
 import flask
 from flask_cors import CORS
+from dotenv import load_dotenv
 from playwright.sync_api import sync_playwright
 import google.generativeai as genai
 from supabase import create_client, Client
 
-# --- १. लगिङ सेटअप ---
+# १. इन्भ्यारोमेन्ट लोड
+load_dotenv()
+
+# २. लगिङ सेटअप
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("TitanRPA")
 
-# --- २. कन्फिगरेसन ---
+# ३. कन्फिगरेसन
 class Config:
-    # .env फाइलमा भएको नामसँग मिलाइएको छ
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
     SUPABASE_URL = os.getenv("SUPABASE_URL")
-    SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY") # यहाँ ANON_KEY लेख्नुहोस्
+    SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY")
     
     SERVICE_URLS = {
         "PCC": "https://opcr.nepalpolice.gov.np/",
@@ -37,17 +37,18 @@ supabase: Client = create_client(Config.SUPABASE_URL, Config.SUPABASE_KEY)
 app = flask.Flask(__name__)
 CORS(app)
 
-# --- ३. डाटाबेस फङ्सनहरू (Advanced Note Management) ---
+# ४. डाटाबेस फङ्सनहरू (TitanBot भन्दा माथि हुनैपर्छ)
 def update_db_note(c_id, message, status="working"):
     try:
         res = supabase.table('customers').select('operator_instruction').eq('id', c_id).single().execute()
         current_val = res.data.get('operator_instruction', '') if res.data else ""
         
-        if message in current_val and len(message) > 5:
+        # मेसेज दोहोरिएमा अपडेट नगर्ने (ब्यान्डविथ जोगाउन)
+        if message in current_val and len(message) > 10:
             return 
 
         timestamp = time.strftime('%H:%M:%S')
-        new_entry = f"📍 [{timestamp}] {message}\n{'-'*30}\n{current_val[:2000]}"
+        new_entry = f"📍 [{timestamp}] {message}\n{'-'*30}\n{current_val[:2500]}"
         
         supabase.table('customers').update({
             "operator_instruction": new_entry, 
@@ -63,7 +64,7 @@ def get_latest_note(c_id):
     except:
         return ""
 
-# --- ४. टाइटन रोबोट इन्जिन (Playwright Engine) ---
+# ५. टाइटन रोबोट इन्जिन
 class TitanBot:
     def __init__(self, customer, service_type, rules):
         self.customer = customer
@@ -73,7 +74,7 @@ class TitanBot:
         self.first_run = True
 
     def extract_dom(self, page):
-        """पेजका सबै फर्म एलिमेन्टहरू निकाल्ने"""
+        """पेजका एलिमेन्टहरू निकाल्ने प्रो लजिक"""
         return page.evaluate("""
             () => {
                 const elements = Array.from(document.querySelectorAll('input, select, textarea, button'));
@@ -90,93 +91,109 @@ class TitanBot:
         """)
 
     def execute(self):
-        with sync_playwright() as p:
-            try:
-                # ब्राउजर लन्च (Stealth Mode)
-                browser = p.chromium.launch(headless=False, args=["--disable-blink-features=AutomationControlled"])
-                context = browser.new_context(user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36")
-                page = context.new_page()
+        # ब्राउजर सुरु गर्ने (with बिना ताकि क्र्यास नहोस्)
+        self.p_instance = sync_playwright().start()
+        
+        try:
+            self.browser = self.p_instance.chromium.launch(
+                headless=False, 
+                args=["--disable-blink-features=AutomationControlled"],
+                slow_mo=500
+            )
+            self.context = self.browser.new_context(
+                viewport={'width': 1280, 'height': 800},
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/122.0.0.0 Safari/537.36"
+            )
+            self.page = self.context.new_page()
 
-                url = Config.SERVICE_URLS.get(self.service_type, "https://google.com")
-                page.goto(url)
-                update_db_note(self.c_id, f"🚀 {self.service_type} ब्राउजर तयार छ।")
+            url = Config.SERVICE_URLS.get(self.service_type, "https://google.com")
+            update_db_note(self.c_id, f"🌐 {self.service_type} लोड हुँदैछ...")
+            self.page.goto(url, wait_until="networkidle", timeout=60000)
+            
+            update_db_note(self.c_id, f"🚀 टाइटन इन्जिन सुचारु भयो।")
 
-                while True:
-                    current_note = get_latest_note(self.c_id).upper()
+            while True:
+                # नयाँ कमान्डको लागि डाटाबेस चेक गर्ने
+                current_note = get_latest_note(self.c_id).upper()
 
-                    # १. कार्य सुचारु गर्ने कन्डिसन (First Run वा 'OK' लेख्दा)
-                    if self.first_run or ("OK" in current_note and "DONE_STEP" not in current_note):
-                        self.first_run = False
-                        update_db_note(self.c_id, "🧠 Gemini ले पेज स्क्यान गर्दैछ...")
-                        
-                        dom_data = self.extract_dom(page)
-                        
-                        prompt = f"""
-                        You are Titan RPA Engine. 
-                        RULES: {self.rules}
-                        TASK: Fill {self.service_type} form.
-                        CUSTOMER: {json.dumps(self.customer)}
-                        ELEMENTS: {json.dumps(dom_data)}
-                        OUTPUT: Valid JSON only {{"mapping": [{{"selector_type": "id|name", "selector_value": "", "action": "type|click", "value": ""}}]}}
-                        """
-                        
-                        model = genai.GenerativeModel(model_name="models/gemini-1.5-flash")
-                        ai_res = model.generate_content(prompt)
-                        
-                        try:
-                            clean_json = ai_res.text.strip().replace("```json", "").replace("```", "")
-                            plan = json.loads(clean_json)
+                # बन्द गर्ने कमान्ड
+                if "EXIT" in current_note:
+                    update_db_note(self.c_id, "👋 बन्द गरियो। अब ब्राउजर बन्द हुँदैछ।", "success")
+                    break
 
-                            for task in plan.get("mapping", []):
-                                # बीचमा कसैले PAUSE लेखेमा रोकिने
-                                if "PAUSE" in get_latest_note(self.c_id).upper():
-                                    update_db_note(self.c_id, "⏸️ कार्य रोकियो। सुचारु गर्न 'OK' लेख्नुहोस्।")
-                                    while "OK" not in get_latest_note(self.c_id).upper(): time.sleep(3)
+                # कार्य सुचारु गर्ने कन्डिसन
+                if self.first_run or ("OK" in current_note and "DONE_STEP" not in current_note):
+                    self.first_run = False
+                    update_db_note(self.c_id, "🧠 Gemini ले पेज अध्ययन गर्दैछ...")
+                    
+                    dom_data = self.extract_dom(self.page)
+                    
+                    prompt = f"""
+                    TASK: Fill {self.service_type} form.
+                    CUSTOMER: {json.dumps(self.customer)}
+                    ELEMENTS: {json.dumps(dom_data)}
+                    RULES: {self.rules}
+                    OUTPUT: Valid JSON only {{"mapping": []}}
+                    """
+                    
+                    model = genai.GenerativeModel("gemini-1.5-flash")
+                    ai_res = model.generate_content(prompt)
+                    
+                    try:
+                        clean_json = ai_res.text.strip().replace("```json", "").replace("```", "")
+                        plan = json.loads(clean_json)
 
-                                try:
-                                    selector = f"#{task['selector_value']}" if task['selector_type'] == 'id' else f"[name='{task['selector_value']}']"
-                                    if task['action'] == "click":
-                                        page.click(selector, timeout=5000)
-                                    else:
-                                        page.fill(selector, str(task['value']), timeout=5000)
-                                except: continue
+                        for task in plan.get("mapping", []):
+                            # सुरक्षाको लागि बीचमा PAUSE चेक
+                            if "PAUSE" in get_latest_note(self.c_id).upper():
+                                update_db_note(self.c_id, "⏸️ रोकियो। अघि बढ्न 'OK' लेख्नुहोस्।")
+                                while "OK" not in get_latest_note(self.c_id).upper(): time.sleep(3)
 
-                            update_db_note(self.c_id, "✅ फर्म भरियो। अघि बढ्न 'OK' वा बन्द गर्न 'EXIT' लेख्नुहोस्।")
-                            
-                            # DONE_STEP थपेर लुप कन्ट्रोल गर्ने
-                            processed_note = current_note.replace("OK", "DONE_STEP") if "OK" in current_note else current_note + "\nDONE_STEP"
-                            supabase.table('customers').update({"operator_instruction": processed_note}).eq('id', self.c_id).execute()
+                            try:
+                                sel = f"#{task['selector_value']}" if task['selector_type'] == 'id' else f"[name='{task['selector_value']}']"
+                                self.page.wait_for_selector(sel, timeout=10000)
+                                if task['action'] == "click":
+                                    self.page.click(sel)
+                                else:
+                                    self.page.fill(sel, str(task['value']))
+                            except: continue
 
-                        except Exception as e:
-                            update_db_note(self.c_id, f"⚠️ एआई गल्ती: {str(e)[:50]}")
+                        update_db_note(self.c_id, "✅ फर्म भरियो। अघि बढ्न 'OK' लेख्नुहोस्।")
+                        # 'OK' लाई 'DONE_STEP' मा बदल्ने ताकि लुप नदोहोरियोस्
+                        processed = current_note.replace("OK", "DONE_STEP") if "OK" in current_note else current_note + "\nDONE_STEP"
+                        supabase.table('customers').update({"operator_instruction": processed}).eq('id', self.c_id).execute()
 
-                    # २. OTP प्रविष्ट गर्ने लजिक
-                    elif "OTP:" in current_note:
-                        otp_value = current_note.split("OTP:")[1].split("\n")[0].strip()
-                        page.keyboard.type(otp_value)
-                        update_db_note(self.c_id, f"🔐 OTP ({otp_value}) प्रविष्ट गरियो।")
-                        # OTP प्रयोग भएपछि हटाउने
-                        clean_note = current_note.replace(f"OTP:{otp_value}", "OTP_DONE")
-                        supabase.table('customers').update({"operator_instruction": clean_note}).eq('id', self.c_id).execute()
+                    except Exception as e:
+                        update_db_note(self.c_id, f"⚠️ एआई गल्ती: {str(e)[:50]}")
 
-                    # ३. सिस्टम बन्द गर्ने
-                    elif "EXIT" in current_note:
-                        update_db_note(self.c_id, "👋 टाइटन बन्द हुँदैछ...", "success")
-                        break
+                # OTP हाल्ने कमान्ड
+                elif "OTP:" in current_note:
+                    otp = current_note.split("OTP:")[1].split("\n")[0].strip()
+                    self.page.keyboard.type(otp, delay=150)
+                    update_db_note(self.c_id, f"🔐 OTP ({otp}) हालियो।")
+                    # OTP प्रयोग भएपछि हटाउने
+                    new_note = current_note.replace(f"OTP:{otp}", "OTP_DONE")
+                    supabase.table('customers').update({"operator_instruction": new_note}).eq('id', self.c_id).execute()
 
-                    time.sleep(4) 
+                time.sleep(4)
 
-                browser.close()
-            except Exception as e:
-                update_db_note(self.c_id, f"❌ एरर: {str(e)[:100]}", "problem")
+            self.browser.close()
+            self.p_instance.stop()
 
-# --- ५. Flask API ---
+        except Exception as e:
+            update_db_note(self.c_id, f"❌ गम्भीर एरर: {str(e)[:100]}", "problem")
+
+# ६. Flask API
 @app.route('/start-automation', methods=['POST'])
 def run_bot():
-    data = flask.request.json
-    bot = TitanBot(data['customer_data'], data['service_type'], data['ai_instructions'])
-    threading.Thread(target=bot.execute, daemon=True).start()
-    return {"status": "success", "message": "Titan Started"}
+    try:
+        data = flask.request.json
+        bot = TitanBot(data['customer_data'], data['service_type'], data['ai_instructions'])
+        threading.Thread(target=bot.execute, daemon=True).start()
+        return {"status": "success", "message": "Titan Started"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}, 400
 
 if __name__ == "__main__":
+    # ५००० पोर्टमा सर्भर सुरु
     app.run(port=5000, threaded=True)
