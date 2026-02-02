@@ -1,4 +1,7 @@
 import os
+import os
+from dotenv import load_dotenv
+load_dotenv() # यसले तपाईँको .env फाइलबाट डाटा तान्छ
 import time
 import json
 import logging
@@ -15,9 +18,10 @@ logger = logging.getLogger("TitanRPA")
 
 # --- २. कन्फिगरेसन ---
 class Config:
-    GEMINI_API_KEY = "AIzaSyDeMFMSo03Twh6Hxy5Mg1PhdKELURgw5V0"
-    SUPABASE_URL = "https://ratgpvubjrcoipardzdp.supabase.co"
-    SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJhdGdwdnVianJjb2lwYXJkemRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzMTg0OTMsImV4cCI6MjA4Mzg5NDQ5M30.t1eofJj9dPK-Psp_oL3LpCWimyz621T21JNpZljEGZk"
+    # .env फाइलमा भएको नामसँग मिलाइएको छ
+    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+    SUPABASE_URL = os.getenv("SUPABASE_URL")
+    SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY") # यहाँ ANON_KEY लेख्नुहोस्
     
     SERVICE_URLS = {
         "PCC": "https://opcr.nepalpolice.gov.np/",
@@ -35,15 +39,15 @@ CORS(app)
 
 # --- ३. डाटाबेस फङ्सनहरू (Advanced Note Management) ---
 def update_db_note(c_id, message, status="working"):
-    """App UI मा लगहरू देखाउनको लागि"""
     try:
         res = supabase.table('customers').select('operator_instruction').eq('id', c_id).single().execute()
         current_val = res.data.get('operator_instruction', '') if res.data else ""
         
-        history = current_val[:500] 
+        if message in current_val and len(message) > 5:
+            return 
+
         timestamp = time.strftime('%H:%M:%S')
-        
-        new_entry = f"📍 [{timestamp}] {message}\n{'-'*30}\n{history}"
+        new_entry = f"📍 [{timestamp}] {message}\n{'-'*30}\n{current_val[:2000]}"
         
         supabase.table('customers').update({
             "operator_instruction": new_entry, 
@@ -53,7 +57,6 @@ def update_db_note(c_id, message, status="working"):
         logger.error(f"DB Update Error: {e}")
 
 def get_latest_note(c_id):
-    """नोटबाट कमान्ड (OK, EXIT, PAUSE) पढ्नको लागि"""
     try:
         res = supabase.table('customers').select('operator_instruction').eq('id', c_id).single().execute()
         return res.data.get('operator_instruction', '') if res.data else ""
@@ -117,7 +120,7 @@ class TitanBot:
                         OUTPUT: Valid JSON only {{"mapping": [{{"selector_type": "id|name", "selector_value": "", "action": "type|click", "value": ""}}]}}
                         """
                         
-                        model = genai.GenerativeModel("gemini-1.5-flash")
+                        model = genai.GenerativeModel(model_name="models/gemini-1.5-flash")
                         ai_res = model.generate_content(prompt)
                         
                         try:
