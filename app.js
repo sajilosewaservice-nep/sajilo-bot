@@ -144,50 +144,99 @@ function togglePhotoSelection(id, url, el) {
     localStorage.setItem(key, JSON.stringify(selected));
 }
 
-// --- ४. ANALYTICS & SETTINGS ---
-
-// १. रिपोर्ट सच्याइएको फङ्सन
 function showFinancialReport() {
-    const now = new Date();
-    // हप्ता र महिनाको सुरुवाती समय सही निकाल्ने
-    const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+// १. फाइनान्सियल रिपोर्ट फङ्सन (Splits income/invest from "500/100" format)
+const now = new Date();
+const todayStr = now.toISOString().split('T')[0];
+// हप्ताको सुरु (Sunday) पत्ता लगाउने
+const tempDate = new Date();
+const startOfWeek = new Date(tempDate.setDate(tempDate.getDate() - tempDate.getDay())).toISOString().split('T')[0];
+// महिनाको सुरु (१ गते) पत्ता लगाउने
+const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
 
-    const stats = STATE.allData.reduce((acc, curr) => {
-        const date = new Date(curr.created_at);
-        const amt = parseFloat(curr.income) || 0;
-        const status = (curr.status || '').toLowerCase();
+const stats = STATE.allData.reduce((acc, curr) => {
+    const status = (curr.status || '').toLowerCase().trim();
+    
+    // केवल 'success' भएकाहरूको मात्र हिसाब गर्ने
+    if (status === 'success') {
+        const date = curr.created_at.split('T')[0];
+        
+        // "income/invest" (उदा: 500/100) लाई टुक्राउने
+        const incomeValue = curr.income || "0/0";
+        const parts = incomeValue.toString().split('/');
+        const income = parseFloat(parts[0]) || 0;
+        const invest = parseFloat(parts[1]) || 0;
 
-        if (status === 'success') {
-            acc.total += amt;
-            if (date >= startOfWeek) acc.weekly += amt;
-            if (date >= startOfMonth) acc.monthly += amt;
+        // जम्मा हिसाब
+        acc.total_in += income;
+        acc.total_inv += invest;
+
+        // समय अनुसार फिल्टर (Daily, Weekly, Monthly)
+        if (date === todayStr) { 
+            acc.daily_in += income; 
+            acc.daily_inv += invest; 
         }
-        return acc;
-    }, { total: 0, weekly: 0, monthly: 0 });
+        if (date >= startOfWeek) { 
+            acc.weekly_in += income; 
+            acc.weekly_inv += invest; 
+        }
+        if (date >= startOfMonth) { 
+            acc.monthly_in += income; 
+            acc.monthly_inv += invest; 
+        }
+    }
+    return acc;
+}, { 
+    total_in: 0, total_inv: 0, 
+    daily_in: 0, daily_inv: 0, 
+    weekly_in: 0, weekly_inv: 0, 
+    monthly_in: 0, monthly_inv: 0 
+});
 
     const modalHtml = `
-        <div id="reportModal" class="fixed inset-0 bg-slate-900/90 backdrop-blur-md flex items-center justify-center z-[999999] p-4">
-            <div class="bg-white w-full max-w-md rounded-[40px] shadow-2xl overflow-hidden border-4 border-slate-900">
-                <div class="bg-slate-900 p-6 text-white text-center">
-                    <h2 class="text-xl font-black italic">FINANCIAL REPORT</h2>
+        <div id="reportModal" class="fixed inset-0 bg-slate-900/95 backdrop-blur-md flex items-center justify-center z-[999999] p-4">
+            <div class="bg-white w-full max-w-2xl rounded-[40px] shadow-2xl overflow-hidden border-4 border-slate-900">
+                <div class="bg-slate-900 p-6 text-white flex justify-between items-center">
+                    <div>
+                        <h2 class="text-xl font-black italic text-blue-400">FINANCIAL ANALYTICS</h2>
+                        <p class="text-[10px] text-emerald-400 font-bold uppercase">Income & Investment Breakdown</p>
+                    </div>
+                    <button onclick="document.getElementById('reportModal').remove()" class="text-white hover:text-red-500 text-3xl">&times;</button>
                 </div>
-                <div class="p-8 space-y-4">
-                    <div class="flex justify-between p-4 bg-emerald-50 rounded-2xl border-2 border-emerald-100">
-                        <span class="text-xs font-black text-emerald-700">यो हप्ता:</span>
-                        <span class="text-xl font-black text-emerald-800">Rs. ${stats.weekly.toLocaleString()}</span>
+                
+                <div class="p-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="p-4 bg-orange-50 rounded-3xl border-2 border-orange-100">
+                        <span class="text-[10px] font-black text-orange-600 uppercase">Daily (आज)</span>
+                        <div class="text-lg font-black text-slate-900">Rs. ${stats.daily_in}</div>
+                        <div class="text-[9px] font-bold text-red-500">Invest: Rs. ${stats.daily_inv}</div>
                     </div>
-                    <div class="flex justify-between p-4 bg-blue-50 rounded-2xl border-2 border-blue-100">
-                        <span class="text-xs font-black text-blue-700">यो महिना:</span>
-                        <span class="text-xl font-black text-blue-800">Rs. ${stats.monthly.toLocaleString()}</span>
+                    <div class="p-4 bg-blue-50 rounded-3xl border-2 border-blue-100">
+                        <span class="text-[10px] font-black text-blue-600 uppercase">Weekly (हप्ता)</span>
+                        <div class="text-lg font-black text-slate-900">Rs. ${stats.weekly_in}</div>
+                        <div class="text-[9px] font-bold text-red-500">Invest: Rs. ${stats.weekly_inv}</div>
                     </div>
-                    <div class="flex justify-between p-4 bg-slate-100 rounded-2xl">
-                        <span class="text-xs font-black text-slate-600">कुल जम्मा:</span>
-                        <span class="text-xl font-black text-slate-900">Rs. ${stats.total.toLocaleString()}</span>
+                    <div class="p-4 bg-emerald-50 rounded-3xl border-2 border-emerald-100">
+                        <span class="text-[10px] font-black text-emerald-600 uppercase">Monthly (महिना)</span>
+                        <div class="text-lg font-black text-slate-900">Rs. ${stats.monthly_in}</div>
+                        <div class="text-[9px] font-bold text-red-500">Invest: Rs. ${stats.monthly_inv}</div>
                     </div>
                 </div>
-                <div class="p-6 bg-slate-50 border-t">
-                    <button onclick="document.getElementById('reportModal').remove()" class="w-full py-4 bg-slate-900 text-white rounded-2xl font-black">बन्द गर्नुहोस्</button>
+
+                <div class="px-6 pb-6">
+                    <div class="bg-slate-900 text-white p-6 rounded-[30px] flex justify-between items-center shadow-xl">
+                        <div>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase mb-1">Total Net Profit</p>
+                            <p class="text-3xl font-black text-emerald-400">Rs. ${stats.total_in - stats.total_inv}</p>
+                        </div>
+                        <div class="text-right border-l border-slate-700 pl-6">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase mb-1">Total Investment</p>
+                            <p class="text-xl font-black text-red-400">Rs. ${stats.total_inv}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-4 bg-slate-50 border-t flex gap-2">
+                    <button onclick="document.getElementById('reportModal').remove()" class="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase text-xs">बन्द गर्नुहोस्</button>
                 </div>
             </div>
         </div>`;
@@ -278,7 +327,7 @@ async function launchAIAutoFill(id, service) {
     
     // यहाँबाट मास्टर र स्पेसिफिक रुल जोडेर पठाउने
     const master = localStorage.getItem('ai_rules_master') || "";
-    const specific = (service === 'NID') ? localStorage.getItem('ai_rules_nid') : (service === 'PCC' ? localStorage.getItem('ai_rules_pcc') : "");
+    const specific = localStorage.getItem(`ai_rules_${service.toLowerCase()}`) || "";
     const finalRules = `${master}\n${specific}`;
 
     const selectedDocs = JSON.parse(localStorage.getItem(`selected_docs_${id}`) || "[]");
@@ -374,7 +423,23 @@ function buildTableRows() {
                     <div class="line-clamp-2 text-slate-600">${row.operator_instruction || 'Click to view...'}</div>
                 </div>
             </td>
-            <td class="p-2 text-center font-bold text-emerald-600 text-[10px]">Rs.<input type="number" class="w-10 bg-transparent text-center font-black" value="${row.income || 0}" onblur="commitUpdate('${row.id}', {income: this.value}, 'Saved')"></td>
+            <td class="p-2 text-center text-[10px]">
+                <div class="flex flex-col gap-1 items-center justify-center min-w-[90px]">
+                    <div class="relative w-full">
+                        <span class="absolute left-1 top-1/2 -translate-y-1/2 text-[8px] font-black text-emerald-500">Rs.</span>
+                        <input type="text" 
+                               class="w-full bg-slate-50 border-2 border-slate-200 rounded-lg py-1 pl-5 pr-1 text-center font-black text-slate-800 outline-none focus:border-blue-500 transition-all shadow-inner" 
+                               placeholder="In/Inv"
+                               title="Format: आम्दानी/खर्च (उदा: 500/100)"
+                               value="${row.income || '0/0'}" 
+                               onblur="commitUpdate('${row.id}', {income: this.value}, 'Saved')">
+                    </div>
+                    <div class="flex justify-between w-full px-1">
+                        <span class="text-[7px] font-black text-emerald-600 uppercase italic">Income</span>
+                        <span class="text-[7px] font-black text-red-500 uppercase italic">Invest</span>
+                    </div>
+                </div>
+            </td>
             <td class="p-2 text-center text-[8px] font-bold text-slate-400 uppercase">${row.last_updated_by || 'SYS'}</td>
             <td class="p-2">${renderFileIcons(row.documents, row.id)}</td>
         `;
@@ -607,36 +672,57 @@ function applyLogicFilters(reset = true) {
     updatePaginationUI(); // यो थप्नुहोस् ताकि पेज नम्बर अपडेट होस्
 }
 
+// --- ६. AUTH & GLOBAL EVENTS (यो भाग छुटेको थियो) ---
+
 function registerGlobalEvents() {
+    // १. लगइन प्रक्रियालाई पूर्ण गर्ने
+    const loginForm = document.getElementById('loginForm');
+    if (loginForm) {
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
 
-    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            try {
+                const { data, error } = await supabaseClient.auth.signInWithPassword({
+                    email: email,
+                    password: password,
+                });
 
-        e.preventDefault();
+                if (error) throw error;
 
-        const user = document.getElementById('username').value;
+                // प्रोफाइलबाट नाम तान्ने
+                const { data: profile } = await supabaseClient
+                    .from('profiles')
+                    .select('full_name')
+                    .eq('id', data.user.id)
+                    .single();
 
-        const pass = document.getElementById('password').value;
+                STATE.currentUser = { ...data.user, full_name: profile?.full_name || 'Admin' };
+                sessionStorage.setItem('titan_user', JSON.stringify(STATE.currentUser));
+                
+                notify("सफलतापूर्वक लगइन भयो!", "success");
+                loadDashboardInterface();
+            } catch (err) {
+                notify("Error: " + err.message, "error");
+            }
+        });
+    }
 
-        const { data } = await supabaseClient.from('staff').select('*').eq('username', user).eq('password', pass).single();
-
-        if (data) {
-
-            STATE.currentUser = data;
-
-            sessionStorage.setItem('titan_user', JSON.stringify(data));
-
-            loadDashboardInterface();
-
-        } else {
-
-            notify("Username वा Password मिलेन!", "error");
-
-        }
-
-    });
-
-    document.getElementById('searchInput').addEventListener('input', () => applyLogicFilters());
-
-    document.getElementById('logoutBtn').addEventListener('click', () => { sessionStorage.clear(); location.reload(); });
-
+    // २. सर्च इन्पुट इभेन्ट (Search logic)
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', () => applyLogicFilters());
+    }
 }
+
+// ७. LOGOUT & UTILS
+function logout() {
+    sessionStorage.removeItem('titan_user');
+    location.reload();
+}
+
+// कोडको अन्तिममा यो राख्नुहोला (यदि छैन भने)
+registerGlobalEvents();
+validateSession();
+startRealtimeBridge();
