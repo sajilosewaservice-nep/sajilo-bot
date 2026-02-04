@@ -682,8 +682,10 @@ function applyLogicFilters(reset = true) {
 
 // --- ६. AUTH & GLOBAL EVENTS (यो भाग छुटेको थियो) ---
 
+// --- ६. AUTH & GLOBAL EVENTS ---
+
 function registerGlobalEvents() {
-    // १. लगइन प्रक्रियालाई पूर्ण गर्ने
+    // १. लगइन प्रक्रिया
     const loginForm = document.getElementById('loginForm');
     if (loginForm) {
         loginForm.addEventListener('submit', async (e) => {
@@ -699,7 +701,6 @@ function registerGlobalEvents() {
 
                 if (error) throw error;
 
-                // प्रोफाइलबाट नाम तान्ने
                 const { data: profile } = await supabaseClient
                     .from('profiles')
                     .select('full_name')
@@ -717,10 +718,10 @@ function registerGlobalEvents() {
         });
     }
 
-    // २. सर्च इन्पुट इभेन्ट (Search logic)
+    // २. सर्च इन्पुट इभेन्ट
     const searchInput = document.getElementById('searchInput');
     if (searchInput) {
-        searchInput.addEventListener('input', () => applyLogicFilters());
+        searchInput.addEventListener('input', () => applyLogicFilters(true));
     }
 }
 
@@ -730,7 +731,6 @@ function logout() {
     location.reload();
 }
 
-// कोडको अन्तिममा यो राख्नुहोला (यदि छैन भने)
+// ८. APP INITIALIZATION (फाइलको अन्त्यमा)
 registerGlobalEvents();
-validateSession();
-startRealtimeBridge();
+// validateSession() र startRealtimeBridge() माथि सुरुमै कल भइसकेको हुनुपर्छ।
