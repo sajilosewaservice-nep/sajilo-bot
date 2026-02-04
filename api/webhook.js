@@ -67,11 +67,20 @@ app.post('/api/webhook', async (req, res) => {
                 attachments = event.message.attachments.map(a => a.payload.url);
             }
 
-            // क) पुराना विवरण र फेसबुक प्रोफाइल तान्ने
-            const [userProfile, { data: existingCustomer }] = await Promise.all([
-                getFacebookUserProfile(psid),
-                supabase.from('customers').select('*').eq('phone_number', psid).maybeSingle()
-            ]);
+            // १. पहिले डेटाबेसबाट पुरानो डेटा खोज्ने
+const { data: existingCustomer } = await supabase
+    .from('customers')
+    .select('*')
+    .eq('phone_number', psid)
+    .maybeSingle();
+
+// २. अनि मात्र फेसबुकबाट प्रोफाइल तान्ने
+const userProfile = await getFacebookUserProfile(psid);
+
+// ३. नामको निर्णय गर्ने: यदि फेसबुकले नाम दिएन भने पुरानै 'customer_name' राख्ने
+const finalName = (userProfile.name !== "Messenger User") 
+    ? userProfile.name 
+    : (existingCustomer?.customer_name || "New Customer");
 
             // ख) डकुमेन्टहरू मर्ज गर्ने
             let oldDocs = existingCustomer?.documents || [];
@@ -79,23 +88,24 @@ app.post('/api/webhook', async (req, res) => {
 
             const finalMessage = messageText || (attachments.length > 0 ? "📷 Sent an attachment" : "New Message");
 
-            // ग) TITAN v4.0.0 Logic: नयाँलाई 'inquiry' मा राख्ने, पुरानाको 'status' जोगाउने
-            const customerData = {
-                phone_number: psid, // Messenger ID लाई नै Phone Number को रूपमा प्रयोग गरिएको
-                customer_name: userProfile.name,
-                chat_summary: finalMessage,
-                platform: 'messenger',
-                status: existingCustomer ? existingCustomer.status : 'inquiry', // v4.0.0 Logic
-                service: existingCustomer ? existingCustomer.service : 'Other',
-                documents: updatedDocs,
-                last_updated_by: 'MESSENGER_BOT',
-                updated_at: new Date().toISOString()
-            };
+            // ग) TITAN v4.0.0 Logic: फेसबुक ID लाई नै चिनारी (Unique ID) मानेर सिंक गर्ने
+const customerData = {
+    phone_number: psid, // यहाँ फोन नम्बर हुँदैन, फेसबुकको PSID नै बस्छ
+    customer_name: finalName, // 'userProfile.name' को सट्टा 'finalName' राख्नुहोस् ताकि नाम नहराओस्
+    chat_summary: finalMessage,
+    platform: 'messenger',
+    status: existingCustomer ? existingCustomer.status : 'inquiry',
+    service: existingCustomer ? existingCustomer.service : 'Other',
+    documents: updatedDocs,
+    last_updated_by: 'MESSENGER_BOT',
+    updated_at: new Date().toISOString()
+};
 
-            try {
-                await Promise.all([
-                    // Customers टेबल सिंक
-                    supabase.from('customers').upsert(customerData, { onConflict: 'phone_number' }),
+try {
+    await Promise.all([
+        // Customers टेबल सिंक (यहाँ phone_number कोलम भित्र PSID म्याच गरिन्छ)
+        supabase.from('customers').upsert(customerData, { onConflict: 'phone_number' }),
+        // ... बाँकी म्यासेज इन्सर्ट गर्ने कोड उस्तै रहन्छ ...
                     
                     // History को लागि Messages टेबलमा इन्सर्ट
                     supabase.from('messages').insert([{
@@ -105,7 +115,7 @@ app.post('/api/webhook', async (req, res) => {
                         metadata: { urls: attachments, profile_pic: userProfile.profilePic }
                     }])
                 ]);
-                console.log(`✅ CRM Synced: ${userProfile.name} [${customerData.status}]`);
+                console.log(`✅ CRM Synced: ${finalName} [${customerData.status}]`);
             } catch (err) {
                 console.error("❌ Sync Error:", err.message);
             }
