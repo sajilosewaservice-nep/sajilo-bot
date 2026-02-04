@@ -145,26 +145,32 @@ function togglePhotoSelection(id, url, el) {
 }
 
 function showFinancialReport() {
-    // १. आजको स्थानीय मिति (YYYY-MM-DD) निकाल्ने - Timezone झन्झट मुक्त
-    const now = new Date();
-    const offset = now.getTimezoneOffset() * 60000;
-    const localNow = new Date(now - offset);
-    const todayStr = localNow.toISOString().split('T')[0];
+    if (!STATE.allData || STATE.allData.length === 0) {
+        notify("डाटा लोड हुँदैछ, कृपया एकछिन पर्खिनुहोस्!", "error");
+        return;
+    }
 
-    // हप्ताको सुरु (Sunday)
-    const tempDate = new Date(now - offset);
-    const startOfWeek = new Date(tempDate.setDate(tempDate.getDate() - tempDate.getDay())).toISOString().split('T')[0];
-    
-    // महिनाको सुरु (१ गते)
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 12).toISOString().split('T')[0];
+    const now = new Date();
+    // स्थानीय मिति निकाल्ने सहि तरिका
+    const todayStr = now.toLocaleDateString('en-CA'); 
+
+    // हप्ताको सुरु
+    const startOfWeekDate = new Date(now);
+    startOfWeekDate.setDate(now.getDate() - now.getDay());
+    const startOfWeek = startOfWeekDate.toLocaleDateString('en-CA');
+
+    // महिनाको सुरु
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toLocaleDateString('en-CA');
 
     const stats = STATE.allData.reduce((acc, curr) => {
         const status = (curr.status || '').toLowerCase().trim();
         
         if (status === 'success') {
-            // २. डाटाबेसको created_at बाट मिति मात्र निकाल्ने
-            const date = curr.created_at.split('T')[0];
+            const fullDate = curr.created_at || "";
+            const date = fullDate.split('T')[0]; 
             
+            if (!date) return acc;
+
             const incomeValue = curr.income || "0/0";
             const parts = incomeValue.toString().split('/');
             const income = parseFloat(parts[0]) || 0;
@@ -173,7 +179,6 @@ function showFinancialReport() {
             acc.total_in += income;
             acc.total_inv += invest;
 
-            // ३. अब सही स्थानीय मितिसँग तुलना हुन्छ
             if (date === todayStr) { 
                 acc.daily_in += income; 
                 acc.daily_inv += invest; 
@@ -195,15 +200,14 @@ function showFinancialReport() {
         monthly_in: 0, monthly_inv: 0 
     });
 
-    // यहाँ तल तपाईँको बाँकी modalHtml र document.body.insertAdjacentHTML वाला कोड राख्नुहोस्
-
+    // यहाँ पछि तपाईँको modalHtml सुरु हुन्छ... (जुन तपाईँसँग पहिले नै छ)
     const modalHtml = `
         <div id="reportModal" class="fixed inset-0 bg-slate-900/95 backdrop-blur-md flex items-center justify-center z-[999999] p-4">
             <div class="bg-white w-full max-w-2xl rounded-[40px] shadow-2xl overflow-hidden border-4 border-slate-900">
                 <div class="bg-slate-900 p-6 text-white flex justify-between items-center">
                     <div>
                         <h2 class="text-xl font-black italic text-blue-400">FINANCIAL ANALYTICS</h2>
-                        <p class="text-[10px] text-emerald-400 font-bold uppercase">Income & Investment Breakdown</p>
+                        <p class="text-[10px] text-emerald-400 font-bold uppercase">Real-time Income Update</p>
                     </div>
                     <button onclick="document.getElementById('reportModal').remove()" class="text-white hover:text-red-500 text-3xl">&times;</button>
                 </div>
