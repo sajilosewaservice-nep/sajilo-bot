@@ -145,30 +145,26 @@ function togglePhotoSelection(id, url, el) {
 }
 
 function showFinancialReport() {
-    // १. डाटा चेक गर्ने (यदि डाटा नै छैन भने म्यासेज दिने)
-    if (!window.STATE || !STATE.allData || STATE.allData.length === 0) {
-        alert("डाटा लोड हुँदैछ वा फेला परेन। कृपया एकछिन पर्खिनुहोस्!");
-        return;
-    }
-
+    // १. आजको स्थानीय मिति (YYYY-MM-DD) निकाल्ने - Timezone झन्झट मुक्त
     const now = new Date();
     const offset = now.getTimezoneOffset() * 60000;
     const localNow = new Date(now - offset);
     const todayStr = localNow.toISOString().split('T')[0];
 
+    // हप्ताको सुरु (Sunday)
     const tempDate = new Date(now - offset);
     const startOfWeek = new Date(tempDate.setDate(tempDate.getDate() - tempDate.getDay())).toISOString().split('T')[0];
+    
+    // महिनाको सुरु (१ गते)
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 12).toISOString().split('T')[0];
 
     const stats = STATE.allData.reduce((acc, curr) => {
-        // Status check - empty वा null भएमा skip गर्ने
         const status = (curr.status || '').toLowerCase().trim();
         
         if (status === 'success') {
-            // created_at चेक गर्ने
-            const date = (curr.created_at || "").split('T')[0];
-            if (!date) return acc;
-
+            // २. डाटाबेसको created_at बाट मिति मात्र निकाल्ने
+            const date = curr.created_at.split('T')[0];
+            
             const incomeValue = curr.income || "0/0";
             const parts = incomeValue.toString().split('/');
             const income = parseFloat(parts[0]) || 0;
@@ -177,6 +173,7 @@ function showFinancialReport() {
             acc.total_in += income;
             acc.total_inv += invest;
 
+            // ३. अब सही स्थानीय मितिसँग तुलना हुन्छ
             if (date === todayStr) { 
                 acc.daily_in += income; 
                 acc.daily_inv += invest; 
@@ -198,8 +195,7 @@ function showFinancialReport() {
         monthly_in: 0, monthly_inv: 0 
     });
 
-    // ब्राउजरको Console मा हिसाब चेक गर्न (F12 थिचेर हेर्न मिल्छ)
-    console.log("Analytics Calculated:", stats);
+    // यहाँ तल तपाईँको बाँकी modalHtml र document.body.insertAdjacentHTML वाला कोड राख्नुहोस्
 
     const modalHtml = `
         <div id="reportModal" class="fixed inset-0 bg-slate-900/95 backdrop-blur-md flex items-center justify-center z-[999999] p-4">
@@ -209,21 +205,21 @@ function showFinancialReport() {
                         <h2 class="text-xl font-black italic text-blue-400">FINANCIAL ANALYTICS</h2>
                         <p class="text-[10px] text-emerald-400 font-bold uppercase">Income & Investment Breakdown</p>
                     </div>
-                    <button onclick="this.closest('#reportModal').remove()" class="text-white hover:text-red-500 text-3xl">&times;</button>
+                    <button onclick="document.getElementById('reportModal').remove()" class="text-white hover:text-red-500 text-3xl">&times;</button>
                 </div>
                 
                 <div class="p-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div class="p-4 bg-orange-50 rounded-3xl border-2 border-orange-100 text-center">
+                    <div class="p-4 bg-orange-50 rounded-3xl border-2 border-orange-100">
                         <span class="text-[10px] font-black text-orange-600 uppercase">Daily (आज)</span>
                         <div class="text-lg font-black text-slate-900">Rs. ${stats.daily_in}</div>
                         <div class="text-[9px] font-bold text-red-500">Invest: Rs. ${stats.daily_inv}</div>
                     </div>
-                    <div class="p-4 bg-blue-50 rounded-3xl border-2 border-blue-100 text-center">
+                    <div class="p-4 bg-blue-50 rounded-3xl border-2 border-blue-100">
                         <span class="text-[10px] font-black text-blue-600 uppercase">Weekly (हप्ता)</span>
                         <div class="text-lg font-black text-slate-900">Rs. ${stats.weekly_in}</div>
                         <div class="text-[9px] font-bold text-red-500">Invest: Rs. ${stats.weekly_inv}</div>
                     </div>
-                    <div class="p-4 bg-emerald-50 rounded-3xl border-2 border-emerald-100 text-center">
+                    <div class="p-4 bg-emerald-50 rounded-3xl border-2 border-emerald-100">
                         <span class="text-[10px] font-black text-emerald-600 uppercase">Monthly (महिना)</span>
                         <div class="text-lg font-black text-slate-900">Rs. ${stats.monthly_in}</div>
                         <div class="text-[9px] font-bold text-red-500">Invest: Rs. ${stats.monthly_inv}</div>
@@ -244,7 +240,7 @@ function showFinancialReport() {
                 </div>
 
                 <div class="p-4 bg-slate-50 border-t flex gap-2">
-                    <button onclick="this.closest('#reportModal').remove()" class="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase text-xs">बन्द गर्नुहोस्</button>
+                    <button onclick="document.getElementById('reportModal').remove()" class="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase text-xs">बन्द गर्नुहोस्</button>
                 </div>
             </div>
         </div>`;
