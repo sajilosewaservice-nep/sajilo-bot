@@ -40,30 +40,42 @@ CORS(app)
 # ४. डाटाबेस फङ्सनहरू (TitanBot भन्दा माथि हुनैपर्छ)
 def update_db_note(c_id, message, status="working"):
     try:
+        import re
+        # १. मेसेजलाई सफा गर्ने (HTML ट्याग र अनावश्यक कोड हटाउने)
+        clean_msg = re.sub('<[^<]+?>', '', str(message)) 
+        clean_msg = clean_msg.replace('{', '').replace('}', '')[:250] # सन्देशलाई २५० अक्षरमा सिमित गर्ने
+
+        # २. डेटाबेसबाट हालको नोट तान्ने
         res = supabase.table('customers').select('operator_instruction').eq('id', c_id).single().execute()
         current_val = res.data.get('operator_instruction', '') if res.data else ""
-        
-        # मेसेज दोहोरिएमा अपडेट नगर्ने (ब्यान्डविथ जोगाउन)
-        if message in current_val and len(message) > 10:
+
+        # ३. यदि एउटै कुरा बारम्बार आएमा अपडेट नगर्ने (ब्यान्डविथ जोगाउन)
+        if clean_msg in current_val[:300]:
             return 
 
         timestamp = time.strftime('%H:%M:%S')
-        new_entry = f"📍 [{timestamp}] {message}\n{'-'*30}\n{current_val[:2500]}"
+        
+        # ४. नयाँ मेसेजलाई माथि राख्ने र पुरानोलाई ५०० अक्षरमा खुम्च्याउने
+        # यसले गर्दा ड्यासबोर्ड कहिल्यै भद्दा हुँदैन र क्लिक गर्न मिल्ने रहन्छ
+        new_entry = f"📍 [{timestamp}] {clean_msg}\n{current_val[:500]}"
         
         supabase.table('customers').update({
             "operator_instruction": new_entry, 
             "status": status
         }).eq('id', c_id).execute()
+        
     except Exception as e:
         logger.error(f"DB Update Error: {e}")
 
 def get_latest_note(c_id):
     try:
         res = supabase.table('customers').select('operator_instruction').eq('id', c_id).single().execute()
-        return res.data.get('operator_instruction', '') if res.data else ""
+        val = res.data.get('operator_instruction', '') if res.data else ""
+        # कमान्ड चेक गर्दा सफा टेक्स्ट मात्र पठाउने
+        return val.upper()
     except:
         return ""
-
+    
 # ५. टाइटन रोबोट इन्जिन
 class TitanBot:
     def __init__(self, customer, service_type, rules):
