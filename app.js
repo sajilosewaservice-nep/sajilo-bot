@@ -358,21 +358,18 @@ async function launchAIAutoFill(id, service) {
     }
 }
 
-/**
- * TITAN AI - Professional Dashboard Core System
- */
-
-// १. Status Color Logic
 function getStatusColor(status) {
     const s = (status || '').toLowerCase().trim();
     const colors = {
-        inquiry: '#64748b', pending: '#f59e0b',
-        working: '#3b82f6', success: '#10b981', problem: '#ef4444'
+        inquiry: '#64748b', // Slate
+        pending: '#f59e0b', // Amber
+        working: '#3b82f6', // Blue
+        success: '#10b981', // Emerald
+        problem: '#ef4444'  // Red
     };
-    return colors[s] || '#cbd5e1';
+    return colors[s] || '#cbd5e1'; // Default color
 }
 
-// २. Table Builder (with scrolling fix)
 function buildTableRows() {
     const tableBody = document.getElementById('tableBody');
     if(!tableBody) return;
@@ -419,21 +416,36 @@ function buildTableRows() {
                 </select>
             </td>
             <td class="p-2">
-                <textarea class="w-full text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-100 rounded-xl p-2 outline-none h-12 resize-none shadow-inner leading-tight" 
-                    placeholder="Summary..." onblur="commitUpdate('${row.id}', {chat_summary: this.value}, 'Summary Saved')">${row.chat_summary || ''}</textarea>
+                <textarea 
+                    class="w-full text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-100 rounded-xl p-2 outline-none h-12 resize-none shadow-inner leading-tight" 
+                    placeholder="च्याट समरी..."
+                    onblur="commitUpdate('${row.id}', {chat_summary: this.value}, 'Summary Saved')"
+                >${row.chat_summary || ''}</textarea>
             </td>
             <td class="p-2">
-                <div onclick="openLargeNote('${row.id}', \`${(row.operator_instruction || '').replace(/`/g, '\\`').replace(/\n/g, '<br>')}\`)"
-                    class="w-full text-[9px] border rounded-lg p-2 h-12 overflow-hidden cursor-pointer bg-white hover:bg-blue-50 transition-all shadow-sm">
+                <div 
+                    onclick="openLargeNote('${row.id}', \`${(row.operator_instruction || '').replace(/`/g, '\\`').replace(/\n/g, '<br>')}\`)"
+                    class="w-full text-[9px] border rounded-lg p-2 h-12 overflow-hidden cursor-pointer bg-white hover:bg-blue-50 transition-all shadow-sm border-slate-200"
+                >
                     <div class="font-black text-blue-500 mb-1">📋 AI LOGS:</div>
                     <div class="line-clamp-2 text-slate-600">${row.operator_instruction || 'Click to view...'}</div>
                 </div>
             </td>
-            <td class="p-2 text-center">
-                <div class="relative w-full min-w-[90px]">
-                    <span class="absolute left-1 top-1/2 -translate-y-1/2 text-[8px] font-black text-emerald-500">Rs.</span>
-                    <input type="text" class="w-full bg-slate-50 border-2 border-slate-200 rounded-lg py-1 pl-5 text-center font-black text-slate-800 outline-none focus:border-blue-500" 
-                        value="${row.income || '0/0'}" onblur="commitUpdate('${row.id}', {income: this.value}, 'Saved')">
+            <td class="p-2 text-center text-[10px]">
+                <div class="flex flex-col gap-1 items-center justify-center min-w-[90px]">
+                    <div class="relative w-full">
+                        <span class="absolute left-1 top-1/2 -translate-y-1/2 text-[8px] font-black text-emerald-500">Rs.</span>
+                        <input type="text" 
+                               class="w-full bg-slate-50 border-2 border-slate-200 rounded-lg py-1 pl-5 pr-1 text-center font-black text-slate-800 outline-none focus:border-blue-500 transition-all shadow-inner" 
+                               placeholder="In/Inv"
+                               title="Format: आम्दानी/खर्च (उदा: 500/100)"
+                               value="${row.income || '0/0'}" 
+                               onblur="commitUpdate('${row.id}', {income: this.value}, 'Saved')">
+                    </div>
+                    <div class="flex justify-between w-full px-1">
+                        <span class="text-[7px] font-black text-emerald-600 uppercase italic">Income</span>
+                        <span class="text-[7px] font-black text-red-500 uppercase italic">Invest</span>
+                    </div>
                 </div>
             </td>
             <td class="p-2 text-center text-[8px] font-bold text-slate-400 uppercase">${row.last_updated_by || 'SYS'}</td>
@@ -443,156 +455,276 @@ function buildTableRows() {
     });
 }
 
-// ३. Financial Analytics Fix
-function refreshFinancialAnalytics() {
-    const stats = STATE.allData.reduce((acc, curr) => {
-        const s = (curr.status || '').toLowerCase().trim();
-        acc.counts[s] = (acc.counts[s] || 0) + 1;
-        
-        if (s === 'success') {
-            const incomePart = (curr.income || "0/0").split('/')[0];
-            acc.revenue += (parseFloat(incomePart) || 0);
-        }
-        return acc;
-    }, { counts: {}, revenue: 0 });
-
-    const updateUI = (id, val) => { if(document.getElementById(id)) document.getElementById(id).textContent = val; };
-    
-    updateUI('statIncome', `Rs. ${stats.revenue.toLocaleString()}`);
-    updateUI('statSuccess', stats.counts['success'] || 0);
-    updateUI('statPending', stats.counts['pending'] || 0);
-    updateUI('statInquiry', stats.counts['inquiry'] || 0);
-    updateUI('statWorking', stats.counts['working'] || 0);
-    updateUI('statProblem', stats.counts['problem'] || 0); 
-    updateUI('totalRecords', `TOTAL: ${STATE.allData.length} RECORDS`);
-}
-
-// ४. Database & Sync Functions
-async function syncCoreDatabase() {
-    const { data, error } = await supabaseClient.from('customers').select('*').order('created_at', { ascending: false });
-    if (!error) {
-        STATE.allData = data;
-        applyLogicFilters(false);
-        refreshFinancialAnalytics();
-    }
-}
-
-async function commitUpdate(id, updates, msg) {
-    const payload = { ...updates, last_updated_by: STATE.currentUser.full_name, updated_at: new Date().toISOString() };
-    await supabaseClient.from('customers').update(payload).eq('id', id);
-    notify(msg, "success");
-    syncCoreDatabase();
-}
-
-// ५. Pagination & Filters
-function applyLogicFilters(reset = true) {
-    const q = document.getElementById('searchInput')?.value.toLowerCase() || '';
-    STATE.filteredData = q ? STATE.allData.filter(d => 
-        (d.customer_name || '').toLowerCase().includes(q) || (d.phone_number || '').includes(q)
-    ) : [...STATE.allData];
-
-    if(reset) STATE.currentPage = 1;
-    buildTableRows();
-    updatePaginationUI();
-}
-
-function changePage(direction) {
-    const maxPage = Math.ceil(STATE.filteredData.length / SYSTEM_CONFIG.PAGE_SIZE) || 1;
-    if (direction === 'next' && STATE.currentPage < maxPage) STATE.currentPage++;
-    else if (direction === 'prev' && STATE.currentPage > 1) STATE.currentPage--;
-    else return;
-    buildTableRows();
-    updatePaginationUI();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-function updatePaginationUI() {
-    const el = document.getElementById('pageInfo');
-    const max = Math.ceil(STATE.filteredData.length / SYSTEM_CONFIG.PAGE_SIZE) || 1;
-    if(el) el.innerHTML = `PAGE <span style="color: #2563eb; font-weight: 900;">${STATE.currentPage}</span> / ${max}`;
-}
-
-// ६. Modal System
 function openLargeNote(id, content) {
     const modalHtml = `
-        <div id="noteModal" class="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-[999999] flex items-center justify-center p-4">
+        <div id="noteModal" class="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-[9999999] flex items-center justify-center p-4 animate-in fade-in duration-200">
             <div class="bg-white w-full max-w-2xl rounded-[30px] shadow-2xl overflow-hidden border-4 border-slate-900 flex flex-col max-h-[85vh]">
+                
                 <div class="bg-slate-900 p-5 text-white flex justify-between items-center">
-                    <h2 class="font-black italic text-sm uppercase">Titan AI Process Logs</h2>
-                    <button onclick="document.getElementById('noteModal').remove()" class="text-2xl">&times;</button>
+                    <div class="flex items-center gap-3">
+                        <div class="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
+                        <h2 class="font-black italic text-sm tracking-widest uppercase">Titan AI Process Logs</h2>
+                    </div>
+                    <button onclick="document.getElementById('noteModal').remove()" class="text-3xl hover:text-red-500 transition-colors">&times;</button>
                 </div>
-                <div class="p-6 overflow-y-auto flex-1 bg-slate-50 font-mono text-xs" id="modalScrollBody">
-                    <div class="bg-blue-100 border-l-4 border-blue-600 p-4 rounded-r-xl text-blue-900 whitespace-pre-wrap">${content || 'नो लग।'}</div>
+
+                <div class="p-6 overflow-y-auto flex-1 bg-slate-50 space-y-4 font-mono text-xs" id="modalScrollBody">
+                    <div class="bg-blue-100 border-l-4 border-blue-600 p-4 rounded-r-xl text-blue-900 whitespace-pre-wrap leading-relaxed shadow-sm">
+                        ${content || 'अहिलेसम्म कुनै लग रेकर्ड गरिएको छैन।'}
+                    </div>
                 </div>
-                <div class="p-4 bg-white border-t flex flex-col gap-3">
-                    <textarea id="manualNoteInput" class="w-full border rounded-xl p-3 text-xs h-20">${content.replace(/<br>/g, '\n')}</textarea>
+
+                <div class="p-4 bg-white border-t border-slate-200 flex flex-col gap-3">
+                    <textarea id="manualNoteInput" class="w-full border-2 border-slate-200 rounded-2xl p-3 text-xs outline-none focus:border-blue-500 h-20 resize-none" placeholder="यहाँ केही लेख्नुहोस् (उदा: ok)...">${content.replace(/<br>/g, '\n')}</textarea>
                     <div class="flex gap-2">
-                        <button onclick="document.getElementById('noteModal').remove()" class="flex-1 py-2 font-bold text-slate-400">CLOSE</button>
-                        <button onclick="saveManualNote('${id}')" class="flex-[2] py-2 bg-slate-900 text-white rounded-xl font-bold">UPDATE NOTE</button>
+                        <button onclick="document.getElementById('noteModal').remove()" class="flex-1 py-3 font-black text-slate-400 uppercase text-[10px]">Close</button>
+                        <button onclick="saveManualNote('${id}')" class="flex-[2] py-3 bg-slate-900 text-white rounded-xl font-black shadow-lg text-[10px] hover:bg-blue-700 transition-all">UPDATE NOTE / SEND OK</button>
                     </div>
                 </div>
             </div>
         </div>`;
+    
     document.body.insertAdjacentHTML('beforeend', modalHtml);
-    document.getElementById('modalScrollBody').scrollTop = 9999;
+    
+    // सधैँ तल (Latest message) मा स्क्रोल गर्ने
+    const body = document.getElementById('modalScrollBody');
+    body.scrollTop = body.scrollHeight;
 }
 
+// नोट सेभ गर्ने सानो फङ्सन
 async function saveManualNote(id) {
-    const val = document.getElementById('manualNoteInput').value;
-    await commitUpdate(id, { operator_instruction: val }, "Note Updated!");
+    const newVal = document.getElementById('manualNoteInput').value;
+    await commitUpdate(id, { operator_instruction: newVal }, "Note Updated!");
     document.getElementById('noteModal').remove();
 }
 
-// ७. Auth & Interface
-async function loadDashboardInterface() {
-    document.getElementById('loginPage').classList.add('hidden');
-    document.getElementById('dashboardPage').classList.remove('hidden');
-    if(document.getElementById('userDisplay')) document.getElementById('userDisplay').textContent = `OP: ${STATE.currentUser.full_name}`;
-    
-    const btnContainer = document.getElementById('reportBtnContainer');
-    if(btnContainer) btnContainer.innerHTML = `<button onclick="showFinancialReport()" class="bg-emerald-600 text-white px-6 py-2 rounded-2xl font-black text-[11px] uppercase">📊 Analytics Report</button>`;
-    
-    await syncCoreDatabase();
-    startRealtimeBridge();
+async function commitUpdate(id, updates, msg) {
+
+    const payload = { ...updates, last_updated_by: STATE.currentUser.full_name, updated_at: new Date().toISOString() };
+
+    await supabaseClient.from('customers').update(payload).eq('id', id);
+
+    notify(msg, "success");
+
+    syncCoreDatabase();
+
+}
+
+function changePage(direction) {
+    const totalItems = STATE.filteredData.length;
+    const maxPage = Math.ceil(totalItems / SYSTEM_CONFIG.PAGE_SIZE) || 1;
+
+    if (direction === 'next' && STATE.currentPage < maxPage) {
+        STATE.currentPage++;
+    } else if (direction === 'prev' && STATE.currentPage > 1) {
+        STATE.currentPage--;
+    } else {
+        return; // केही नगर्ने
+    }
+
+    buildTableRows();
+    updatePaginationUI();
+    window.scrollTo({ top: 0, behavior: 'smooth' }); // पेज फेरिएपछि माथि सार्ने
+}
+
+function updatePaginationUI() {
+    const pageDisplay = document.getElementById('pageInfo');
+    const totalItems = STATE.filteredData.length;
+    const maxPage = Math.ceil(totalItems / SYSTEM_CONFIG.PAGE_SIZE) || 1;
+
+    if(pageDisplay) {
+        pageDisplay.innerHTML = `PAGE <span style="color: #2563eb; font-weight: 900;">${STATE.currentPage}</span> / ${maxPage}`;
+    }
+}
+
+async function syncCoreDatabase() {
+
+    const { data, error } = await supabaseClient.from('customers').select('*').order('created_at', { ascending: false });
+
+    if (!error) {
+
+        STATE.allData = data;
+
+        applyLogicFilters(false);
+
+        refreshFinancialAnalytics();
+
+    }
+
+}
+
+function refreshFinancialAnalytics() {
+    const stats = STATE.allData.reduce((acc, curr) => {
+        // Status लाई सधैँ सानो अक्षरमा तुलना गर्ने (inquiry, pending, success)
+        const s = (curr.status || '').toLowerCase().trim();
+        acc.counts[s] = (acc.counts[s] || 0) + 1;
+        
+        if (s === 'success') {
+            acc.revenue += (parseFloat(curr.income) || 0);
+        }
+        return acc;
+    }, { counts: {}, revenue: 0 });
+
+    const updateUI = (id, val) => { 
+    if(document.getElementById(id)) document.getElementById(id).textContent = val; 
+};
+    
+updateUI('statIncome', `Rs. ${stats.revenue.toLocaleString()}`);
+updateUI('statSuccess', stats.counts['success'] || 0);
+updateUI('statPending', stats.counts['pending'] || 0);
+updateUI('statInquiry', stats.counts['inquiry'] || 0);
+updateUI('statWorking', stats.counts['working'] || 0);
+// Problem को लागि यो लाइन थप्नुहोस् (यदि HTML मा statProblem ID छ भने)
+updateUI('statProblem', stats.counts['problem'] || 0); 
+
+updateUI('totalRecords', `TOTAL: ${STATE.allData.length} RECORDS`);
 }
 
 function startRealtimeBridge() {
-    supabaseClient.channel('any').on('postgres_changes', { event: '*', schema: 'public', table: 'customers' }, (payload) => {
-        if (payload.eventType === 'INSERT') {
-            new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3').play();
-            notify("नयाँ ग्राहक थपियो!", "success");
-        }
-        syncCoreDatabase();
-    }).subscribe();
+
+    supabaseClient.channel('any').on('postgres_changes', { event: '*', schema: 'public', table: 'customers' }, (payload) => {
+
+        if (payload.eventType === 'INSERT') {
+
+            new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3').play();
+
+            notify("नयाँ ग्राहक थपियो!", "success");
+
+        }
+
+        syncCoreDatabase();
+
+    }).subscribe();
+
 }
 
-function registerGlobalEvents() {
-    const loginForm = document.getElementById('loginForm');
-    if (loginForm) {
-        loginForm.onsubmit = async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            try {
-                const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-                if (error) throw error;
-                const { data: profile } = await supabaseClient.from('profiles').select('full_name').eq('id', data.user.id).single();
-                STATE.currentUser = { ...data.user, full_name: profile?.full_name || 'Admin' };
-                sessionStorage.setItem('titan_user', JSON.stringify(STATE.currentUser));
-                notify("सफलतापूर्वक लगइन भयो!", "success");
-                loadDashboardInterface();
-            } catch (err) { notify("Error: " + err.message, "error"); }
-        };
-    }
-    document.getElementById('searchInput')?.addEventListener('input', () => applyLogicFilters(true));
+// --- ६. AUTH & GLOBAL EVENTS ---
+
+function validateSession() {
+
+    const sessionToken = sessionStorage.getItem('titan_user');
+
+    if (sessionToken) {
+
+        STATE.currentUser = JSON.parse(sessionToken);
+
+        loadDashboardInterface();
+
+    } else {
+
+        document.getElementById('loginPage').classList.remove('hidden');
+
+    }
+
+}
+
+async function loadDashboardInterface() {
+
+    document.getElementById('loginPage').classList.add('hidden');
+
+    document.getElementById('dashboardPage').classList.remove('hidden');
+
+    // Set Operator Name
+
+    if(document.getElementById('userDisplay')) {
+
+        document.getElementById('userDisplay').textContent = `OP: ${STATE.currentUser.full_name}`;
+
+    }
+
+    // --- थपिएको: Financial Report बटनलाई प्रोग्रामेटिक रूपमा सक्रिय गर्ने ---
+
+    const btnContainer = document.getElementById('reportBtnContainer');
+
+    if(btnContainer) {
+
+        btnContainer.innerHTML = `<button onclick="showFinancialReport()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-2xl font-black text-[11px] shadow-lg transition-all active:scale-95 uppercase">📊 Analytics Report</button>`;
+
+    }
+
+    await syncCoreDatabase();
+
 }
 
 function notify(msg, type) {
-    const n = document.createElement('div');
-    n.className = `fixed bottom-10 left-1/2 -translate-x-1/2 px-10 py-4 rounded-3xl text-white font-black z-[1000000] shadow-2xl animate-bounce ${type==='success'?'bg-slate-900 border-2 border-emerald-500':'bg-red-600'}`;
-    n.textContent = msg;
-    document.body.appendChild(n);
-    setTimeout(() => n.remove(), 3000);
+
+    const n = document.createElement('div');
+
+    n.className = `fixed bottom-10 left-1/2 -translate-x-1/2 px-10 py-4 rounded-3xl text-white font-black z-[1000000] shadow-2xl animate-bounce ${type==='success'?'bg-slate-900 border-2 border-emerald-500':'bg-red-600'}`;
+
+    n.textContent = msg;
+
+    document.body.appendChild(n);
+
+    setTimeout(() => n.remove(), 3000);
+
 }
 
-function logout() { sessionStorage.removeItem('titan_user'); location.reload(); }
+function applyLogicFilters(reset = true) {
+    const searchInput = document.getElementById('searchInput');
+    const q = searchInput ? searchInput.value.toLowerCase() : '';
+    
+    // सुधार: यदि सर्च खाली छ भने सबै डाटा देखाउने, नत्र फिल्टर गर्ने
+    if (!q) {
+        STATE.filteredData = [...STATE.allData];
+    } else {
+        STATE.filteredData = STATE.allData.filter(d => 
+            (d.customer_name || '').toLowerCase().includes(q) || 
+            (d.phone_number || '').includes(q)
+        );
+    }
+
+    if(reset) STATE.currentPage = 1;
+    
+    buildTableRows();
+    updatePaginationUI(); // यो थप्नुहोस् ताकि पेज नम्बर अपडेट होस्
+}
+
+// --- ६. AUTH & GLOBAL EVENTS ---
+
+function registerGlobalEvents() {
+    // १. लगइन प्रक्रिया
+    const loginForm = document.getElementById('loginForm');
+    if (loginForm) {
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const { data, error } = await supabaseClient.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
+
+                if (error) throw error;
+
+                const { data: profile } = await supabaseClient
+                    .from('profiles')
+                    .select('full_name')
+                    .eq('id', data.user.id)
+                    .single();
+
+                STATE.currentUser = { ...data.user, full_name: profile?.full_name || 'Admin' };
+                sessionStorage.setItem('titan_user', JSON.stringify(STATE.currentUser));
+                
+                notify("सफलतापूर्वक लगइन भयो!", "success");
+                loadDashboardInterface();
+            } catch (err) {
+                notify("Error: " + err.message, "error");
+            }
+        });
+    }
+
+    // २. सर्च इन्पुट इभेन्ट
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', () => applyLogicFilters(true));
+    }
+}
+
+// ७. LOGOUT & UTILS
+function logout() {
+    sessionStorage.removeItem('titan_user');
+    location.reload();
+}
