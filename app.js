@@ -145,53 +145,57 @@ function togglePhotoSelection(id, url, el) {
 }
 
 function showFinancialReport() {
-// १. फाइनान्सियल रिपोर्ट फङ्सन (Splits income/invest from "500/100" format)
-const now = new Date();
-const todayStr = now.toISOString().split('T')[0];
-// हप्ताको सुरु (Sunday) पत्ता लगाउने
-const tempDate = new Date();
-const startOfWeek = new Date(tempDate.setDate(tempDate.getDate() - tempDate.getDay())).toISOString().split('T')[0];
-// महिनाको सुरु (१ गते) पत्ता लगाउने
-const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+    // १. आजको स्थानीय मिति (YYYY-MM-DD) निकाल्ने - Timezone झन्झट मुक्त
+    const now = new Date();
+    const offset = now.getTimezoneOffset() * 60000;
+    const localNow = new Date(now - offset);
+    const todayStr = localNow.toISOString().split('T')[0];
 
-const stats = STATE.allData.reduce((acc, curr) => {
-    const status = (curr.status || '').toLowerCase().trim();
+    // हप्ताको सुरु (Sunday)
+    const tempDate = new Date(now - offset);
+    const startOfWeek = new Date(tempDate.setDate(tempDate.getDate() - tempDate.getDay())).toISOString().split('T')[0];
     
-    // केवल 'success' भएकाहरूको मात्र हिसाब गर्ने
-    if (status === 'success') {
-        const date = curr.created_at.split('T')[0];
+    // महिनाको सुरु (१ गते)
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 12).toISOString().split('T')[0];
+
+    const stats = STATE.allData.reduce((acc, curr) => {
+        const status = (curr.status || '').toLowerCase().trim();
         
-        // "income/invest" (उदा: 500/100) लाई टुक्राउने
-        const incomeValue = curr.income || "0/0";
-        const parts = incomeValue.toString().split('/');
-        const income = parseFloat(parts[0]) || 0;
-        const invest = parseFloat(parts[1]) || 0;
+        if (status === 'success') {
+            // २. डाटाबेसको created_at बाट मिति मात्र निकाल्ने
+            const date = curr.created_at.split('T')[0];
+            
+            const incomeValue = curr.income || "0/0";
+            const parts = incomeValue.toString().split('/');
+            const income = parseFloat(parts[0]) || 0;
+            const invest = parseFloat(parts[1]) || 0;
 
-        // जम्मा हिसाब
-        acc.total_in += income;
-        acc.total_inv += invest;
+            acc.total_in += income;
+            acc.total_inv += invest;
 
-        // समय अनुसार फिल्टर (Daily, Weekly, Monthly)
-        if (date === todayStr) { 
-            acc.daily_in += income; 
-            acc.daily_inv += invest; 
+            // ३. अब सही स्थानीय मितिसँग तुलना हुन्छ
+            if (date === todayStr) { 
+                acc.daily_in += income; 
+                acc.daily_inv += invest; 
+            }
+            if (date >= startOfWeek) { 
+                acc.weekly_in += income; 
+                acc.weekly_inv += invest; 
+            }
+            if (date >= startOfMonth) { 
+                acc.monthly_in += income; 
+                acc.monthly_inv += invest; 
+            }
         }
-        if (date >= startOfWeek) { 
-            acc.weekly_in += income; 
-            acc.weekly_inv += invest; 
-        }
-        if (date >= startOfMonth) { 
-            acc.monthly_in += income; 
-            acc.monthly_inv += invest; 
-        }
-    }
-    return acc;
-}, { 
-    total_in: 0, total_inv: 0, 
-    daily_in: 0, daily_inv: 0, 
-    weekly_in: 0, weekly_inv: 0, 
-    monthly_in: 0, monthly_inv: 0 
-});
+        return acc;
+    }, { 
+        total_in: 0, total_inv: 0, 
+        daily_in: 0, daily_inv: 0, 
+        weekly_in: 0, weekly_inv: 0, 
+        monthly_in: 0, monthly_inv: 0 
+    });
+
+    // यहाँ तल तपाईँको बाँकी modalHtml र document.body.insertAdjacentHTML वाला कोड राख्नुहोस्
 
     const modalHtml = `
         <div id="reportModal" class="fixed inset-0 bg-slate-900/95 backdrop-blur-md flex items-center justify-center z-[999999] p-4">
