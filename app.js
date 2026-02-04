@@ -455,6 +455,7 @@ function buildTableRows() {
     });
 }
 
+// --- ५. NOTES & UPDATES (Full Version) ---
 function openLargeNote(id, content) {
     const modalHtml = `
         <div id="noteModal" class="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-[9999999] flex items-center justify-center p-4 animate-in fade-in duration-200">
@@ -475,7 +476,7 @@ function openLargeNote(id, content) {
                 </div>
 
                 <div class="p-4 bg-white border-t border-slate-200 flex flex-col gap-3">
-                    <textarea id="manualNoteInput" class="w-full border-2 border-slate-200 rounded-2xl p-3 text-xs outline-none focus:border-blue-500 h-20 resize-none" placeholder="यहाँ केही लेख्नुहोस् (उदा: ok)...">${content.replace(/<br>/g, '\n')}</textarea>
+                    <textarea id="manualNoteInput" class="w-full border-2 border-slate-200 rounded-2xl p-3 text-xs outline-none focus:border-blue-500 h-20 resize-none" placeholder="यहाँ केही लेख्नुहोस् (उदा: ok)...">${(content || '').replace(/<br>/g, '\n')}</textarea>
                     <div class="flex gap-2">
                         <button onclick="document.getElementById('noteModal').remove()" class="flex-1 py-3 font-black text-slate-400 uppercase text-[10px]">Close</button>
                         <button onclick="saveManualNote('${id}')" class="flex-[2] py-3 bg-slate-900 text-white rounded-xl font-black shadow-lg text-[10px] hover:bg-blue-700 transition-all">UPDATE NOTE / SEND OK</button>
@@ -485,13 +486,10 @@ function openLargeNote(id, content) {
         </div>`;
     
     document.body.insertAdjacentHTML('beforeend', modalHtml);
-    
-    // सधैँ तल (Latest message) मा स्क्रोल गर्ने
     const body = document.getElementById('modalScrollBody');
-    body.scrollTop = body.scrollHeight;
+    if(body) body.scrollTop = body.scrollHeight;
 }
 
-// नोट सेभ गर्ने सानो फङ्सन
 async function saveManualNote(id) {
     const newVal = document.getElementById('manualNoteInput').value;
     await commitUpdate(id, { operator_instruction: newVal }, "Note Updated!");
@@ -499,17 +497,13 @@ async function saveManualNote(id) {
 }
 
 async function commitUpdate(id, updates, msg) {
-
-    const payload = { ...updates, last_updated_by: STATE.currentUser.full_name, updated_at: new Date().toISOString() };
-
-    await supabaseClient.from('customers').update(payload).eq('id', id);
-
-    notify(msg, "success");
-
-    syncCoreDatabase();
-
+    const payload = { ...updates, last_updated_by: STATE.currentUser?.full_name || 'Admin', updated_at: new Date().toISOString() };
+    await supabaseClient.from('customers').update(payload).eq('id', id);
+    notify(msg, "success");
+    syncCoreDatabase();
 }
 
+// --- ६. PAGINATION & DATA SYNC ---
 function changePage(direction) {
     const totalItems = STATE.filteredData.length;
     const maxPage = Math.ceil(totalItems / SYSTEM_CONFIG.PAGE_SIZE) || 1;
@@ -519,12 +513,12 @@ function changePage(direction) {
     } else if (direction === 'prev' && STATE.currentPage > 1) {
         STATE.currentPage--;
     } else {
-        return; // केही नगर्ने
+        return;
     }
 
     buildTableRows();
     updatePaginationUI();
-    window.scrollTo({ top: 0, behavior: 'smooth' }); // पेज फेरिएपछि माथि सार्ने
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function updatePaginationUI() {
@@ -538,133 +532,87 @@ function updatePaginationUI() {
 }
 
 async function syncCoreDatabase() {
-
-    const { data, error } = await supabaseClient.from('customers').select('*').order('created_at', { ascending: false });
-
-    if (!error) {
-
-        STATE.allData = data;
-
-        applyLogicFilters(false);
-
-        refreshFinancialAnalytics();
-
-    }
-
+    const { data, error } = await supabaseClient.from('customers').select('*').order('created_at', { ascending: false });
+    if (!error) {
+        STATE.allData = data;
+        applyLogicFilters(false);
+        refreshFinancialAnalytics();
+    }
 }
 
 function refreshFinancialAnalytics() {
-    const stats = STATE.allData.reduce((acc, curr) => {
-        // Status लाई सधैँ सानो अक्षरमा तुलना गर्ने (inquiry, pending, success)
-        const s = (curr.status || '').toLowerCase().trim();
-        acc.counts[s] = (acc.counts[s] || 0) + 1;
-        
-        if (s === 'success') {
-            acc.revenue += (parseFloat(curr.income) || 0);
-        }
-        return acc;
-    }, { counts: {}, revenue: 0 });
+    const stats = STATE.allData.reduce((acc, curr) => {
+        const s = (curr.status || '').toLowerCase().trim();
+        acc.counts[s] = (acc.counts[s] || 0) + 1;
+        if (s === 'success') {
+            acc.revenue += (parseFloat(curr.income) || 0);
+        }
+        return acc;
+    }, { counts: {}, revenue: 0 });
 
-    const updateUI = (id, val) => { 
-    if(document.getElementById(id)) document.getElementById(id).textContent = val; 
-};
-    
-updateUI('statIncome', `Rs. ${stats.revenue.toLocaleString()}`);
-updateUI('statSuccess', stats.counts['success'] || 0);
-updateUI('statPending', stats.counts['pending'] || 0);
-updateUI('statInquiry', stats.counts['inquiry'] || 0);
-updateUI('statWorking', stats.counts['working'] || 0);
-// Problem को लागि यो लाइन थप्नुहोस् (यदि HTML मा statProblem ID छ भने)
-updateUI('statProblem', stats.counts['problem'] || 0); 
-
-updateUI('totalRecords', `TOTAL: ${STATE.allData.length} RECORDS`);
+    const updateUI = (id, val) => { 
+        if(document.getElementById(id)) document.getElementById(id).textContent = val; 
+    };
+    
+    updateUI('statIncome', `Rs. ${stats.revenue.toLocaleString()}`);
+    updateUI('statSuccess', stats.counts['success'] || 0);
+    updateUI('statPending', stats.counts['pending'] || 0);
+    updateUI('statInquiry', stats.counts['inquiry'] || 0);
+    updateUI('statWorking', stats.counts['working'] || 0);
+    updateUI('statProblem', stats.counts['problem'] || 0); 
+    updateUI('totalRecords', `TOTAL: ${STATE.allData.length} RECORDS`);
 }
 
 function startRealtimeBridge() {
-
-    supabaseClient.channel('any').on('postgres_changes', { event: '*', schema: 'public', table: 'customers' }, (payload) => {
-
-        if (payload.eventType === 'INSERT') {
-
-            new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3').play();
-
-            notify("नयाँ ग्राहक थपियो!", "success");
-
-        }
-
-        syncCoreDatabase();
-
-    }).subscribe();
-
+    supabaseClient.channel('any').on('postgres_changes', { event: '*', schema: 'public', table: 'customers' }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+            new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3').play();
+            notify("नयाँ ग्राहक थपियो!", "success");
+        }
+        syncCoreDatabase();
+    }).subscribe();
 }
 
-// --- ६. AUTH & GLOBAL EVENTS ---
-
+// --- ७. AUTH & DASHBOARD LOGIC ---
 function validateSession() {
-
-    const sessionToken = sessionStorage.getItem('titan_user');
-
-    if (sessionToken) {
-
-        STATE.currentUser = JSON.parse(sessionToken);
-
-        loadDashboardInterface();
-
-    } else {
-
-        document.getElementById('loginPage').classList.remove('hidden');
-
-    }
-
+    const sessionToken = sessionStorage.getItem('titan_user');
+    if (sessionToken) {
+        STATE.currentUser = JSON.parse(sessionToken);
+        loadDashboardInterface();
+    } else {
+        document.getElementById('loginPage').classList.remove('hidden');
+        document.getElementById('dashboardPage').classList.add('hidden');
+    }
 }
 
 async function loadDashboardInterface() {
+    document.getElementById('loginPage').classList.add('hidden');
+    document.getElementById('dashboardPage').classList.remove('hidden');
 
-    document.getElementById('loginPage').classList.add('hidden');
+    if(document.getElementById('userDisplay')) {
+        document.getElementById('userDisplay').textContent = `OP: ${STATE.currentUser.full_name}`;
+    }
 
-    document.getElementById('dashboardPage').classList.remove('hidden');
+    const btnContainer = document.getElementById('reportBtnContainer');
+    if(btnContainer) {
+        btnContainer.innerHTML = `<button onclick="showFinancialReport()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-2xl font-black text-[11px] shadow-lg transition-all active:scale-95 uppercase">📊 Analytics Report</button>`;
+    }
 
-    // Set Operator Name
-
-    if(document.getElementById('userDisplay')) {
-
-        document.getElementById('userDisplay').textContent = `OP: ${STATE.currentUser.full_name}`;
-
-    }
-
-    // --- थपिएको: Financial Report बटनलाई प्रोग्रामेटिक रूपमा सक्रिय गर्ने ---
-
-    const btnContainer = document.getElementById('reportBtnContainer');
-
-    if(btnContainer) {
-
-        btnContainer.innerHTML = `<button onclick="showFinancialReport()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-2xl font-black text-[11px] shadow-lg transition-all active:scale-95 uppercase">📊 Analytics Report</button>`;
-
-    }
-
-    await syncCoreDatabase();
-
+    await syncCoreDatabase();
 }
 
 function notify(msg, type) {
-
-    const n = document.createElement('div');
-
-    n.className = `fixed bottom-10 left-1/2 -translate-x-1/2 px-10 py-4 rounded-3xl text-white font-black z-[1000000] shadow-2xl animate-bounce ${type==='success'?'bg-slate-900 border-2 border-emerald-500':'bg-red-600'}`;
-
-    n.textContent = msg;
-
-    document.body.appendChild(n);
-
-    setTimeout(() => n.remove(), 3000);
-
+    const n = document.createElement('div');
+    n.className = `fixed bottom-10 left-1/2 -translate-x-1/2 px-10 py-4 rounded-3xl text-white font-black z-[1000000] shadow-2xl animate-bounce ${type==='success'?'bg-slate-900 border-2 border-emerald-500':'bg-red-600'}`;
+    n.textContent = msg;
+    document.body.appendChild(n);
+    setTimeout(() => n.remove(), 3000);
 }
 
 function applyLogicFilters(reset = true) {
     const searchInput = document.getElementById('searchInput');
     const q = searchInput ? searchInput.value.toLowerCase() : '';
     
-    // सुधार: यदि सर्च खाली छ भने सबै डाटा देखाउने, नत्र फिल्टर गर्ने
     if (!q) {
         STATE.filteredData = [...STATE.allData];
     } else {
@@ -675,41 +623,23 @@ function applyLogicFilters(reset = true) {
     }
 
     if(reset) STATE.currentPage = 1;
-    
     buildTableRows();
-    updatePaginationUI(); // यो थप्नुहोस् ताकि पेज नम्बर अपडेट होस्
+    updatePaginationUI();
 }
 
-// --- ६. AUTH & GLOBAL EVENTS (यो भाग छुटेको थियो) ---
-
-// --- ६. AUTH & GLOBAL EVENTS ---
-
 function registerGlobalEvents() {
-    // १. लगइन प्रक्रिया
     const loginForm = document.getElementById('loginForm');
     if (loginForm) {
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
-
             try {
-                const { data, error } = await supabaseClient.auth.signInWithPassword({
-                    email: email,
-                    password: password,
-                });
-
+                const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
                 if (error) throw error;
-
-                const { data: profile } = await supabaseClient
-                    .from('profiles')
-                    .select('full_name')
-                    .eq('id', data.user.id)
-                    .single();
-
+                const { data: profile } = await supabaseClient.from('profiles').select('full_name').eq('id', data.user.id).single();
                 STATE.currentUser = { ...data.user, full_name: profile?.full_name || 'Admin' };
                 sessionStorage.setItem('titan_user', JSON.stringify(STATE.currentUser));
-                
                 notify("सफलतापूर्वक लगइन भयो!", "success");
                 loadDashboardInterface();
             } catch (err) {
@@ -718,19 +648,20 @@ function registerGlobalEvents() {
         });
     }
 
-    // २. सर्च इन्पुट इभेन्ट
     const searchInput = document.getElementById('searchInput');
     if (searchInput) {
         searchInput.addEventListener('input', () => applyLogicFilters(true));
     }
 }
 
-// ७. LOGOUT & UTILS
 function logout() {
     sessionStorage.removeItem('titan_user');
     location.reload();
 }
 
-// ८. APP INITIALIZATION (फाइलको अन्त्यमा)
-registerGlobalEvents();
-// validateSession() र startRealtimeBridge() माथि सुरुमै कल भइसकेको हुनुपर्छ।
+// --- ८. APP INITIALIZATION (यहाँ छ ड्यासबोर्ड खोल्ने चाबी) ---
+document.addEventListener('DOMContentLoaded', () => {
+    registerGlobalEvents();
+    validateSession(); // यसले गर्दा ड्यासबोर्ड खुल्छ
+    startRealtimeBridge(); // यसले नयाँ डाटा सुन्छ
+});
