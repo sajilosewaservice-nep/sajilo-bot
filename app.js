@@ -587,11 +587,11 @@ function notify(msg, type) {
 
 }
 
+// --- ६. फिल्टर लोजिक ---
 function applyLogicFilters(reset = true) {
     const searchInput = document.getElementById('searchInput');
-    const q = searchInput ? searchInput.value.toLowerCase() : '';
+    const q = searchInput ? searchInput.value.toLowerCase().trim() : '';
     
-    // सुधार: यदि सर्च खाली छ भने सबै डाटा देखाउने, नत्र फिल्टर गर्ने
     if (!q) {
         STATE.filteredData = [...STATE.allData];
     } else {
@@ -604,39 +604,48 @@ function applyLogicFilters(reset = true) {
     if(reset) STATE.currentPage = 1;
     
     buildTableRows();
-    updatePaginationUI(); // यो थप्नुहोस् ताकि पेज नम्बर अपडेट होस्
+    updatePaginationUI();
 }
 
+// --- ७. ग्लोबल इभेन्टहरू (Login & Search) ---
 function registerGlobalEvents() {
+    const loginForm = document.getElementById('loginForm');
+    if (loginForm) {
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const userVal = document.getElementById('username').value.trim();
+            const passVal = document.getElementById('password').value.trim();
 
-    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            // सुधारेको कोवेरी: Error handle गर्न 'data' र 'error' दुवै चेक गर्ने
+            const { data, error } = await supabaseClient
+                .from('staff')
+                .select('*')
+                .eq('username', userVal)
+                .eq('password', passVal)
+                .maybeSingle(); // single() को साटो maybeSingle() राम्रो हुन्छ
 
-        e.preventDefault();
+            if (data && !error) {
+                STATE.currentUser = data;
+                sessionStorage.setItem('titan_user', JSON.stringify(data));
+                notify("सफलतापूर्वक लगइन भयो!", "success");
+                loadDashboardInterface();
+            } else {
+                notify("Username वा Password मिलेन!", "error");
+            }
+        });
+    }
 
-        const user = document.getElementById('username').value;
+    const sInput = document.getElementById('searchInput');
+    if (sInput) {
+        sInput.addEventListener('input', () => applyLogicFilters(true));
+    }
 
-        const pass = document.getElementById('password').value;
-
-        const { data } = await supabaseClient.from('staff').select('*').eq('username', user).eq('password', pass).single();
-
-        if (data) {
-
-            STATE.currentUser = data;
-
-            sessionStorage.setItem('titan_user', JSON.stringify(data));
-
-            loadDashboardInterface();
-
-        } else {
-
-            notify("Username वा Password मिलेन!", "error");
-
-        }
-
-    });
-
-    document.getElementById('searchInput').addEventListener('input', () => applyLogicFilters());
-
-    document.getElementById('logoutBtn').addEventListener('click', () => { sessionStorage.clear(); location.reload(); });
-
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => { 
+            sessionStorage.clear(); 
+            location.reload(); 
+        });
+    }
 }
