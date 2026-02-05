@@ -325,9 +325,17 @@ function buildTableRows() {
         const tr = document.createElement('tr');
         tr.className = 'border-b hover:bg-slate-50 transition-colors';
         
+        // --- सुधारेको च्याट लोजिक ---
+        // यदि प्लेटफर्म ह्वाट्सएप हो भने फोन नम्बर प्रयोग गर्ने, नत्र मेसेन्जर लिङ्क बनाउने
+        const chatUrl = (row.platform === 'whatsapp') 
+            ? `https://wa.me/${row.phone_number?.replace(/\D/g, '') || row.sender_id}` 
+            : `https://m.me/${row.sender_id}`;
+
         tr.innerHTML = `
             <td class="p-2 text-[10px] font-mono text-slate-500">${new Date(row.created_at).toLocaleDateString('ne-NP')}</td>
-            <td class="p-1 text-center">${row.platform === 'whatsapp' ? '🟢' : '🔵'}</td>
+            <td class="p-1 text-center">
+                ${row.platform === 'whatsapp' ? '<span title="WhatsApp">🟢</span>' : '<span title="Messenger">🔵</span>'}
+            </td>
             <td class="p-2">
                 <div class="font-bold text-[11px] truncate max-w-[100px]">${row.customer_name || 'New Lead'}</div>
                 <div class="text-[9px] text-blue-600 font-bold">${row.phone_number}</div>
@@ -345,8 +353,8 @@ function buildTableRows() {
             </td>
             <td class="p-2">
                 <div class="flex flex-col gap-1">
-                    <button onclick="launchAIAutoFill('${row.id}', '${row.service}')" class="bg-orange-500 text-white text-[8px] font-black py-1 px-2 rounded hover:scale-105 transition-transform">🚀 AUTO</button>
-                    <button onclick="window.open(isNaN('${row.sender_id}') ? 'https://m.me/${row.sender_id}' : 'https://wa.me/${row.sender_id}')" class="bg-blue-600 text-white text-[8px] font-black py-1 px-2 rounded hover:scale-105 transition-transform">💬 CHAT</button>
+                    <button onclick="launchAIAutoFill('${row.id}', '${row.service}')" class="bg-orange-500 text-white text-[8px] font-black py-1 px-2 rounded hover:scale-105 transition-transform shadow-sm">🚀 AUTO</button>
+                    <button onclick="window.open('${chatUrl}', '_blank')" class="bg-blue-600 text-white text-[8px] font-black py-1 px-2 rounded hover:scale-105 transition-transform shadow-sm">💬 CHAT</button>
                 </div>
             </td>
             <td class="p-2">
@@ -380,6 +388,18 @@ function buildTableRows() {
         `;
         tableBody.appendChild(tr);
     });
+}
+
+// २. यो फिल्टर फङ्सन पनि app.js मा थप्नुहोस् (यदि छैन भने)
+function filterByPlatform(p) {
+    if (p === 'all') {
+        STATE.filteredData = [...STATE.allData];
+    } else {
+        STATE.filteredData = STATE.allData.filter(d => (d.platform || '').toLowerCase() === p.toLowerCase());
+    }
+    STATE.currentPage = 1;
+    buildTableRows();
+    updatePaginationUI();
 }
 
 function openLargeNote(id, content) {
@@ -588,23 +608,42 @@ function notify(msg, type) {
 }
 
 // --- ६. फिल्टर लोजिक ---
+// --- ६. फिल्टर लोजिक (सुधारिएको: Search र Platform दुवै चल्ने) ---
 function applyLogicFilters(reset = true) {
     const searchInput = document.getElementById('searchInput');
     const q = searchInput ? searchInput.value.toLowerCase().trim() : '';
     
-    if (!q) {
-        STATE.filteredData = [...STATE.allData];
-    } else {
-        STATE.filteredData = STATE.allData.filter(d => 
+    // १. सुरुमा सबै डेटा लिने
+    let filtered = [...STATE.allData];
+
+    // २. सर्च कोवेरी (नाम वा नम्बर) फिल्टर गर्ने
+    if (q) {
+        filtered = filtered.filter(d => 
             (d.customer_name || '').toLowerCase().includes(q) || 
             (d.phone_number || '').includes(q)
         );
     }
 
+    // ३. प्लेटफर्म फिल्टर (WA/MSN बटन थिचिएको छ भने)
+    // STATE.selectedPlatform मा 'whatsapp' वा 'messenger' बस्छ
+    if (STATE.selectedPlatform && STATE.selectedPlatform !== 'all') {
+        filtered = filtered.filter(d => 
+            (d.platform || '').toLowerCase() === STATE.selectedPlatform.toLowerCase()
+        );
+    }
+
+    STATE.filteredData = filtered;
+
     if(reset) STATE.currentPage = 1;
     
     buildTableRows();
     updatePaginationUI();
+}
+
+// प्लेटफर्म बटन थिच्दा चल्ने नयाँ सहयोगी फङ्सन
+function filterByPlatform(p) {
+    STATE.selectedPlatform = p; // कुन प्लेटफर्म छानेको याद राख्ने (all, whatsapp, messenger)
+    applyLogicFilters(true);
 }
 
 // --- ७. ग्लोबल इभेन्टहरू (Login & Search) ---
