@@ -130,3 +130,32 @@ client.on('message', async (msg) => {
         logger.error(`❌ Processing Error: ${err.message}`);
     }
 });
+
+// ६. सर्भर र क्लाइन्ट स्टार्टअप (Improved for Debugging)
+const startEngine = async () => {
+    try {
+        logger.info('🛰️ Starting Titan API and WhatsApp Engine...');
+        
+        // पहिले सर्भर चलाउने
+        server.listen(PORT, () => {
+            logger.info(`✅ Server is live on Port ${PORT}`);
+        });
+
+        // त्यसपछि ह्वाट्सएप सुरु गर्ने
+        logger.info('⏳ Initializing WhatsApp Client...');
+        await client.initialize();
+        
+    } catch (err) {
+        logger.error(`❌ CRITICAL STARTUP ERROR: ${err.message}`);
+        process.exit(1); // एरर आएमा बन्द गर्ने ताकि nodemon ले थाहा पाओस्
+    }
+};
+
+startEngine();
+
+// ७. सुरक्षित एक्जिट
+process.on('SIGINT', async () => {
+    logger.info('🛑 Shutting down...');
+    await client.destroy();
+    process.exit(0);
+});
