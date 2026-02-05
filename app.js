@@ -446,15 +446,41 @@ async function saveManualNote(id) {
 }
 
 async function commitUpdate(id, updates, msg) {
+    try {
+        // १. पेलोड तयार पार्ने
+        const payload = { 
+            ...updates, 
+            last_updated_by: STATE.currentUser.full_name, 
+            updated_at: new Date().toISOString() 
+        };
 
-    const payload = { ...updates, last_updated_by: STATE.currentUser.full_name, updated_at: new Date().toISOString() };
+        // २. अपडेट गर्ने र अपडेट भएको डेटा फिर्ता माग्ने (.select())
+        const { data, error } = await supabaseClient
+            .from('customers')
+            .update(payload)
+            .eq('id', id)
+            .select(); 
 
-    await supabaseClient.from('customers').update(payload).eq('id', id);
+        if (!error && data && data.length > 0) {
+            if (msg) notify(msg, "success");
 
-    notify(msg, "success");
-
-    syncCoreDatabase();
-
+            // ३. महत्वपूर्ण: पूरै डेटाबेस रिफ्रेस नगर्ने! 
+            // केवल स्थानीय STATE.allData मा यो एउटा रो (Row) लाई अपडेट गर्ने।
+            const index = STATE.allData.findIndex(d => d.id === id);
+            if (index !== -1) {
+                // पुराना डाटाहरूमा नयाँ परिवर्तन मात्र मिसाउने (Merge)
+                STATE.allData[index] = { ...STATE.allData[index], ...data[0] };
+                
+                // ४. UI रिफ्रेस गर्ने (false पठाउने ताकि पेज १ मा जम्प नहोस्)
+                applyLogicFilters(false); 
+            }
+        } else if (error) {
+            console.error("Update error:", error);
+            notify("Error: " + error.message, "error");
+        }
+    } catch (err) {
+        notify("System Error!", "error");
+    }
 }
 
 function changePage(direction) {
