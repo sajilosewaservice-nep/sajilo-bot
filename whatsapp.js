@@ -45,14 +45,16 @@ async function handleMediaUpload(msg, phone) {
     }
 }
 
-// ३. ह्वाट्सएप क्लाइन्ट सेटअप (v4 Core)
+// ३. ह्वाट्सएप क्लाइन्ट सेटअप (v4 Core - Optimized for Windows)
 const client = new Client({
-    authStrategy: new LocalAuth({ clientId: 'sajilo-bot' }), // तपाईँको पुरानै clientId
+    authStrategy: new LocalAuth({ clientId: 'sajilo-bot' }),
     puppeteer: { 
-        headless: false, // सुरुमा हेर्नको लागि false, पछि true बनाउन सक्नुहुन्छ
+        headless: true, // विन्डो नखोली ब्याकग्राउन्डमा चलाउनको लागि true बनाइएको
         args: [
-            '--no-sandbox', '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage', '--disable-gpu'
+            '--no-sandbox', 
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage', 
+            '--disable-gpu'
         ]
     }
 });
