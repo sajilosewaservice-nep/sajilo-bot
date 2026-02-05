@@ -485,19 +485,17 @@ function updatePaginationUI() {
 }
 
 async function syncCoreDatabase() {
+    const { data, error } = await supabaseClient
+        .from('customers')
+        .select('*')
+        .order('updated_at', { ascending: false }); 
 
-    const { data, error } = await supabaseClient.from('customers').select('*').order('created_at', { ascending: false });
-
-    if (!error) {
-
-        STATE.allData = data;
-
-        applyLogicFilters(false);
-
-        refreshFinancialAnalytics();
-
-    }
-
+    if (!error) {
+        STATE.allData = data;
+        // false को साटो true राख्दा नयाँ डेटा आउनासाथ लिस्ट रिफ्रेस हुन्छ
+        applyLogicFilters(true); 
+        refreshFinancialAnalytics();
+    }
 }
 
 function refreshFinancialAnalytics() {
