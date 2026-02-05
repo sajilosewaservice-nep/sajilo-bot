@@ -50,11 +50,15 @@ const client = new Client({
     authStrategy: new LocalAuth({ clientId: 'sajilo-bot' }),
     puppeteer: { 
         headless: true, // विन्डो नखोली ब्याकग्राउन्डमा चलाउनको लागि true बनाइएको
+        handleSIGINT: false, // विन्डोजमा प्रोसेस अड्किन नदिन यो थपिएको
         args: [
             '--no-sandbox', 
             '--disable-setuid-sandbox',
             '--disable-dev-shm-usage', 
-            '--disable-gpu'
+            '--disable-gpu',
+            '--disable-extensions',
+            '--no-first-run',
+            '--no-zygote'
         ]
     }
 });
