@@ -70,17 +70,30 @@
         </div>
 
         <div class="px-8 mb-6 flex flex-col md:flex-row gap-4 items-center justify-between">
-            <div class="relative w-full max-w-xl">
-                <i class="fas fa-search absolute left-6 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                <input type="text" id="searchInput" placeholder="ग्राहकको नाम वा फोन नम्बर खोज्नुहोस्..." class="w-full pl-14 pr-8 py-4 bg-white border-2 border-slate-100 rounded-[25px] outline-none focus:border-blue-500 font-bold shadow-lg transition-all">
-            </div>
-            <div class="flex items-center gap-4">
-                <button onclick="syncCoreDatabase()" class="px-6 py-4 bg-white border-2 border-slate-200 rounded-[20px] font-black text-[11px] uppercase shadow-md hover:bg-slate-50 transition-all active:scale-95">
-                    <i class="fas fa-sync-alt mr-2 text-blue-600"></i> Refresh
-                </button>
-                <div id="totalRecords" class="text-slate-500 font-black text-[10px] uppercase bg-slate-200 px-4 py-2 rounded-full">TOTAL: 0 RECORDS</div>
-            </div>
+    <div class="flex flex-col md:flex-row gap-4 w-full max-w-3xl">
+        <div class="relative flex-1">
+            <i class="fas fa-search absolute left-6 top-1/2 -translate-y-1/2 text-slate-400"></i>
+            <input type="text" id="searchInput" placeholder="खोज्नुहोस्..." class="w-full pl-14 pr-8 py-4 bg-white border-2 border-slate-100 rounded-[25px] outline-none focus:border-blue-500 font-bold shadow-lg transition-all">
         </div>
+
+        <div class="flex bg-white p-1.5 rounded-[25px] shadow-lg border-2 border-slate-100">
+            <button onclick="filterByPlatform('all')" class="px-5 py-2.5 rounded-[20px] text-[10px] font-black uppercase transition-all hover:bg-slate-100 active:scale-95">All</button>
+            <button onclick="filterByPlatform('whatsapp')" class="px-5 py-2.5 rounded-[20px] text-[10px] font-black uppercase text-emerald-600 hover:bg-emerald-50 transition-all active:scale-95 flex items-center gap-2">
+                <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span> WA
+            </button>
+            <button onclick="filterByPlatform('messenger')" class="px-5 py-2.5 rounded-[20px] text-[10px] font-black uppercase text-blue-600 hover:bg-blue-50 transition-all active:scale-95 flex items-center gap-2">
+                <span class="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span> MSN
+            </button>
+        </div>
+    </div>
+
+    <div class="flex items-center gap-4">
+        <button onclick="syncCoreDatabase()" class="px-6 py-4 bg-white border-2 border-slate-200 rounded-[20px] font-black text-[11px] uppercase shadow-md hover:bg-slate-50 transition-all active:scale-95">
+            <i class="fas fa-sync-alt mr-2 text-blue-600"></i> Refresh
+        </button>
+        <div id="totalRecords" class="text-slate-500 font-black text-[10px] uppercase bg-slate-200 px-4 py-2 rounded-full whitespace-nowrap">TOTAL: 0</div>
+    </div>
+</div>
 
         <div class="px-8 pb-10">
             <div class="bg-white rounded-[40px] shadow-2xl overflow-hidden border-2 border-slate-100 table-container">
