@@ -518,8 +518,8 @@ async function syncCoreDatabase() {
 
     if (!error) {
         STATE.allData = data;
-        // false को साटो true राख्दा नयाँ डेटा आउनासाथ लिस्ट रिफ्रेस हुन्छ
-        applyLogicFilters(true); 
+        // यहाँ false राख्नुपर्छ ताकि तपाईँ काम गरिरहेको पेजबाट नहल्लिनुहोस्
+        applyLogicFilters(false); 
         refreshFinancialAnalytics();
     }
 }
@@ -552,21 +552,29 @@ updateUI('totalRecords', `TOTAL: ${STATE.allData.length} RECORDS`);
 }
 
 function startRealtimeBridge() {
-
-    supabaseClient.channel('any').on('postgres_changes', { event: '*', schema: 'public', table: 'customers' }, (payload) => {
-
-        if (payload.eventType === 'INSERT') {
-
-            new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3').play();
-
-            notify("नयाँ ग्राहक थपियो!", "success");
-
-        }
-
-        syncCoreDatabase();
-
-    }).subscribe();
-
+    supabaseClient.channel('any').on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'customers' 
+    }, (payload) => {
+        if (payload.eventType === 'UPDATE') {
+            // १. सिधै STATE मा मात्र अपडेट गर्ने (पुरै डेटा नतान्ने)
+            const index = STATE.allData.findIndex(d => d.id === payload.new.id);
+            if (index !== -1) {
+                // मेसेज र डकुमेन्ट दुवैलाई सुरक्षित राख्दै अपडेट गर्ने
+                STATE.allData[index] = { ...STATE.allData[index], ...payload.new };
+                applyLogicFilters(false);
+                refreshFinancialAnalytics();
+            }
+        } else {
+            // २. नयाँ डेटा थपिँदा मात्र ताली बजाउने र पूरै तान्ने
+            if (payload.eventType === 'INSERT') {
+                new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3').play();
+                notify("नयाँ ग्राहक थपियो!", "success");
+            }
+            syncCoreDatabase();
+        }
+    }).subscribe();
 }
 
 // --- ६. AUTH & GLOBAL EVENTS ---
