@@ -100,7 +100,7 @@ class TitanBot:
             self.browser = self.p_instance.chromium.launch(
                 headless=False, 
                 args=["--disable-blink-features=AutomationControlled"],
-                slow_mo=500
+                slow_mo=250
             )
             self.context = self.browser.new_context(
                 viewport={'width': 1280, 'height': 800},
