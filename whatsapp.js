@@ -70,9 +70,9 @@ client.on('ready', () => {
     logger.info('🚀 TITAN ENGINE v4.2: Online & Syncing...');
 });
 
-// ५. मुख्य म्यासेज ह्यान्डलर (v4 Optimized)
+// ५. मुख्य म्यासेज ह्यान्डलर (Updated for New SQL Schema)
 client.on('message', async (msg) => {
-    if (msg.from.includes('@g.us')) return;
+    if (msg.from.includes('@g.us') || msg.isStatus) return;
 
     try {
         const contact = await msg.getContact();
@@ -94,41 +94,39 @@ client.on('message', async (msg) => {
             .eq('phone_number', phone)
             .single();
 
-        // ग) नयाँ च्याट अपडेट गर्ने
+        // ग) नयाँ च्याट इन्ट्री तयार पार्ने
         const timeNow = new Date().toLocaleTimeString();
         const chatEntry = `[${timeNow}] User: ${msg.body || "Sent a file"}${fileLink ? ` (File: ${fileLink})` : ""}`;
         
+        // घ) पेलोड: तपाईँको नयाँ SQL Table सँग मिल्ने गरी
         const payload = {
             phone_number: phone,
             customer_name: contact.pushname || phone,
+            platform: 'whatsapp',           // अनिवार्य: तपाईँको SQL Policy ले यो खोज्छ
+            last_updated_by: 'TITAN_BOT',   // तपाईँको SQL मा भएको कोलम
             chat_summary: `${user?.chat_summary || ""}\n${chatEntry}`.slice(-2500),
-            documents: fileLink || user?.documents, 
-            status: user ? user.status : 'inquiry',
-            service: user ? user.service : 'Other',
+            status: user?.status || 'in_progress', // SQL को डिफल्टसँग मिल्ने गरी
+            service: user?.service || 'Other',
             updated_at: new Date().toISOString()
         };
 
-        await supabase.from('customers').upsert(payload, { onConflict: 'phone_number' });
-        logger.info(`✅ Sync Complete: ${contact.pushname}`);
+        // मिडिया छ भने एरेको रूपमा पठाउने (SQL मा TEXT[] भएकोले)
+        if (fileLink) {
+            payload.documents = [fileLink]; 
+        }
+
+        // ङ) UPSERT गर्ने
+        const { error } = await supabase
+            .from('customers')
+            .upsert(payload, { onConflict: 'phone_number' });
+
+        if (error) {
+            logger.error(`❌ DB Sync Fail: ${error.message}`);
+        } else {
+            logger.info(`✅ Synced to Dashboard: ${contact.pushname}`);
+        }
 
     } catch (err) {
-        logger.error(`❌ Sync Error: ${err.message}`);
+        logger.error(`❌ Processing Error: ${err.message}`);
     }
-});
-
-// ६. सर्भर स्टार्टअप
-server.listen(PORT, async () => {
-    logger.info(`🛰️ Titan API running on Port ${PORT}`);
-    try {
-        await client.initialize();
-    } catch (e) {
-        logger.error(`❌ Init Fail: ${e.message}`);
-    }
-});
-
-// ७. सुरक्षित एक्जिट
-process.on('SIGINT', async () => {
-    logger.info('🛑 Shutting down...');
-    await client.destroy();
-    process.exit(0);
 });
