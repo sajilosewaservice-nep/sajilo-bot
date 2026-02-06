@@ -76,7 +76,7 @@ client.on('ready', () => {
     logger.info('🚀 TITAN ENGINE v4.2: Online & Syncing...');
 });
 
-// ५. मुख्य म्यासेज ह्यान्डलर (Updated for New SQL Schema)
+// ५. मुख्य म्यासेज ह्यान्डलर (ADVANCED VERSION - HISTORY & PREVIEW READY)
 client.on('message', async (msg) => {
     if (msg.from.includes('@g.us') || msg.isStatus) return;
 
@@ -85,55 +85,68 @@ client.on('message', async (msg) => {
         const phone = contact.number;
         engineStatus.processedCount++;
 
-        logger.info(`📩 Msg from ${contact.pushname || phone}`);
+        logger.info(`📩 Advanced Sync for: ${contact.pushname || phone}`);
 
-        // क) मिडिया ह्यान्डल गर्ने
+        // क) मिडिया अपलोड गर्ने (Advanced Storage)
         let fileLink = null;
         if (msg.hasMedia) {
             fileLink = await handleMediaUpload(msg, phone);
         }
 
-        // ख) पुरानो डाटा तान्ने (History जोगाउन)
+        // ख) पुरानो डाटा तान्ने (History जोगाउन यो अनिवार्य छ)
         const { data: user } = await supabase
             .from('customers')
             .select('*')
             .eq('phone_number', phone)
-            .single();
+            .maybeSingle();
 
-        // ग) नयाँ च्याट इन्ट्री तयार पार्ने
-        const timeNow = new Date().toLocaleTimeString();
-        const chatEntry = `[${timeNow}] User: ${msg.body || "Sent a file"}${fileLink ? ` (File: ${fileLink})` : ""}`;
+        // ग) डकुमेन्ट लजिक (JSONB - ठूलो विन्डोको लागि)
+        const oldDocs = Array.isArray(user?.documents) ? user.documents : [];
+        let updatedDocs = [...oldDocs];
+        if (fileLink) {
+            updatedDocs.push({
+                url: fileLink,
+                type: 'image',
+                name: `WA_Media_${Date.now()}`,
+                time: new Date().toLocaleString()
+            });
+        }
+
+        // घ) Advanced Chat History (Messenger जस्तै लाइन-बाइ-लाइन)
+        const timeNow = new Date().toLocaleString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true });
+        const newMessage = `[${timeNow}] User: ${msg.body || "📷 Sent a file"}`;
         
-        // घ) पेलोड: तपाईँको नयाँ SQL Table सँग मिल्ने गरी
+        // पुरानो समरीमा नयाँ म्यासेज थप्ने (Advanced Append)
+        const fullChatHistory = user?.chat_summary 
+            ? `${user.chat_summary}\n${newMessage}` 
+            : newMessage;
+
+        // ङ) पेलोड तयार पार्ने
         const payload = {
             phone_number: phone,
             customer_name: contact.pushname || phone,
-            platform: 'whatsapp',           // अनिवार्य: तपाईँको SQL Policy ले यो खोज्छ
-            last_updated_by: 'TITAN_BOT',   // तपाईँको SQL मा भएको कोलम
-            chat_summary: `${user?.chat_summary || ""}\n${chatEntry}`.slice(-2500),
-            status: user?.status || 'in_progress', // SQL को डिफल्टसँग मिल्ने गरी
+            platform: 'whatsapp',
+            last_updated_by: 'TITAN_ADVANCED',
+            chat_summary: fullChatHistory.slice(-5000), // ५००० अक्षर सम्मको लामो इतिहास राख्ने
+            status: user?.status || 'in_progress',
             service: user?.service || 'Other',
+            documents: updatedDocs, 
             updated_at: new Date().toISOString()
         };
 
-        // मिडिया छ भने एरेको रूपमा पठाउने (SQL मा TEXT[] भएकोले)
-        if (fileLink) {
-            payload.documents = [fileLink]; 
-        }
-
-        // ङ) UPSERT गर्ने
+        // च) सुपाबेसमा पठाउने
         const { error } = await supabase
             .from('customers')
             .upsert(payload, { onConflict: 'phone_number' });
 
         if (error) {
-            logger.error(`❌ DB Sync Fail: ${error.message}`);
+            logger.error(`❌ Sync Error: ${error.message}`);
         } else {
-            logger.info(`✅ Synced to Dashboard: ${contact.pushname}`);
+            logger.info(`✅ History Updated for: ${contact.pushname}`);
         }
 
     } catch (err) {
-        logger.error(`❌ Processing Error: ${err.message}`);
+        logger.error(`❌ Error: ${err.message}`);
     }
 });
 
