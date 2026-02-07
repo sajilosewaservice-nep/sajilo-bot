@@ -10,7 +10,7 @@ const SYSTEM_CONFIG = {
 
     SUPABASE_URL: "https://ratgpvubjrcoipardzdp.supabase.co",
 
-    SUPABASE_KEY: "Wnf2h7KCT5+kqa67ytzBe5X2ffY0MWl+p/j2UjzPcFSCzdDRyqt/W20hLeGxrcZ42s93WPDznxNN2OZy8yvtJQ==",
+    SUPABASE_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJhdGdwdnVianJjb2lwYXJkemRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzMTg0OTMsImV4cCI6MjA4Mzg5NDQ5M30.t1eofJj9dPK-Psp_oL3LpCWimyz621T21JNpZljEGZk",
 
     RPA_SERVER_URL: localStorage.getItem('rpa_url') || "http://localhost:5000",
 
