@@ -66,17 +66,33 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // --- ३. MULTIMEDIA ENGINE (Voice, PDF, Gallery) ---
 
-function renderFileIcons(docs, id) { // यहाँ id थपिएको छ
-    if (!docs || docs.length === 0) return '<span class="text-slate-300 italic text-[9px]">No Docs</span>';
+function renderFileIcons(docs, id) {
+    // १. सुरुमै डाटा छ कि छैन चेक गर्ने र JSON लाई सुरक्षित रूपमा Array मा बदल्ने
+    let docsArray = [];
+    
+    if (!docs) return '<span class="text-slate-300 italic text-[9px]">No Docs</span>';
 
-    const images = docs.filter(url => url.match(/\.(jpg|jpeg|png|webp|gif)/i));
-    const audios = docs.filter(url => url.match(/\.(mp3|wav|ogg|m4a)/i));
-    const pdfs = docs.filter(url => url.match(/\.(pdf)/i));
+    try {
+        // यदि डाटा String हो भने Parse गर्ने, नत्र सिधै प्रयोग गर्ने
+        docsArray = typeof docs === 'string' ? JSON.parse(docs) : docs;
+        
+        // यदि Parse गर्दा पनि Array बनेन भने खाली बनाइदिने
+        if (!Array.isArray(docsArray)) docsArray = [];
+    } catch (e) {
+        console.error("JSON Parsing Error in renderFileIcons:", e);
+        docsArray = [];
+    }
+
+    if (docsArray.length === 0) return '<span class="text-slate-300 italic text-[9px]">No Docs</span>';
+
+    // २. फिल्टर गर्दा URL सुरक्षित छ कि छैन चेक गर्ने
+    const images = docsArray.filter(url => typeof url === 'string' && url.match(/\.(jpg|jpeg|png|webp|gif)/i));
+    const audios = docsArray.filter(url => typeof url === 'string' && url.match(/\.(mp3|wav|ogg|m4a)/i));
+    const pdfs = docsArray.filter(url => typeof url === 'string' && url.match(/\.(pdf)/i));
 
     let html = `<div class="flex flex-wrap gap-2 items-center justify-center">`;
 
     if (images.length > 0) {
-        // यहाँ '${id}' मात्र लेख्दा पुग्छ किनकि हामीले माथि id पास गरेका छौँ
         html += `
             <div class="relative cursor-pointer group" onclick="openGallery(${JSON.stringify(images).replace(/"/g, '&quot;')}, '${id}')">
                 <img src="${images[0]}" class="w-10 h-10 rounded-lg border-2 border-white shadow-md object-cover group-hover:scale-110 transition-transform">
