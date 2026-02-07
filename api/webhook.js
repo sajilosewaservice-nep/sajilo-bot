@@ -82,8 +82,17 @@ const finalName = (userProfile.name !== "Messenger User")
     ? userProfile.name 
     : (existingCustomer?.customer_name || "New Customer");
 
-            // ख) डकुमेन्टहरू मर्ज गर्ने
-            let oldDocs = existingCustomer?.documents || [];
+            // १. पुराना डकुमेन्टहरू सुरक्षित रूपमा तान्ने (JSONB Safe)
+            let oldDocs = [];
+            try {
+                const rawDocs = existingCustomer?.documents;
+                // यदि डाटा String छ भने Parse गर्ने, नत्र Array मान्ने
+                oldDocs = typeof rawDocs === 'string' ? JSON.parse(rawDocs) : (Array.isArray(rawDocs) ? rawDocs : []);
+            } catch (e) {
+                oldDocs = [];
+            }
+
+            // २. नयाँ आएका फोटोहरू र पुरानालाई मिसाउने
             const updatedDocs = [...new Set([...oldDocs, ...attachments])].filter(Boolean);
 
             const finalMessage = messageText || (attachments.length > 0 ? "📷 Sent an attachment" : "New Message");
@@ -96,7 +105,7 @@ const customerData = {
     platform: 'messenger',
     status: existingCustomer ? existingCustomer.status : 'inquiry',
     service: existingCustomer ? existingCustomer.service : 'Other',
-    documents: updatedDocs,
+    documents: JSON.stringify(updatedDocs),
     last_updated_by: 'MESSENGER_BOT',
     updated_at: new Date().toISOString()
 };
