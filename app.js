@@ -6,63 +6,37 @@
 
  */
 
+require('dotenv').config(); // १. यो लाइन छुटाउनु हुँदैन
+const { createClient } = require('@supabase/supabase-js'); // २. सुपाबेसको लागि यो चाहिन्छ
+
+// १. INITIALIZATION (ENV बाट डेटा तान्दै)
 const SYSTEM_CONFIG = {
-
-    SUPABASE_URL: "https://ratgpvubjrcoipardzdp.supabase.co",
-
-    SUPABASE_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJhdGdwdnVianJjb2lwYXJkemRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzMTg0OTMsImV4cCI6MjA4Mzg5NDQ5M30.t1eofJj9dPK-Psp_oL3LpCWimyz621T21JNpZljEGZk",
-
-    RPA_SERVER_URL: localStorage.getItem('rpa_url') || "http://localhost:5000",
-
-    PAGE_SIZE: 15
-
+    SUPABASE_URL: process.env.SUPABASE_URL,
+    SUPABASE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY, // मास्टर की सफलतापूर्वक पुस भयो
+    RPA_SERVER_URL: process.env.RPA_SERVER_URL || "http://localhost:5000",
+    PAGE_SIZE: 15
 };
 
 let supabaseClient;
-
 let STATE = {
-
-    currentUser: null,
-
-    allData: [],
-
-    filteredData: [],
-
-    currentPage: 1,
-
-    isLoading: false
-
+    currentUser: null,
+    allData: [],
+    filteredData: [],
+    currentPage: 1,
+    isLoading: false
 };
 
 // --- १. INITIALIZATION ---
+const initializeApp = async () => {
+    // यहाँ हामीले 'createClient' सिधै प्रयोग गर्छौं (जुन माथि Import गरियो)
+    supabaseClient = createClient(SYSTEM_CONFIG.SUPABASE_URL, SYSTEM_CONFIG.SUPABASE_KEY);
+    
+    console.log("🚀 System initialized with Service Role Key");
+    console.log("🤖 RPA URL:", SYSTEM_CONFIG.RPA_SERVER_URL);
+};
 
-document.addEventListener('DOMContentLoaded', async () => {
-
-    supabaseClient = supabase.createClient(SYSTEM_CONFIG.SUPABASE_URL, SYSTEM_CONFIG.SUPABASE_KEY);
-
-    validateSession();
-
-    registerGlobalEvents();
-
-    startRealtimeBridge();
-
-    // Live Clock Update
-
-    setInterval(() => {
-
-        const now = new Date();
-
-        const timeStr = now.toLocaleTimeString('ne-NP', { hour12: true });
-
-        if (document.getElementById('lastUpdate')) {
-
-            document.getElementById('lastUpdate').innerHTML = `LIVE: <span class="text-blue-600 font-bold">${timeStr}</span>`;
-
-        }
-
-    }, 1000);
-
-});
+// एप सुरु गर्नुहोस्
+initializeApp();
 
 // --- ३. MULTIMEDIA ENGINE (Voice, PDF, Gallery) ---
 
@@ -463,8 +437,7 @@ async function commitUpdate(id, updates, msg) {
 
         if (!error && data && data.length > 0) {
             if (msg) notify(msg, "success");
-
-            // ३. महत्वपूर्ण: पूरै डेटाबेस रिफ्रेस नगर्ने! 
+ 
             // केवल स्थानीय STATE.allData मा यो एउटा रो (Row) लाई अपडेट गर्ने।
             const index = STATE.allData.findIndex(d => d.id === id);
             if (index !== -1) {
