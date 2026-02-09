@@ -493,14 +493,13 @@ async function saveManualNote(id) {
 
 async function commitUpdate(id, updates, msg) {
     try {
-        // १. पेलोड तयार पार्ने
+        // पेलोड तयार पार्ने - यसले Income को ७७७/७७ लाई नम्बरमा बदल्न खोजेर बिगार्दैन
         const payload = { 
             ...updates, 
             last_updated_by: STATE.currentUser.full_name, 
             updated_at: new Date().toISOString() 
         };
 
-        // २. अपडेट गर्ने र अपडेट भएको डेटा फिर्ता माग्ने (.select())
         const { data, error } = await supabaseClient
             .from('customers')
             .update(payload)
@@ -509,21 +508,21 @@ async function commitUpdate(id, updates, msg) {
 
         if (!error && data && data.length > 0) {
             if (msg) notify(msg, "success");
- 
-            // केवल स्थानीय STATE.allData मा यो एउटा रो (Row) लाई अपडेट गर्ने।
+
             const index = STATE.allData.findIndex(d => d.id === id);
             if (index !== -1) {
-                // पुराना डाटाहरूमा नयाँ परिवर्तन मात्र मिसाउने (Merge)
                 STATE.allData[index] = { ...STATE.allData[index], ...data[0] };
                 
-                // ४. UI रिफ्रेस गर्ने (false पठाउने ताकि पेज १ मा जम्प नहोस्)
-                applyLogicFilters(false); 
+                // UI रिफ्रेस गर्ने र हिसाब किताब अपडेट गर्ने
+                if (typeof applyLogicFilters === 'function') applyLogicFilters(false); 
+                if (typeof refreshFinancialAnalytics === 'function') refreshFinancialAnalytics();
             }
         } else if (error) {
-            console.error("Update error:", error);
+            console.error("Supabase Error:", error);
             notify("Error: " + error.message, "error");
         }
     } catch (err) {
+        console.error("System Error:", err);
         notify("System Error!", "error");
     }
 }
