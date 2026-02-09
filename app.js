@@ -120,17 +120,17 @@ function renderFileIcons(docs, id) {
             </div>`;
     }
 
-    // ८. PDF आइकनहरू (<a> ट्याग प्रयोग गरिएको ताकि ब्राउजरले ब्लक नगरोस्)
-    if (pdfs.length > 0) {
-        pdfs.forEach((url, index) => {
-            html += `
-                <a href="${url}" target="_blank" rel="noopener noreferrer" 
-                   class="text-red-500 hover:scale-125 transition-all p-1 flex flex-col items-center no-underline">
-                    <i class="fas fa-file-pdf text-xl"></i>
-                    <span class="text-[7px] font-bold mt-1">PDF ${pdfs.length > 1 ? index + 1 : ''}</span>
-                </a>`;
-        });
-    }
+    // PDF आइकन देखाउने भागलाई यसले बदल्नुहोस्:
+if (pdfs.length > 0) {
+    pdfs.forEach((url, index) => {
+        html += `
+            <button onclick="viewPDF('${url}')" 
+               class="text-red-500 hover:scale-125 transition-all p-1 flex flex-col items-center">
+                <i class="fas fa-file-pdf text-xl"></i>
+                <span class="text-[7px] font-bold mt-1">VIEW PDF</span>
+            </button>`;
+    });
+}
 
     // ९. अडियो प्ले बटन
     if (audios.length > 0) {
