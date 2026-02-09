@@ -105,8 +105,7 @@ function renderFileIcons(docs, id) {
     const audios = docsArray.map(item => (typeof item === 'object' && item !== null ? item.url : item))
         .filter(url => url && typeof url === 'string' && url.match(/\.(mp3|wav|ogg|m4a)/i));
 
-let html = `<div style="display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; align-items: center; background: #f8fafc; padding: 8px; border-radius: 12px; border: 1.5px dashed #cbd5e1; max-width: 120px; min-height: 50px; margin: auto;">`;
-
+let html = `<div style="display: flex; flex-wrap: nowrap; gap: 6px; align-items: center; justify-content: flex-start; background: #f8fafc; padding: 6px; border-radius: 10px; border: 1.5px dashed #cbd5e1; max-width: 140px; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none;">`;
     if (images.length > 0) {
         html += `
             <div class="relative cursor-pointer group" onclick="openGallery(${JSON.stringify(images).replace(/"/g, '&quot;')}, '${id}')">
