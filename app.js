@@ -433,7 +433,7 @@ function buildTableRows() {
 }
 
 /**
- * CHAT बटन थिच्दा कुन प्लेटफर्म खोल्ने भन्ने निर्णय गर्ने पूर्ण रूपमा सच्याइएको फङ्सन
+ * CHAT बटन थिच्दा कुन प्लेटफर्म खोल्ने भन्ने निर्णय गर्ने सच्याइएको फङ्सन
  */
 function handleChatClick(phone, platform, senderId) {
     // १. यदि नम्बर र आइडी दुवै छैन भने अलर्ट दिने
@@ -446,22 +446,21 @@ function handleChatClick(phone, platform, senderId) {
         return;
     }
 
-    // २. ह्वाट्सएपको लागि लजिक (सिधै डेस्कटप एप वा वेब खोल्छ)
+    // २. ह्वाट्सएपको लागि लजिक (सिधै एप वा वेब खोल्छ)
     if (platform === 'whatsapp' || (phone && phone.length > 5)) {
+        // नम्बरबाट अनावश्यक चिन्ह (+, -, स्पेस) हटाउने
         const cleanNumber = (phone || senderId).replace(/\D/g, '');
         window.open(`https://wa.me/${cleanNumber}`, '_blank');
     } 
-    
+    // ३. मेसेन्जरको लागि लजिक (m.me भन्दा messenger.com बढी भरपर्दो हुन्छ)
     else {
-    
-        const PAGE_ID = '61551419205952'; 
-
-        if (senderId && senderId !== 'undefined' && senderId !== 'null') {
-            
-            const businessUrl = `https://business.facebook.com/latest/inbox/messenger?asset_id=${PAGE_ID}&selected_item_id=${senderId}`;
-            window.open(businessUrl, '_blank');
+        // यदि senderId छ भने त्यसको म्यासेज थ्रेड सिधै खोल्ने
+        const targetId = senderId || '';
+        if (targetId && targetId !== 'undefined') {
+            window.open(`https://www.messenger.com/t/${targetId}`, '_blank');
         } else {
-            window.open(`https://business.facebook.com/latest/inbox/messenger?asset_id=${PAGE_ID}`, '_blank');
+            // आइडी नभएमा मेसेन्जरको होम पेज खोल्ने
+            window.open(`https://www.messenger.com`, '_blank');
         }
     }
 }
