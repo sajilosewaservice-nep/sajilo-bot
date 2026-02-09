@@ -49,8 +49,8 @@ async function handleMediaUpload(msg, phone) {
 const client = new Client({
     authStrategy: new LocalAuth({ clientId: 'sajilo-bot' }),
     puppeteer: { 
-        headless: true, // विन्डो नखोली ब्याकग्राउन्डमा चलाउनको लागि true बनाइएको
-        handleSIGINT: false, // विन्डोजमा प्रोसेस अड्किन नदिन यो थपिएको
+        headless: false, // यहाँ 'true' बाट 'false' बनाइएको छ, अब ब्राउजर खुल्नेछ
+        handleSIGINT: false, 
         args: [
             '--no-sandbox', 
             '--disable-setuid-sandbox',
