@@ -34,34 +34,47 @@ let STATE = {
 
 };
 
-// --- १. INITIALIZATION ---
-
+// --- १. INITIALIZATION (REVISED) ---
 document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        // १. सुपाबेस क्लाइन्ट सुरु गर्ने (ठूलो 'supabase' लाइब्रेरी प्रयोग गरेर)
+        if (typeof supabase !== 'undefined') {
+            supabaseClient = supabase.createClient(SYSTEM_CONFIG.SUPABASE_URL, SYSTEM_CONFIG.SUPABASE_KEY);
+        } else {
+            alert("Error: Supabase library not loaded. Please refresh.");
+            return;
+        }
 
-    supabaseClient = supabase.createClient(SYSTEM_CONFIG.SUPABASE_URL, SYSTEM_CONFIG.SUPABASE_KEY);
+        // २. सेसन र इभेन्टहरू लोड गर्ने
+        validateSession();
+        registerGlobalEvents();
+        
+        // ३. डाटा तान्न सुरु गर्ने (यो छुटेको थियो)
+        if (typeof syncCoreDatabase === 'function') {
+            syncCoreDatabase();
+        }
 
-    validateSession();
+        // ४. रियलटाइम अपडेट सुरु गर्ने
+        startRealtimeBridge();
 
-    registerGlobalEvents();
+        // ५. लाइभ घडी (Clock)
+        setInterval(() => {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('en-US', { 
+                hour: '2-digit', 
+                minute: '2-digit', 
+                second: '2-digit', 
+                hour12: true 
+            });
+            const lastUpdateEl = document.getElementById('lastUpdate');
+            if (lastUpdateEl) {
+                lastUpdateEl.innerHTML = `LIVE: <span class="text-blue-600 font-bold">${timeStr}</span>`;
+            }
+        }, 1000);
 
-    startRealtimeBridge();
-
-    // Live Clock Update
-
-    setInterval(() => {
-
-        const now = new Date();
-
-        const timeStr = now.toLocaleTimeString('ne-NP', { hour12: true });
-
-        if (document.getElementById('lastUpdate')) {
-
-            document.getElementById('lastUpdate').innerHTML = `LIVE: <span class="text-blue-600 font-bold">${timeStr}</span>`;
-
-        }
-
-    }, 1000);
-
+    } catch (err) {
+        console.error("Dashboard Init Error:", err);
+    }
 });
 
 // १. PDF खोल्ने फङ्सन (यो नभई VIEW PDF बटनले काम गर्दैन)
