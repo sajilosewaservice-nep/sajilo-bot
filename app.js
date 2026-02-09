@@ -116,29 +116,30 @@ function renderFileIcons(docs, id) {
             </div>`;
     }
 
+    // २. PDF हरूलाई एउटै बाकस भित्र राख्ने
     if (pdfs.length > 0) {
         pdfs.forEach((url) => {
-            // यहाँ <a> ट्याग प्रयोग गर्दा कुनै extra function चाहिँदैन
             html += `
                 <a href="${url}" target="_blank" rel="noopener noreferrer" 
-                   class="text-red-500 hover:scale-125 transition-all p-1 flex flex-col items-center no-underline">
-                    <i class="fas fa-file-pdf text-xl"></i>
-                    <span class="text-[7px] font-bold mt-1 uppercase">PDF</span>
+                    style="display: inline-flex; flex-direction: column; align-items: center; justify-content: center; width: 38px; height: 38px; background: white; border-radius: 8px; border: 1px solid #eee; text-decoration: none; margin: 2px;">
+                    <i class="fas fa-file-pdf" style="color: #ef4444; font-size: 16px;"></i>
+                    <span style="font-size: 6px; font-weight: 900; color: #ef4444; margin-top: 1px;">PDF</span>
                 </a>`;
         });
     }
 
+    // ३. अडियोलाई पनि एउटै साइजमा मिलाउने
     if (audios.length > 0) {
         audios.forEach((url) => {
             html += `
-                <button onclick="new Audio('${url}').play(); if(typeof notify === 'function') notify('अडियो बज्दैछ...','info')" 
-                        class="text-emerald-500 hover:scale-125 transition-all p-1 bg-transparent border-none cursor-pointer">
-                    <i class="fas fa-play-circle text-xl"></i>
+                <button onclick="new Audio('${url}').play()" 
+                    style="display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; background: #ecfdf5; border-radius: 8px; border: 1px solid #10b981; cursor: pointer; margin: 2px;">
+                    <i class="fas fa-play-circle" style="color: #10b981; font-size: 18px;"></i>
                 </button>`;
         });
     }
 
-    return html + `</div>`;
+   return html + `</div>`;
 }
 
 function openGallery(images, id) {
