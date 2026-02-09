@@ -64,17 +64,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 });
 
-// --- ३. MULTIMEDIA ENGINE (Voice, PDF, Gallery) ---
+// १. PDF खोल्ने फङ्सन (यो नभई VIEW PDF बटनले काम गर्दैन)
+function viewPDF(url) {
+    if (!url) return;
+    window.open(url, '_blank');
+}
+
+// २. तपाईँकै Multimedia Engine कोड
 function renderFileIcons(docs, id) {
     let docsArray = [];
     
-    // १. यदि डेटा नै छैन भने
     if (!docs || docs === '[]' || docs === '') {
         return '<span class="text-slate-300 italic text-[9px]">No Docs</span>';
     }
 
     try {
-        // २. JSON सुरक्षित रूपमा पार्स गर्ने (Double encoding handle गरिएको)
         docsArray = typeof docs === 'string' ? JSON.parse(docs) : docs;
         if (typeof docsArray === 'string') docsArray = JSON.parse(docsArray);
     } catch (e) {
@@ -82,12 +86,10 @@ function renderFileIcons(docs, id) {
         docsArray = [];
     }
 
-    // ३. एरे हो कि होइन चेक गर्ने
     if (!Array.isArray(docsArray) || docsArray.length === 0) {
         return '<span class="text-slate-300 italic text-[9px]">No Docs</span>';
     }
 
-    // ४. इमेज फिल्टर: WhatsApp र Messenger दुवैबाट URL निकाल्ने
     const images = docsArray.map(item => {
         return (typeof item === 'object' && item !== null) ? item.url : item;
     }).filter(url => url && typeof url === 'string' && (
@@ -97,47 +99,39 @@ function renderFileIcons(docs, id) {
         url.includes('messenger.com')
     ));
 
-    // ५. PDF फिल्टर: .pdf भएका सबै फाइलहरू
     const pdfs = docsArray.map(item => (typeof item === 'object' && item !== null ? item.url : item))
         .filter(url => url && typeof url === 'string' && url.toLowerCase().includes('.pdf'));
 
-    // ६. अडियो फिल्टर
     const audios = docsArray.map(item => (typeof item === 'object' && item !== null ? item.url : item))
         .filter(url => url && typeof url === 'string' && url.match(/\.(mp3|wav|ogg|m4a)/i));
 
     let html = `<div class="flex flex-wrap gap-2 items-center justify-center">`;
 
-    // ७. फोटो आइकन र ग्यालेरी लोजिक
     if (images.length > 0) {
         html += `
             <div class="relative cursor-pointer group" onclick="openGallery(${JSON.stringify(images).replace(/"/g, '&quot;')}, '${id}')">
                 <img src="${images[0]}" class="w-10 h-10 rounded-lg border-2 border-white shadow-md object-cover group-hover:scale-110 transition-transform" 
                      onerror="this.src='https://cdn-icons-png.flaticon.com/512/3342/3342137.png'">
-                ${images.length > 1 ? `
-                    <div class="absolute -top-2 -right-2 bg-blue-600 text-white text-[9px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-white shadow-lg">
-                        +${images.length - 1}
-                    </div>` : ''}
+                ${images.length > 1 ? `<div class="absolute -top-2 -right-2 bg-blue-600 text-white text-[9px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-white shadow-lg">+${images.length - 1}</div>` : ''}
             </div>`;
     }
 
-    // PDF आइकन देखाउने भागलाई यसले बदल्नुहोस्:
-if (pdfs.length > 0) {
-    pdfs.forEach((url, index) => {
-        html += `
-            <button onclick="viewPDF('${url}')" 
-               class="text-red-500 hover:scale-125 transition-all p-1 flex flex-col items-center">
-                <i class="fas fa-file-pdf text-xl"></i>
-                <span class="text-[7px] font-bold mt-1">VIEW PDF</span>
-            </button>`;
-    });
-}
+    if (pdfs.length > 0) {
+        pdfs.forEach((url, index) => {
+            html += `
+                <button onclick="viewPDF('${url}')" 
+                   class="text-red-500 hover:scale-125 transition-all p-1 flex flex-col items-center bg-transparent border-none cursor-pointer">
+                    <i class="fas fa-file-pdf text-xl"></i>
+                    <span class="text-[7px] font-bold mt-1">VIEW PDF</span>
+                </button>`;
+        });
+    }
 
-    // ९. अडियो प्ले बटन
     if (audios.length > 0) {
         audios.forEach((url) => {
             html += `
                 <button onclick="new Audio('${url}').play(); notify('अडियो बज्दैछ...','info')" 
-                        class="text-emerald-500 hover:scale-125 transition-all p-1">
+                        class="text-emerald-500 hover:scale-125 transition-all p-1 bg-transparent border-none cursor-pointer">
                     <i class="fas fa-play-circle text-xl"></i>
                 </button>`;
         });
