@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "@supabase/supabase-js": "^2.93.3",
+    "@supabase/supabase-js": "^2.95.3",
     "@whiskeysockets/baileys": "^7.0.0-rc.9",
     "axios": "^1.13.2",
     "dotenv": "^17.2.3",
