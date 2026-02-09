@@ -371,10 +371,6 @@ function buildTableRows() {
         const tr = document.createElement('tr');
         tr.className = 'border-b hover:bg-slate-50 transition-colors text-[10px]';
         
-        const chatUrl = (row.platform === 'whatsapp') 
-            ? `https://wa.me/${row.phone_number?.replace(/\D/g, '') || row.sender_id}` 
-            : `https://m.me/${row.sender_id}`;
-
         tr.innerHTML = `
             <td class="p-4 font-mono text-slate-500">${new Date(row.created_at).toLocaleDateString('ne-NP')}</td>
             <td class="p-1 text-center">${row.platform === 'whatsapp' ? '🟢' : '🔵'}</td>
@@ -400,8 +396,12 @@ function buildTableRows() {
 
             <td class="p-4">
                 <div class="flex flex-col gap-1.5">
-                    <button onclick="launchAIAutoFill('${row.id}', '${row.service}')" class="bg-orange-600 text-white text-[9px] font-black py-1.5 px-3 rounded-lg shadow-md">🚀 AUTO</button>
-                    <button onclick="window.open('${chatUrl}', '_blank')" class="bg-blue-600 text-white text-[9px] font-black py-1.5 px-3 rounded-lg shadow-md">💬 CHAT</button>
+                    <button onclick="launchAIAutoFill('${row.id}', '${row.service}')" class="bg-orange-600 text-white text-[9px] font-black py-1.5 px-3 rounded-lg shadow-md hover:bg-orange-700 transition">🚀 AUTO</button>
+                    
+                    <button onclick="handleChatClick('${row.phone_number}', '${row.platform}', '${row.sender_id}')" 
+                        class="bg-blue-600 text-white text-[9px] font-black py-1.5 px-3 rounded-lg shadow-md hover:bg-blue-700 transition">
+                        💬 CHAT
+                    </button>
                 </div>
             </td>
             <td class="p-4">
@@ -430,6 +430,31 @@ function buildTableRows() {
         `;
         tableBody.appendChild(tr);
     });
+}
+
+/**
+ * CHAT बटन थिच्दा कुन प्लेटफर्म खोल्ने भन्ने निर्णय गर्ने फङ्सन
+ */
+function handleChatClick(phone, platform, senderId) {
+    if (!phone && !senderId) {
+        notify("नम्बर वा आइडी फेला परेन!", "error");
+        return;
+    }
+
+    // १. ह्वाट्सएपको लागि लजिक
+    if (platform === 'whatsapp' || (phone && phone.length > 5)) {
+        // नम्बरबाट अनावश्यक चिन्ह (+, -, स्पेस) हटाउने
+        const cleanNumber = (phone || senderId).replace(/\D/g, '');
+        
+        // PC मा ह्वाट्सएप वेब खोल्न यो सबैभन्दा भरपर्दो URL हो
+        window.open(`https://web.whatsapp.com/send?phone=${cleanNumber}`, '_blank');
+    } 
+    // २. मेसेन्जरको लागि लजिक
+    else {
+        // यदि senderId पेज आइडी हो भने मेसेन्जरमा खुल्छ
+        const target = senderId || 'me';
+        window.open(`https://m.me/${target}`, '_blank');
+    }
 }
 
 // २. यो फिल्टर फङ्सन पनि app.js मा थप्नुहोस् (यदि छैन भने)
@@ -694,13 +719,11 @@ function notify(msg, type) {
 
 }
 
-// --- ६. फिल्टर लोजिक ---
 // --- ६. फिल्टर लोजिक (सुधारिएको: Search र Platform दुवै चल्ने) ---
 function applyLogicFilters(reset = true) {
     const searchInput = document.getElementById('searchInput');
     const q = searchInput ? searchInput.value.toLowerCase().trim() : '';
     
-    // १. सुरुमा सबै डेटा लिने
     let filtered = [...STATE.allData];
 
     // २. सर्च कोवेरी (नाम वा नम्बर) फिल्टर गर्ने
@@ -711,7 +734,6 @@ function applyLogicFilters(reset = true) {
         );
     }
 
-    // ३. प्लेटफर्म फिल्टर (WA/MSN बटन थिचिएको छ भने)
     // STATE.selectedPlatform मा 'whatsapp' वा 'messenger' बस्छ
     if (STATE.selectedPlatform && STATE.selectedPlatform !== 'all') {
         filtered = filtered.filter(d => 
