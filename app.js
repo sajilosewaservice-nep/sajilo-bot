@@ -575,7 +575,9 @@ function refreshFinancialAnalytics() {
         acc.counts[s] = (acc.counts[s] || 0) + 1;
         
         if (s === 'success') {
-            acc.revenue += (parseFloat(curr.income) || 0);
+const amtStr = String(curr.income || "0");
+const amt = parseFloat(amtStr.split('/')[0].replace(/[^0-9.]/g, '')) || 0;
+acc.revenue += amt;
         }
         return acc;
     }, { counts: {}, revenue: 0 });
