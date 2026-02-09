@@ -106,19 +106,23 @@ thead th {
     vertical-align: middle !important;
 }
 
-/* ३. INPUTS & SELECTS: App.js भित्रका इलिमेन्टहरु */
-select, textarea, input[type="number"] {
+/* ३. INPUTS & SELECTS: यो भागलाई यसले फेर्नुहोस् */
+select, textarea, input[type="number"], input[type="text"] {
     background: #f8fafc !important;
     border: 1.5px solid #e2e8f0 !important;
     border-radius: 12px !important;
     padding: 8px 12px !important;
     font-weight: 600 !important;
     outline: none !important;
-    transition: border-color 0.2s !important;
+    transition: all 0.2s !important;
+    width: 100%;
 }
 
-select:focus, textarea:focus {
+/* क्लिक गर्दा बोर्डर नीलो हुने बनाउन यो पनि थप्नुहोस् */
+select:focus, textarea:focus, input[type="text"]:focus {
     border-color: var(--primary) !important;
+    background: white !important;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1) !important;
 }
 
 /* ४. SPECIAL ELEMENTS: मोनो फन्ट र डकुमेन्ट आइकन */
