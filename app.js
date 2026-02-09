@@ -441,17 +441,13 @@ function handleChatClick(phone, platform, senderId) {
         return;
     }
 
-    // १. ह्वाट्सएपको लागि लजिक
     if (platform === 'whatsapp' || (phone && phone.length > 5)) {
-        // नम्बरबाट अनावश्यक चिन्ह (+, -, स्पेस) हटाउने
+
         const cleanNumber = (phone || senderId).replace(/\D/g, '');
         
-        // PC मा ह्वाट्सएप वेब खोल्न यो सबैभन्दा भरपर्दो URL हो
-        window.open(`https://web.whatsapp.com/send?phone=${cleanNumber}`, '_blank');
+        window.open(`https://wa.me/${cleanNumber}`, '_blank');
     } 
-    // २. मेसेन्जरको लागि लजिक
     else {
-        // यदि senderId पेज आइडी हो भने मेसेन्जरमा खुल्छ
         const target = senderId || 'me';
         window.open(`https://m.me/${target}`, '_blank');
     }
