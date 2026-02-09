@@ -65,57 +65,82 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 // --- ३. MULTIMEDIA ENGINE (Voice, PDF, Gallery) ---
-
 function renderFileIcons(docs, id) {
     let docsArray = [];
-    if (!docs || docs === '[]') return '<span class="text-slate-300 italic text-[9px]">No Docs</span>';
+    
+    // १. यदि डेटा नै छैन भने
+    if (!docs || docs === '[]' || docs === '') {
+        return '<span class="text-slate-300 italic text-[9px]">No Docs</span>';
+    }
 
     try {
-        // १. JSON सुरक्षित रूपमा पार्स गर्ने (Double encoding handle गरिएको)
+        // २. JSON सुरक्षित रूपमा पार्स गर्ने (Double encoding handle गरिएको)
         docsArray = typeof docs === 'string' ? JSON.parse(docs) : docs;
         if (typeof docsArray === 'string') docsArray = JSON.parse(docsArray);
     } catch (e) {
+        console.error("Parsing error:", e);
         docsArray = [];
     }
 
-    if (!Array.isArray(docsArray) || docsArray.length === 0) 
+    // ३. एरे हो कि होइन चेक गर्ने
+    if (!Array.isArray(docsArray) || docsArray.length === 0) {
         return '<span class="text-slate-300 italic text-[9px]">No Docs</span>';
+    }
 
-    // २. इमेज फिल्टर: WhatsApp (Object) र Messenger (String) दुवैलाई चिन्ने
+    // ४. इमेज फिल्टर: WhatsApp र Messenger दुवैबाट URL निकाल्ने
     const images = docsArray.map(item => {
-        // यदि item एउटा object हो भने .url लिने, नत्र सिधै item (string) लिने
         return (typeof item === 'object' && item !== null) ? item.url : item;
     }).filter(url => url && typeof url === 'string' && (
-        url.match(/\.(jpg|jpeg|png|webp|gif)/i) || 
+        url.match(/\.(jpg|jpeg|png|webp|gif|svg)/i) || 
         url.includes('fbcdn.net') || 
         url.includes('supabase.co/storage') ||
         url.includes('messenger.com')
     ));
 
-    // ३. PDF र Audio फिल्टर
-    const pdfs = docsArray.map(item => (typeof item === 'object' ? item.url : item))
-                          .filter(url => typeof url === 'string' && url.match(/\.(pdf)/i));
-    
-    const audios = docsArray.map(item => (typeof item === 'object' ? item.url : item))
-                            .filter(url => typeof url === 'string' && url.match(/\.(mp3|wav|ogg|m4a)/i));
+    // ५. PDF फिल्टर: .pdf भएका सबै फाइलहरू
+    const pdfs = docsArray.map(item => (typeof item === 'object' && item !== null ? item.url : item))
+        .filter(url => url && typeof url === 'string' && url.toLowerCase().includes('.pdf'));
+
+    // ६. अडियो फिल्टर
+    const audios = docsArray.map(item => (typeof item === 'object' && item !== null ? item.url : item))
+        .filter(url => url && typeof url === 'string' && url.match(/\.(mp3|wav|ogg|m4a)/i));
 
     let html = `<div class="flex flex-wrap gap-2 items-center justify-center">`;
 
+    // ७. फोटो आइकन र ग्यालेरी लोजिक
     if (images.length > 0) {
         html += `
             <div class="relative cursor-pointer group" onclick="openGallery(${JSON.stringify(images).replace(/"/g, '&quot;')}, '${id}')">
-                <img src="${images[0]}" class="w-10 h-10 rounded-lg border-2 border-white shadow-md object-cover group-hover:scale-110 transition-transform" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3342/3342137.png'">
-                ${images.length > 1 ? `<div class="absolute -top-2 -right-2 bg-blue-600 text-white text-[9px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-white shadow-lg">+${images.length - 1}</div>` : ''}
+                <img src="${images[0]}" class="w-10 h-10 rounded-lg border-2 border-white shadow-md object-cover group-hover:scale-110 transition-transform" 
+                     onerror="this.src='https://cdn-icons-png.flaticon.com/512/3342/3342137.png'">
+                ${images.length > 1 ? `
+                    <div class="absolute -top-2 -right-2 bg-blue-600 text-white text-[9px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-white shadow-lg">
+                        +${images.length - 1}
+                    </div>` : ''}
             </div>`;
     }
 
-    // PDF र Audio आइकनहरू
+    // ८. PDF आइकनहरू (<a> ट्याग प्रयोग गरिएको ताकि ब्राउजरले ब्लक नगरोस्)
     if (pdfs.length > 0) {
-        html += `<button onclick="window.open('${pdfs[0]}')" class="text-red-500 hover:scale-125 transition-all p-1"><i class="fas fa-file-pdf text-xl"></i></button>`;
+        pdfs.forEach((url, index) => {
+            html += `
+                <a href="${url}" target="_blank" rel="noopener noreferrer" 
+                   class="text-red-500 hover:scale-125 transition-all p-1 flex flex-col items-center no-underline">
+                    <i class="fas fa-file-pdf text-xl"></i>
+                    <span class="text-[7px] font-bold mt-1">PDF ${pdfs.length > 1 ? index + 1 : ''}</span>
+                </a>`;
+        });
     }
 
+    // ९. अडियो प्ले बटन
     if (audios.length > 0) {
-        html += `<button onclick="new Audio('${audios[0]}').play();" class="text-emerald-500 hover:scale-125 transition-all p-1"><i class="fas fa-play-circle text-xl"></i></button>`;
+        audios.forEach((url) => {
+            html += `
+                <button onclick="new Audio('${url}').play(); notify('अडियो बज्दैछ...','info')" 
+                        class="text-emerald-500 hover:scale-125 transition-all p-1">
+                    <i class="fas fa-play-circle text-xl"></i>
+                </button>`;
+        });
     }
 
     return html + `</div>`;
