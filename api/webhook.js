@@ -98,17 +98,19 @@ const finalName = (userProfile.name !== "Messenger User")
             const finalMessage = messageText || (attachments.length > 0 ? "📷 Sent an attachment" : "New Message");
 
             // ग) TITAN v4.0.0 Logic: फेसबुक ID लाई नै चिनारी (Unique ID) मानेर सिंक गर्ने
+// --- यसलाई फेर्नुहोस् ---
 const customerData = {
-    phone_number: psid, // यहाँ फोन नम्बर हुँदैन, फेसबुकको PSID नै बस्छ
-    customer_name: finalName, // 'userProfile.name' को सट्टा 'finalName' राख्नुहोस् ताकि नाम नहराओस्
+    phone_number: psid, 
+    customer_name: finalName, 
     chat_summary: finalMessage,
     platform: 'messenger',
     status: existingCustomer ? existingCustomer.status : 'inquiry',
     service: existingCustomer ? existingCustomer.service : 'Other',
-    documents: JSON.stringify(updatedDocs),
+    documents: updatedDocs, // ✅ यहाँबाट JSON.stringify हटाियो, सिधै एरे (Array) पठाउनुहोस्
     last_updated_by: 'MESSENGER_BOT',
     updated_at: new Date().toISOString()
 };
+// ----------------------
 
 try {
     await Promise.all([

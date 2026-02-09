@@ -67,46 +67,56 @@ document.addEventListener('DOMContentLoaded', async () => {
 // --- ३. MULTIMEDIA ENGINE (Voice, PDF, Gallery) ---
 
 function renderFileIcons(docs, id) {
-    // १. सुरुमै डाटा छ कि छैन चेक गर्ने र JSON लाई सुरक्षित रूपमा Array मा बदल्ने
     let docsArray = [];
-    
-    if (!docs) return '<span class="text-slate-300 italic text-[9px]">No Docs</span>';
+    if (!docs || docs === '[]') return '<span class="text-slate-300 italic text-[9px]">No Docs</span>';
 
     try {
-        // यदि डाटा String हो भने Parse गर्ने, नत्र सिधै प्रयोग गर्ने
+        // १. JSON सुरक्षित रूपमा पार्स गर्ने (Double encoding handle गरिएको)
         docsArray = typeof docs === 'string' ? JSON.parse(docs) : docs;
-        
-        // यदि Parse गर्दा पनि Array बनेन भने खाली बनाइदिने
-        if (!Array.isArray(docsArray)) docsArray = [];
+        if (typeof docsArray === 'string') docsArray = JSON.parse(docsArray);
     } catch (e) {
-        console.error("JSON Parsing Error in renderFileIcons:", e);
         docsArray = [];
     }
 
-    if (docsArray.length === 0) return '<span class="text-slate-300 italic text-[9px]">No Docs</span>';
+    if (!Array.isArray(docsArray) || docsArray.length === 0) 
+        return '<span class="text-slate-300 italic text-[9px]">No Docs</span>';
 
-    // २. फिल्टर गर्दा URL सुरक्षित छ कि छैन चेक गर्ने
-    const images = docsArray.filter(url => typeof url === 'string' && url.match(/\.(jpg|jpeg|png|webp|gif)/i));
-    const audios = docsArray.filter(url => typeof url === 'string' && url.match(/\.(mp3|wav|ogg|m4a)/i));
-    const pdfs = docsArray.filter(url => typeof url === 'string' && url.match(/\.(pdf)/i));
+    // २. इमेज फिल्टर: WhatsApp (Object) र Messenger (String) दुवैलाई चिन्ने
+    const images = docsArray.map(item => {
+        // यदि item एउटा object हो भने .url लिने, नत्र सिधै item (string) लिने
+        return (typeof item === 'object' && item !== null) ? item.url : item;
+    }).filter(url => url && typeof url === 'string' && (
+        url.match(/\.(jpg|jpeg|png|webp|gif)/i) || 
+        url.includes('fbcdn.net') || 
+        url.includes('supabase.co/storage') ||
+        url.includes('messenger.com')
+    ));
+
+    // ३. PDF र Audio फिल्टर
+    const pdfs = docsArray.map(item => (typeof item === 'object' ? item.url : item))
+                          .filter(url => typeof url === 'string' && url.match(/\.(pdf)/i));
+    
+    const audios = docsArray.map(item => (typeof item === 'object' ? item.url : item))
+                            .filter(url => typeof url === 'string' && url.match(/\.(mp3|wav|ogg|m4a)/i));
 
     let html = `<div class="flex flex-wrap gap-2 items-center justify-center">`;
 
     if (images.length > 0) {
         html += `
             <div class="relative cursor-pointer group" onclick="openGallery(${JSON.stringify(images).replace(/"/g, '&quot;')}, '${id}')">
-                <img src="${images[0]}" class="w-10 h-10 rounded-lg border-2 border-white shadow-md object-cover group-hover:scale-110 transition-transform">
+                <img src="${images[0]}" class="w-10 h-10 rounded-lg border-2 border-white shadow-md object-cover group-hover:scale-110 transition-transform" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3342/3342137.png'">
                 ${images.length > 1 ? `<div class="absolute -top-2 -right-2 bg-blue-600 text-white text-[9px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-white shadow-lg">+${images.length - 1}</div>` : ''}
             </div>`;
     }
 
-    pdfs.forEach(url => {
-        html += `<button onclick="window.open('${url}')" class="text-red-500 hover:scale-125 transition-all p-1"><i class="fas fa-file-pdf text-xl"></i></button>`;
-    });
+    // PDF र Audio आइकनहरू
+    if (pdfs.length > 0) {
+        html += `<button onclick="window.open('${pdfs[0]}')" class="text-red-500 hover:scale-125 transition-all p-1"><i class="fas fa-file-pdf text-xl"></i></button>`;
+    }
 
-    audios.forEach(url => {
-        html += `<button onclick="new Audio('${url}').play(); notify('अडियो प्ले हुँदैछ...','success')" class="text-emerald-500 hover:scale-125 transition-all p-1"><i class="fas fa-play-circle text-xl"></i></button>`;
-    });
+    if (audios.length > 0) {
+        html += `<button onclick="new Audio('${audios[0]}').play();" class="text-emerald-500 hover:scale-125 transition-all p-1"><i class="fas fa-play-circle text-xl"></i></button>`;
+    }
 
     return html + `</div>`;
 }
@@ -689,8 +699,12 @@ function applyLogicFilters(reset = true) {
 
 // प्लेटफर्म बटन थिच्दा चल्ने नयाँ सहयोगी फङ्सन
 function filterByPlatform(p) {
-    STATE.selectedPlatform = p; // कुन प्लेटफर्म छानेको याद राख्ने (all, whatsapp, messenger)
-    applyLogicFilters(true);
+    
+    STATE.selectedPlatform = p; 
+    
+    console.log("Filtering by platform:", p);
+
+    applyLogicFilters(true); 
 }
 
 // --- ७. ग्लोबल इभेन्टहरू (Login & Search) ---
