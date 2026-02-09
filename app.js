@@ -70,7 +70,7 @@ function viewPDF(url) {
     window.open(url, '_blank');
 }
 
-// २. तपाईँकै Multimedia Engine कोड
+// --- 2. MULTIMEDIA ENGINE (Corrected & Stable) ---
 function renderFileIcons(docs, id) {
     let docsArray = [];
     
@@ -117,20 +117,21 @@ function renderFileIcons(docs, id) {
     }
 
     if (pdfs.length > 0) {
-        pdfs.forEach((url, index) => {
+        pdfs.forEach((url) => {
+            // यहाँ <a> ट्याग प्रयोग गर्दा कुनै extra function चाहिँदैन
             html += `
-                <button onclick="viewPDF('${url}')" 
-                   class="text-red-500 hover:scale-125 transition-all p-1 flex flex-col items-center bg-transparent border-none cursor-pointer">
+                <a href="${url}" target="_blank" rel="noopener noreferrer" 
+                   class="text-red-500 hover:scale-125 transition-all p-1 flex flex-col items-center no-underline">
                     <i class="fas fa-file-pdf text-xl"></i>
-                    <span class="text-[7px] font-bold mt-1">VIEW PDF</span>
-                </button>`;
+                    <span class="text-[7px] font-bold mt-1 uppercase">PDF</span>
+                </a>`;
         });
     }
 
     if (audios.length > 0) {
         audios.forEach((url) => {
             html += `
-                <button onclick="new Audio('${url}').play(); notify('अडियो बज्दैछ...','info')" 
+                <button onclick="new Audio('${url}').play(); if(typeof notify === 'function') notify('अडियो बज्दैछ...','info')" 
                         class="text-emerald-500 hover:scale-125 transition-all p-1 bg-transparent border-none cursor-pointer">
                     <i class="fas fa-play-circle text-xl"></i>
                 </button>`;
