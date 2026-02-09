@@ -49,7 +49,7 @@ async function handleMediaUpload(msg, phone) {
 const client = new Client({
     authStrategy: new LocalAuth({ clientId: 'sajilo-bot' }),
     puppeteer: { 
-        headless: false, // यहाँ 'true' बाट 'false' बनाइएको छ, अब ब्राउजर खुल्नेछ
+        headless: false, 
         handleSIGINT: false, 
         args: [
             '--no-sandbox', 
@@ -58,11 +58,12 @@ const client = new Client({
             '--disable-gpu',
             '--disable-extensions',
             '--no-first-run',
-            '--no-zygote'
+            '--no-zygote',
+            // यो तलको लाइनले 'Loading chats' समस्या हल गर्न मद्दत गर्छ
+            '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         ]
     }
 });
-
 // ४. इभेन्ट लाइफसाइकल (सच्याइएको र प्रष्ट पारिएको)
 client.on('qr', (qr) => {
     engineStatus.state = "awaiting_login";
