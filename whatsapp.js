@@ -45,25 +45,27 @@ async function handleMediaUpload(msg, phone) {
     }
 }
 
-// ३. ह्वाट्सएप क्लाइन्ट सेटअप (v4 Core - Optimized for Windows)
+// ३. ह्वाट्सएप क्लाइन्ट सेटअप (v4 Core - Optimized)
 const client = new Client({
-    authStrategy: new LocalAuth({ clientId: 'sajilo-bot' }),
+    authStrategy: new LocalAuth({ 
+        clientId: 'titan-final-v1', // हरेक पटक नयाँ नाम दिँदा पुराना त्रुटि हट्छन्
+        dataPath: './.wwebjs_auth' 
+    }),
     puppeteer: { 
         headless: false, 
-        handleSIGINT: false, 
+        executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe', // यसले वास्तविक क्रोम प्रयोग गर्छ
         args: [
-            '--no-sandbox', 
+            '--no-sandbox',
             '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage', 
-            '--disable-gpu',
             '--disable-extensions',
+            '--disable-dev-shm-usage',
             '--no-first-run',
             '--no-zygote',
-            // यो तलको लाइनले 'Loading chats' समस्या हल गर्न मद्दत गर्छ
-            '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            '--disable-gpu'
         ]
     }
 });
+
 // ४. इभेन्ट लाइफसाइकल (सच्याइएको र प्रष्ट पारिएको)
 client.on('qr', (qr) => {
     engineStatus.state = "awaiting_login";
