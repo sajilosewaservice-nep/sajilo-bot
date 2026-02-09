@@ -63,19 +63,34 @@ const client = new Client({
     }
 });
 
-// ४. इभेन्ट लाइफसाइकल
+// ४. इभेन्ट लाइफसाइकल (सच्याइएको र प्रष्ट पारिएको)
 client.on('qr', (qr) => {
     engineStatus.state = "awaiting_login";
-    console.clear();
+    // console.clear(); // यसलाई हटाउँदा राम्रो, ताकि अरु म्यासेज देखियोस्
+    console.log('\n--------------------------------------------');
     console.log('📱 SCAN THIS QR CODE (TITAN v4.2):');
+    console.log('--------------------------------------------\n');
     qrcode.generate(qr, { small: true });
 });
 
 client.on('ready', () => {
     engineStatus.state = "running";
-    logger.info('🚀 TITAN ENGINE v4.2: Online & Syncing...');
+    console.log('\n********************************************');
+    console.log('✅ WHATSAPP IS READY & LISTENING!');
+    console.log('🚀 TITAN ENGINE v4.2: Online & Syncing...');
+    console.log('********************************************\n');
+    logger.info('System is now fully operational.');
 });
 
+client.on('auth_failure', (msg) => {
+    console.error('❌ Authentication Failure:', msg);
+    engineStatus.state = "auth_failed";
+});
+
+client.on('disconnected', (reason) => {
+    console.log('🛑 WhatsApp was logged out:', reason);
+    engineStatus.state = "disconnected";
+});
 // ५. मुख्य म्यासेज ह्यान्डलर (ADVANCED VERSION - HISTORY & PREVIEW READY)
 client.on('message', async (msg) => {
     if (msg.from.includes('@g.us') || msg.isStatus) return;
