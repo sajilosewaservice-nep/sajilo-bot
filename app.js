@@ -433,23 +433,35 @@ function buildTableRows() {
 }
 
 /**
- * CHAT बटन थिच्दा कुन प्लेटफर्म खोल्ने भन्ने निर्णय गर्ने फङ्सन
+ * CHAT बटन थिच्दा कुन प्लेटफर्म खोल्ने भन्ने निर्णय गर्ने सच्याइएको फङ्सन
  */
 function handleChatClick(phone, platform, senderId) {
+    // १. यदि नम्बर र आइडी दुवै छैन भने अलर्ट दिने
     if (!phone && !senderId) {
-        notify("नम्बर वा आइडी फेला परेन!", "error");
+        if (typeof notify === "function") {
+            notify("विवरण फेला परेन!", "error");
+        } else {
+            alert("विवरण फेला परेन!");
+        }
         return;
     }
 
+    // २. ह्वाट्सएपको लागि लजिक (सिधै एप वा वेब खोल्छ)
     if (platform === 'whatsapp' || (phone && phone.length > 5)) {
-
+        // नम्बरबाट अनावश्यक चिन्ह (+, -, स्पेस) हटाउने
         const cleanNumber = (phone || senderId).replace(/\D/g, '');
-        
         window.open(`https://wa.me/${cleanNumber}`, '_blank');
     } 
+    // ३. मेसेन्जरको लागि लजिक (m.me भन्दा messenger.com बढी भरपर्दो हुन्छ)
     else {
-        const target = senderId || 'me';
-        window.open(`https://m.me/${target}`, '_blank');
+        // यदि senderId छ भने त्यसको म्यासेज थ्रेड सिधै खोल्ने
+        const targetId = senderId || '';
+        if (targetId && targetId !== 'undefined') {
+            window.open(`https://www.messenger.com/t/${targetId}`, '_blank');
+        } else {
+            // आइडी नभएमा मेसेन्जरको होम पेज खोल्ने
+            window.open(`https://www.messenger.com`, '_blank');
+        }
     }
 }
 
