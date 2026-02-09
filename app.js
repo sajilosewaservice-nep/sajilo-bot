@@ -569,32 +569,46 @@ async function syncCoreDatabase() {
 }
 
 function refreshFinancialAnalytics() {
-    const stats = STATE.allData.reduce((acc, curr) => {
-        // Status लाई सधैँ सानो अक्षरमा तुलना गर्ने (inquiry, pending, success)
-        const s = (curr.status || '').toLowerCase().trim();
-        acc.counts[s] = (acc.counts[s] || 0) + 1;
-        
-        if (s === 'success') {
-const amtStr = String(curr.income || "0");
-const amt = parseFloat(amtStr.split('/')[0].replace(/[^0-9.]/g, '')) || 0;
-acc.revenue += amt;
-        }
-        return acc;
-    }, { counts: {}, revenue: 0 });
+    const today = new Date().toISOString().split('T')[0]; // आजको मिति तान्ने
 
-    const updateUI = (id, val) => { 
-    if(document.getElementById(id)) document.getElementById(id).textContent = val; 
-};
-    
-updateUI('statIncome', `Rs. ${stats.revenue.toLocaleString()}`);
-updateUI('statSuccess', stats.counts['success'] || 0);
-updateUI('statPending', stats.counts['pending'] || 0);
-updateUI('statInquiry', stats.counts['inquiry'] || 0);
-updateUI('statWorking', stats.counts['working'] || 0);
-// Problem को लागि यो लाइन थप्नुहोस् (यदि HTML मा statProblem ID छ भने)
-updateUI('statProblem', stats.counts['problem'] || 0); 
+    const stats = STATE.allData.reduce((acc, curr) => {
+        const s = (curr.status || '').toLowerCase().trim();
+        acc.counts[s] = (acc.counts[s] || 0) + 1;
+        
+        if (s === 'success') {
+            // Advanced र Pending निकाल्ने लोजिक
+            const parts = String(curr.income || "0/0").split('/');
+            const incomeAmt = parseFloat(parts[0].replace(/[^0-9.]/g, '')) || 0;
+            const pendingAmt = parts[1] ? (parseFloat(parts[1].replace(/[^0-9.]/g, '')) || 0) : 0;
 
-updateUI('totalRecords', `TOTAL: ${STATE.allData.length} RECORDS`);
+            // कुल आम्दानी र कुल बाँकी हिसाब
+            acc.revenue += incomeAmt;
+            acc.totalPending += pendingAmt;
+
+            // आजको मात्र आम्दानी (Daily)
+            const entryDate = curr.updated_at ? curr.updated_at.split('T')[0] : '';
+            if (entryDate === today) {
+                acc.dailyIncome += incomeAmt;
+            }
+        }
+        return acc;
+    }, { counts: {}, revenue: 0, totalPending: 0, dailyIncome: 0 });
+
+    const updateUI = (id, val) => { 
+        if(document.getElementById(id)) document.getElementById(id).textContent = val; 
+    };
+    
+    // UI मा डाटा पठाउने
+    updateUI('statIncome', `Rs. ${stats.revenue.toLocaleString()}`); // कुल जम्मा
+    updateUI('statDaily', `Rs. ${stats.dailyIncome.toLocaleString()}`); // आजको
+    updateUI('statPendingTotal', `Rs. ${stats.totalPending.toLocaleString()}`); // कुल बाँकी
+    
+    updateUI('statSuccess', stats.counts['success'] || 0);
+    updateUI('statPending', stats.counts['pending'] || 0);
+    updateUI('statInquiry', stats.counts['inquiry'] || 0);
+    updateUI('statWorking', stats.counts['working'] || 0);
+    updateUI('statProblem', stats.counts['problem'] || 0); 
+    updateUI('totalRecords', `TOTAL: ${STATE.allData.length} RECORDS`);
 }
 
 function startRealtimeBridge() {
