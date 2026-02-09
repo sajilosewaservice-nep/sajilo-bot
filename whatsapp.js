@@ -45,26 +45,24 @@ async function handleMediaUpload(msg, phone) {
     }
 }
 
-// ३. ह्वाट्सएप क्लाइन्ट सेटअप (v4 Core - Optimized)
-const client = new Client({
-    authStrategy: new LocalAuth({ 
-        clientId: 'titan-final-v1', // हरेक पटक नयाँ नाम दिँदा पुराना त्रुटि हट्छन्
-        dataPath: './.wwebjs_auth' 
-    }),
-    puppeteer: { 
-        headless: false, 
-        executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe', // यसले वास्तविक क्रोम प्रयोग गर्छ
-        args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-extensions',
-            '--disable-dev-shm-usage',
-            '--no-first-run',
-            '--no-zygote',
-            '--disable-gpu'
-        ]
-    }
-});
+// ३. ह्वाट्सएप क्लाइन्ट सेटअप (Baileys - No Puppeteer)
+async function startSajiloBot() {
+    // सेसन डाटा 'baileys_auth' फोल्डरमा सुरक्षित हुन्छ
+    const { state, saveCreds } = await useMultiFileAuthState('baileys_auth');
+
+    const sock = makeWASocket({
+        auth: state,
+        printQRInTerminal: true, // यसले टर्मिनलमै क्युआर कोड देखाउँछ
+        browser: ["Sajilo Bot", "Windows", "1.0.0"], // ह्वाट्सएपले चिन्ने नाम
+        syncFullHistory: false // पुराना म्यासेज लोड नगर्ने (यसले लोड हुन समय लगाउँदैन)
+    });
+
+    // सेसन अपडेट हुँदा सेभ गर्ने
+    sock.ev.on('creds.update', saveCreds);
+
+    // यहाँबाट बाँकी कनेक्सन र म्यासेजको लजिक सुरु हुन्छ...
+    return sock;
+}
 
 // ४. इभेन्ट लाइफसाइकल (सच्याइएको र प्रष्ट पारिएको)
 client.on('qr', (qr) => {
