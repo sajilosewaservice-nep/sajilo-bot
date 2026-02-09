@@ -64,122 +64,118 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 });
 
-// --- ३. ADVANCED MULTIMEDIA ENGINE (Voice, PDF Viewer, Smart Gallery) ---
-
+// --- ३. MULTIMEDIA ENGINE (Voice, PDF, Gallery) ---
 function renderFileIcons(docs, id) {
     let docsArray = [];
-    if (!docs || docs === '[]' || docs === '') return '<span class="text-slate-400 italic text-[9px]">No Docs</span>';
+    
+    // १. यदि डेटा नै छैन भने
+    if (!docs || docs === '[]' || docs === '') {
+        return '<span class="text-slate-300 italic text-[9px]">No Docs</span>';
+    }
 
     try {
+        // २. JSON सुरक्षित रूपमा पार्स गर्ने (Double encoding handle गरिएको)
         docsArray = typeof docs === 'string' ? JSON.parse(docs) : docs;
         if (typeof docsArray === 'string') docsArray = JSON.parse(docsArray);
-    } catch (e) { docsArray = []; }
+    } catch (e) {
+        console.error("Parsing error:", e);
+        docsArray = [];
+    }
 
-    if (!Array.isArray(docsArray) || docsArray.length === 0) return '<span class="text-slate-400 italic text-[9px]">No Docs</span>';
+    // ३. एरे हो कि होइन चेक गर्ने
+    if (!Array.isArray(docsArray) || docsArray.length === 0) {
+        return '<span class="text-slate-300 italic text-[9px]">No Docs</span>';
+    }
 
-    // १. युनिभर्सल डेटा म्यापिङ (WhatsApp/Messenger Normalize)
-    const normalizedDocs = docsArray.map(item => (typeof item === 'object' && item !== null ? item.url : item));
+    // ४. इमेज फिल्टर: WhatsApp र Messenger दुवैबाट URL निकाल्ने
+    const images = docsArray.map(item => {
+        return (typeof item === 'object' && item !== null) ? item.url : item;
+    }).filter(url => url && typeof url === 'string' && (
+        url.match(/\.(jpg|jpeg|png|webp|gif|svg)/i) || 
+        url.includes('fbcdn.net') || 
+        url.includes('supabase.co/storage') ||
+        url.includes('messenger.com')
+    ));
 
-    // २. मिडिया वर्गीकरण
-    const images = normalizedDocs.filter(url => url && typeof url === 'string' && (url.match(/\.(jpg|jpeg|png|webp|gif|svg)/i) || url.includes('fbcdn.net') || url.includes('supabase.co/storage')));
-    const pdfs = normalizedDocs.filter(url => url && typeof url === 'string' && url.toLowerCase().includes('.pdf'));
-    const audios = normalizedDocs.filter(url => url && typeof url === 'string' && url.match(/\.(mp3|wav|ogg|m4a)/i));
+    // ५. PDF फिल्टर: .pdf भएका सबै फाइलहरू
+    const pdfs = docsArray.map(item => (typeof item === 'object' && item !== null ? item.url : item))
+        .filter(url => url && typeof url === 'string' && url.toLowerCase().includes('.pdf'));
 
-    let html = `<div class="flex flex-wrap gap-3 items-center justify-center">`;
+    // ६. अडियो फिल्टर
+    const audios = docsArray.map(item => (typeof item === 'object' && item !== null ? item.url : item))
+        .filter(url => url && typeof url === 'string' && url.match(/\.(mp3|wav|ogg|m4a)/i));
 
-    // ३. स्मार्ट ग्यालेरी आइकन
+    let html = `<div class="flex flex-wrap gap-2 items-center justify-center">`;
+
+    // ७. फोटो आइकन र ग्यालेरी लोजिक
     if (images.length > 0) {
         html += `
             <div class="relative cursor-pointer group" onclick="openGallery(${JSON.stringify(images).replace(/"/g, '&quot;')}, '${id}')">
-                <img src="${images[0]}" class="w-12 h-12 rounded-xl border-2 border-white/20 shadow-lg object-cover group-hover:scale-110 group-hover:border-blue-500 transition-all duration-300" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3342/3342137.png'">
-                ${images.length > 1 ? `<div class="absolute -top-2 -right-2 bg-gradient-to-tr from-blue-600 to-blue-400 text-white text-[10px] font-black w-6 h-6 rounded-full flex items-center justify-center border-2 border-white shadow-xl">+${images.length - 1}</div>` : ''}
+                <img src="${images[0]}" class="w-10 h-10 rounded-lg border-2 border-white shadow-md object-cover group-hover:scale-110 transition-transform" 
+                     onerror="this.src='https://cdn-icons-png.flaticon.com/512/3342/3342137.png'">
+                ${images.length > 1 ? `
+                    <div class="absolute -top-2 -right-2 bg-blue-600 text-white text-[9px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-white shadow-lg">
+                        +${images.length - 1}
+                    </div>` : ''}
             </div>`;
     }
 
-    // ४. एडभान्स पीडीएफ भ्युअर बटन
+    // PDF आइकन देखाउने भागलाई यसले बदल्नुहोस्:
+if (pdfs.length > 0) {
     pdfs.forEach((url, index) => {
         html += `
-            <button onclick="viewPDF('${url}')" class="flex flex-col items-center group">
-                <div class="w-10 h-10 bg-red-50 text-red-500 rounded-xl flex items-center justify-center group-hover:bg-red-500 group-hover:text-white transition-all shadow-sm">
-                    <i class="fas fa-file-pdf text-xl"></i>
-                </div>
-                <span class="text-[8px] font-bold mt-1 text-slate-500 uppercase">View PDF</span>
+            <button onclick="viewPDF('${url}')" 
+               class="text-red-500 hover:scale-125 transition-all p-1 flex flex-col items-center">
+                <i class="fas fa-file-pdf text-xl"></i>
+                <span class="text-[7px] font-bold mt-1">VIEW PDF</span>
             </button>`;
     });
+}
 
-    // ५. अडियो प्लेयर
-    audios.forEach((url) => {
-        html += `
-            <button onclick="new Audio('${url}').play(); notify('अडियो प्ले हुँदैछ...','info')" class="flex flex-col items-center group">
-                <div class="w-10 h-10 bg-emerald-50 text-emerald-500 rounded-xl flex items-center justify-center group-hover:bg-emerald-500 group-hover:text-white transition-all shadow-sm">
+    // ९. अडियो प्ले बटन
+    if (audios.length > 0) {
+        audios.forEach((url) => {
+            html += `
+                <button onclick="new Audio('${url}').play(); notify('अडियो बज्दैछ...','info')" 
+                        class="text-emerald-500 hover:scale-125 transition-all p-1">
                     <i class="fas fa-play-circle text-xl"></i>
-                </div>
-                <span class="text-[8px] font-bold mt-1 text-slate-500 uppercase">Audio</span>
-            </button>`;
-    });
+                </button>`;
+        });
+    }
 
     return html + `</div>`;
 }
 
-// ६. IN-APP PDF VIEWER (यो थप्नै पर्छ)
-function viewPDF(url) {
-    const modalHtml = `
-        <div id="pdfModal" class="fixed inset-0 bg-slate-900/95 z-[9999999] flex flex-col p-4 animate-in fade-in duration-300">
-            <div class="flex justify-between items-center text-white mb-4 px-2">
-                <div>
-                    <h2 class="font-black text-blue-400 text-sm tracking-widest uppercase flex items-center gap-2">
-                        <i class="fas fa-file-pdf"></i> Titan Doc Viewer
-                    </h2>
-                </div>
-                <button onclick="document.getElementById('pdfModal').remove()" class="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-red-500 transition-all text-2xl">&times;</button>
-            </div>
-            <div class="flex-1 bg-white rounded-2xl overflow-hidden shadow-2xl relative">
-                <iframe src="${url}" class="w-full h-full border-none"></iframe>
-            </div>
-            <div class="p-4 flex justify-center gap-4">
-                <a href="${url}" target="_blank" class="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg hover:bg-blue-700 transition-all">
-                    <i class="fas fa-external-link-alt"></i> Full Screen
-                </a>
-                <button onclick="document.getElementById('pdfModal').remove()" class="bg-slate-700 text-white px-8 py-3 rounded-xl font-bold hover:bg-slate-600 transition-all">Close</button>
-            </div>
-        </div>`;
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
-}
-
-// ७. खुला ग्यालेरी (Selection फिचर सहित)
 function openGallery(images, id) {
     const selectedKey = `selected_docs_${id}`;
     let selectedDocs = JSON.parse(localStorage.getItem(selectedKey) || "[]");
 
     const modalHtml = `
-        <div id="galleryModal" class="fixed inset-0 bg-slate-950/98 z-[9999999] flex flex-col p-6 animate-in slide-in-from-bottom duration-300">
-            <div class="flex justify-between items-center text-white mb-8 border-b border-white/10 pb-4">
+        <div id="galleryModal" class="fixed inset-0 bg-black/95 z-[9999999] flex flex-col p-6 animate-in fade-in">
+            <div class="flex justify-between items-center text-white mb-6">
                 <div>
-                    <h2 class="font-black tracking-tighter uppercase text-2xl italic text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">Customer Assets</h2>
-                    <p class="text-xs text-slate-400">फारम भर्नका लागि आवश्यक फाइलहरू छान्नुहोस्</p>
+                    <h2 class="font-black tracking-widest uppercase text-sm italic text-blue-400">Customer Documents</h2>
+                    <p class="text-[10px] text-slate-400">फारमको लागि फोटो छान्नुहोस् (Tick ✅ लगाउनुहोस्)</p>
                 </div>
-                <button onclick="document.getElementById('galleryModal').remove()" class="text-4xl hover:text-red-500 transition-colors">&times;</button>
+                <button onclick="document.getElementById('galleryModal').remove()" class="text-4xl hover:text-red-500">&times;</button>
             </div>
-            <div class="flex-1 overflow-y-auto grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
+            <div class="flex-1 overflow-y-auto grid grid-cols-2 md:grid-cols-4 gap-4">
                 ${images.map(img => {
                     const isChecked = selectedDocs.includes(img) ? 'checked' : '';
-                    const activeClass = isChecked ? 'ring-4 ring-blue-500 scale-95' : 'opacity-80 hover:opacity-100';
+                    const borderColor = isChecked ? 'border-blue-500' : 'border-white/10';
                     return `
-                    <div class="relative group rounded-2xl overflow-hidden bg-slate-900 aspect-square border border-white/5 ${activeClass} transition-all duration-300">
-                        <img src="${img}" class="w-full h-full object-cover cursor-zoom-in" onclick="window.open('${img}')">
-                        <div class="absolute top-4 left-4">
+                    <div class="relative rounded-2xl overflow-hidden border-4 ${borderColor} bg-slate-800 transition-all">
+                        <img src="${img}" class="w-full h-64 object-cover cursor-zoom-in" onclick="window.open('${img}')">
+                        <div class="absolute top-3 left-3 scale-[1.8]">
                             <input type="checkbox" value="${img}" ${isChecked} 
-                                onchange="togglePhotoSelection('${id}', '${img}', this); this.closest('.relative').classList.toggle('ring-4'); this.closest('.relative').classList.toggle('ring-blue-500')"
-                                class="w-6 h-6 rounded-lg cursor-pointer accent-blue-500 shadow-2xl">
-                        </div>
-                        <div class="absolute bottom-0 inset-x-0 p-2 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onclick="window.open('${img}')" class="text-[10px] text-white font-bold w-full">VIEW FULL SIZE</button>
+                                onchange="togglePhotoSelection('${id}', '${img}', this)"
+                                class="cursor-pointer accent-blue-500">
                         </div>
                     </div>`;
                 }).join('')}
             </div>
-            <div class="p-6 flex justify-center">
-                <button onclick="document.getElementById('galleryModal').remove()" class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-16 py-4 rounded-2xl font-black shadow-[0_0_30px_rgba(37,99,235,0.3)] hover:scale-105 transition-all">SAVE & DONE</button>
+            <div class="p-4 flex justify-end">
+                <button onclick="document.getElementById('galleryModal').remove()" class="bg-blue-600 text-white px-10 py-3 rounded-2xl font-black shadow-lg hover:bg-blue-700 transition-all">DONE</button>
             </div>
         </div>`;
     document.body.insertAdjacentHTML('beforeend', modalHtml);
