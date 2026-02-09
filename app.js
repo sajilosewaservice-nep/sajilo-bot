@@ -493,10 +493,12 @@ async function saveManualNote(id) {
 
 async function commitUpdate(id, updates, msg) {
     try {
-        // पेलोड तयार पार्ने - यसले Income को ७७७/७७ लाई नम्बरमा बदल्न खोजेर बिगार्दैन
+        // सुरक्षित तरिकाले नाम राख्ने (यदि युजर छैन भने 'Operator' लेख्ने)
+        const userName = (STATE.currentUser && STATE.currentUser.full_name) ? STATE.currentUser.full_name : 'Operator';
+
         const payload = { 
             ...updates, 
-            last_updated_by: STATE.currentUser.full_name, 
+            last_updated_by: userName, 
             updated_at: new Date().toISOString() 
         };
 
@@ -506,20 +508,21 @@ async function commitUpdate(id, updates, msg) {
             .eq('id', id)
             .select(); 
 
-        if (!error && data && data.length > 0) {
-            if (msg) notify(msg, "success");
+        if (error) {
+            console.error("Supabase Error:", error);
+            // यदि एरर "numeric" को आएको छ भने सुपवेसमा कोलम टाइप फेर्नुपर्छ
+            notify("Error: " + error.message, "error");
+            return;
+        }
 
+        if (data && data.length > 0) {
+            if (msg) notify(msg, "success");
             const index = STATE.allData.findIndex(d => d.id === id);
             if (index !== -1) {
                 STATE.allData[index] = { ...STATE.allData[index], ...data[0] };
-                
-                // UI रिफ्रेस गर्ने र हिसाब किताब अपडेट गर्ने
                 if (typeof applyLogicFilters === 'function') applyLogicFilters(false); 
                 if (typeof refreshFinancialAnalytics === 'function') refreshFinancialAnalytics();
             }
-        } else if (error) {
-            console.error("Supabase Error:", error);
-            notify("Error: " + error.message, "error");
         }
     } catch (err) {
         console.error("System Error:", err);
