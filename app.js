@@ -371,7 +371,6 @@ function buildTableRows() {
         const tr = document.createElement('tr');
         tr.className = 'border-b hover:bg-slate-50 transition-colors';
         
-        // --- सुधारेको च्याट लोजिक ---
         // यदि प्लेटफर्म ह्वाट्सएप हो भने फोन नम्बर प्रयोग गर्ने, नत्र मेसेन्जर लिङ्क बनाउने
         const chatUrl = (row.platform === 'whatsapp') 
             ? `https://wa.me/${row.phone_number?.replace(/\D/g, '') || row.sender_id}` 
@@ -382,11 +381,13 @@ function buildTableRows() {
             <td class="p-1 text-center">
                 ${row.platform === 'whatsapp' ? '<span title="WhatsApp">🟢</span>' : '<span title="Messenger">🔵</span>'}
             </td>
-            <td class="p-2">
-                <div class="font-bold text-[11px] truncate max-w-[100px]">${row.customer_name || 'New Lead'}</div>
-                <div class="text-[9px] text-blue-600 font-bold">${row.phone_number}</div>
-            </td>
-            <td class="p-2">
+            <td class="p-2 text-center font-bold text-emerald-600 text-[10px]">
+    Rs.<input type="text" 
+        class="w-16 bg-transparent text-center font-black border-b border-dotted outline-none focus:border-emerald-500" 
+        value="${row.income || 0}" 
+        placeholder="0/0"
+        onblur="commitUpdate('${row.id}', {income: this.value}, 'Income Saved')">
+</td>
                 <select class="w-full border p-1 rounded text-[10px] font-bold" onchange="commitUpdate('${row.id}', {service: this.value}, 'सेवा फेरियो')">
                     <option value="PCC" ${row.service==='PCC'?'selected':''}>PCC</option>
                     <option value="NID" ${row.service==='NID'?'selected':''}>NID</option>
@@ -493,38 +494,38 @@ async function saveManualNote(id) {
 
 async function commitUpdate(id, updates, msg) {
     try {
-        // १. पेलोड तयार पार्ने
+        // सुरक्षित नाम राख्ने ताकि कोड क्र्यास नहोस्
+        const userName = (STATE.currentUser && STATE.currentUser.full_name) ? STATE.currentUser.full_name : 'Operator';
+
         const payload = { 
             ...updates, 
-            last_updated_by: STATE.currentUser.full_name, 
+            last_updated_by: userName, 
             updated_at: new Date().toISOString() 
         };
 
-        // २. अपडेट गर्ने र अपडेट भएको डेटा फिर्ता माग्ने (.select())
         const { data, error } = await supabaseClient
             .from('customers')
             .update(payload)
             .eq('id', id)
             .select(); 
 
-        if (!error && data && data.length > 0) {
+        if (error) {
+            console.error("Supabase Error:", error.message);
+            return notify("Error: " + error.message, "error");
+        }
+
+        if (data && data.length > 0) {
             if (msg) notify(msg, "success");
- 
-            // केवल स्थानीय STATE.allData मा यो एउटा रो (Row) लाई अपडेट गर्ने।
             const index = STATE.allData.findIndex(d => d.id === id);
             if (index !== -1) {
-                // पुराना डाटाहरूमा नयाँ परिवर्तन मात्र मिसाउने (Merge)
                 STATE.allData[index] = { ...STATE.allData[index], ...data[0] };
-                
-                // ४. UI रिफ्रेस गर्ने (false पठाउने ताकि पेज १ मा जम्प नहोस्)
-                applyLogicFilters(false); 
+                // हिसाब र टेबल अपडेट गर्ने
+                buildTableRows(); 
+                refreshFinancialAnalytics();
             }
-        } else if (error) {
-            console.error("Update error:", error);
-            notify("Error: " + error.message, "error");
         }
     } catch (err) {
-        notify("System Error!", "error");
+        console.error("Critical Error:", err);
     }
 }
 
@@ -570,30 +571,44 @@ async function syncCoreDatabase() {
 }
 
 function refreshFinancialAnalytics() {
-    const stats = STATE.allData.reduce((acc, curr) => {
-        // Status लाई सधैँ सानो अक्षरमा तुलना गर्ने (inquiry, pending, success)
-        const s = (curr.status || '').toLowerCase().trim();
-        acc.counts[s] = (acc.counts[s] || 0) + 1;
-        
-        if (s === 'success') {
-            acc.revenue += (parseFloat(curr.income) || 0);
-        }
-        return acc;
-    }, { counts: {}, revenue: 0 });
+    const today = new Date().toISOString().split('T')[0];
+    
+    const stats = STATE.allData.reduce((acc, curr) => {
+        const s = (curr.status || '').toLowerCase().trim();
+        acc.counts[s] = (acc.counts[s] || 0) + 1;
 
-    const updateUI = (id, val) => { 
-    if(document.getElementById(id)) document.getElementById(id).textContent = val; 
-};
-    
-updateUI('statIncome', `Rs. ${stats.revenue.toLocaleString()}`);
-updateUI('statSuccess', stats.counts['success'] || 0);
-updateUI('statPending', stats.counts['pending'] || 0);
-updateUI('statInquiry', stats.counts['inquiry'] || 0);
-updateUI('statWorking', stats.counts['working'] || 0);
-// Problem को लागि यो लाइन थप्नुहोस् (यदि HTML मा statProblem ID छ भने)
-updateUI('statProblem', stats.counts['problem'] || 0); 
+        if (s === 'success') {
+            // 777/77 बाट पहिलो भाग आम्दानी र दोस्रो भाग बाँकी निकाल्ने
+            const parts = String(curr.income || "0/0").split('/');
+            const incomeAmt = parseFloat(parts[0].replace(/[^0-9.]/g, '')) || 0;
+            const pendingAmt = parts[1] ? (parseFloat(parts[1].replace(/[^0-9.]/g, '')) || 0) : 0;
 
-updateUI('totalRecords', `TOTAL: ${STATE.allData.length} RECORDS`);
+            acc.revenue += incomeAmt;
+            acc.totalPending += pendingAmt;
+
+            // आजको आम्दानी चेक गर्ने
+            const entryDate = curr.updated_at ? curr.updated_at.split('T')[0] : '';
+            if (entryDate === today) {
+                acc.dailyIncome += incomeAmt;
+            }
+        }
+        return acc;
+    }, { counts: {}, revenue: 0, totalPending: 0, dailyIncome: 0 });
+
+    const updateUI = (id, val) => { 
+        if(document.getElementById(id)) document.getElementById(id).textContent = val; 
+    };
+    
+    updateUI('statIncome', `Rs. ${stats.revenue.toLocaleString()}`);
+    updateUI('statDaily', `Rs. ${stats.dailyIncome.toLocaleString()}`); // HTML मा यो ID थप्नुहोला
+    updateUI('statPendingTotal', `Rs. ${stats.totalPending.toLocaleString()}`); // HTML मा यो ID थप्नुहोला
+    
+    updateUI('statSuccess', stats.counts['success'] || 0);
+    updateUI('statPending', stats.counts['pending'] || 0);
+    updateUI('statInquiry', stats.counts['inquiry'] || 0);
+    updateUI('statWorking', stats.counts['working'] || 0);
+    updateUI('statProblem', stats.counts['problem'] || 0); 
+    updateUI('totalRecords', `TOTAL: ${STATE.allData.length} RECORDS`);
 }
 
 function startRealtimeBridge() {
