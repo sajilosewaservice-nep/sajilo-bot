@@ -4,6 +4,7 @@
  * ENGINE: BAILEYS (NO PUPPETEER) | PORT: 5000 
  * FEATURES: LIVE SYNC, RPA BRIDGE, ANALYTICS READY
  */
+const qrcode = require('qrcode-terminal');
 
 require('dotenv').config();
 const { 
@@ -55,7 +56,10 @@ async function startTitanEngine() {
     sock.ev.on('connection.update', (update) => {
         const { connection, lastDisconnect, qr } = update;
         
-        if (qr) console.log('📱 SCAN QR CODE FOR TITAN ENGINE:');
+        if (qr) {
+    console.log('📱 SCAN QR CODE FOR TITAN ENGINE:');
+    qrcode.generate(qr, { small: true }); // यसले अब QR कोड देखाउँछ
+}
         
         if (connection === 'close') {
             engineStats.state = "reconnecting";
