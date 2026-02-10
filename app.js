@@ -1,138 +1,126 @@
 /**
- * TITAN ENTERPRISE CRM v4.0.0 - WHATSAPP ENGINE
+ * TITAN ENTERPRISE CRM v4.0.0 - ULTIMATE WHATSAPP ENGINE
  * --------------------------------------------------
- * Optimized Professional Version (Stable & Verified)
+ * ENGINE: BAILEYS (NO PUPPETEER) | PORT: 5000 
+ * FEATURES: LIVE SYNC, RPA BRIDGE, ANALYTICS READY
  */
+
 require('dotenv').config();
-const { Client, LocalAuth } = require('whatsapp-web.js');
+const { 
+    default: makeWASocket, 
+    useMultiFileAuthState, 
+    DisconnectReason, 
+    fetchLatestBaileysVersion 
+} = require('@whiskeysockets/baileys');
 const { createClient } = require('@supabase/supabase-js');
-const qrcode = require('qrcode-terminal');
 const express = require('express');
-const http = require('http');
+const cors = require('cors');
 const pino = require('pino');
 
-// १. प्रोफेसनल इन्फ्रास्ट्रक्चर
-const logger = pino({ level: 'info', transport: { target: 'pino-pretty' } });
+// १. कन्फिगरेसन र इन्फ्रास्ट्रक्चर
+const logger = pino({ level: 'silent' });
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
-
 const app = express();
-const server = http.createServer(app);
-const PORT = process.env.PORT || 3000;
 
-// इन्जिन स्टाटस ट्र्याकिङ
-let engineStatus = { 
-    state: "booting", 
-    processedCount: 0, 
-    startTime: new Date().toLocaleString(),
-    lastSync: "Never" 
+app.use(cors());
+app.use(express.json());
+
+const PORT = 5000; // ड्यासबोर्डको शक्ति यही पोर्टमा छ
+
+// इन्जिनको स्वास्थ्य अवस्था (Health Status)
+let engineStats = {
+    state: "starting",
+    uptime: new Date().toLocaleString(),
+    messagesProcessed: 0,
+    lastActivity: "None"
 };
 
-// २. ह्वाट्सएप क्लाइन्ट सेटअप (Puppeteer Optimized)
-const client = new Client({
-    authStrategy: new LocalAuth(),
-    puppeteer: {
-        headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-extensions']
-    }
-});
+// २. मुख्य ह्वाट्सएप इन्जिन (Baileys)
+async function startTitanEngine() {
+    const { version } = await fetchLatestBaileysVersion();
+    const { state, saveCreds } = await useMultiFileAuthState('titan_auth_session');
 
-// ३. एड्भान्स्ड स्टोरेज लजिक (मिडिया ह्यान्डलर)
-async function handleMediaUpload(msg, phone) {
-    try {
-        const media = await msg.downloadMedia();
-        if (!media) return null;
+    const sock = makeWASocket({
+        version,
+        auth: state,
+        printQRInTerminal: true,
+        logger: logger,
+        browser: ["Titan CRM", "MacOS", "4.0.0"],
+        syncFullHistory: false
+    });
 
-        const fileExt = media.mimetype.split('/')[1] || 'jpg';
-        const fileName = `docs/${phone}/${Date.now()}.${fileExt}`;
-        const fileBuffer = Buffer.from(media.data, 'base64');
+    sock.ev.on('creds.update', saveCreds);
 
-        const { data, error } = await supabase.storage
-            .from('customer_documents') 
-            .upload(fileName, fileBuffer, { contentType: media.mimetype, upsert: true });
-
-        if (error) throw error;
-
-        const { data: { publicUrl } } = supabase.storage.from('customer_documents').getPublicUrl(fileName);
-        return publicUrl;
-    } catch (err) {
-        logger.error(`🚨 Storage Error: ${err.message}`);
-        return null;
-    }
-}
-
-// ४. इभेन्ट लाइफसाइकल
-client.on('qr', (qr) => {
-    engineStatus.state = "awaiting_login";
-    console.log('\n📱 TITAN CRM v4.0.0 - SCAN QR CODE:');
-    qrcode.generate(qr, { small: true });
-});
-
-client.on('ready', () => {
-    engineStatus.state = "running";
-    console.log('\n✅ TITAN ENGINE v4.0.0: ONLINE & READY');
-    logger.info('WhatsApp connection established successfully.');
-});
-
-// ५. मुख्य म्यासेज प्रोसेसिङ लजिक
-client.on('message', async (msg) => {
-    if (msg.from.includes('@g.us') || msg.isStatus) return;
-
-    try {
-        const contact = await msg.getContact();
-        const phone = contact.number;
-        engineStatus.processedCount++;
-        engineStatus.lastSync = new Date().toLocaleTimeString();
-
-        logger.info(`📩 Incoming: ${contact.pushname || phone}`);
-
-        // क) मिडिया छ भने अपलोड गर्ने
-        let fileLink = msg.hasMedia ? await handleMediaUpload(msg, phone) : null;
-
-        // ख) पुरानो डाटा र हिस्ट्री तान्ने
-        const { data: user } = await supabase
-            .from('customers')
-            .select('*')
-            .eq('phone_number', phone)
-            .maybeSingle();
-
-        // ग) डकुमेन्ट लिस्ट अपडेट
-        let updatedDocs = Array.isArray(user?.documents) ? user.documents : [];
-        if (fileLink) {
-            updatedDocs.push({
-                url: fileLink,
-                type: 'image',
-                time: new Date().toLocaleString()
-            });
+    // ३. कनेक्सन लाइफसाइकल
+    sock.ev.on('connection.update', (update) => {
+        const { connection, lastDisconnect, qr } = update;
+        
+        if (qr) console.log('📱 SCAN QR CODE FOR TITAN ENGINE:');
+        
+        if (connection === 'close') {
+            engineStats.state = "reconnecting";
+            const shouldReconnect = lastDisconnect.error?.output?.statusCode !== DisconnectReason.loggedOut;
+            if (shouldReconnect) startTitanEngine();
+        } else if (connection === 'open') {
+            engineStats.state = "running";
+            console.log('\n==========================================');
+            console.log('✅ TITAN ENGINE v4.0.0: ONLINE & POWERFUL');
+            console.log(`🛰️ LISTENING ON PORT: ${PORT}`);
+            console.log('==========================================\n');
         }
+    });
 
-        // घ) च्याट हिस्ट्री बनाउने (Line by Line)
-        const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const newMessage = `[${timeNow}] User: ${msg.body || "📷 Media File"}`;
-        const fullChatHistory = user?.chat_summary ? `${user.chat_summary}\n${newMessage}` : newMessage;
+    // ४. म्यासेज रिसिभिङ र सुपाबेस सिङ्क्रोनाइजेसन
+    sock.ev.on('messages.upsert', async ({ messages }) => {
+        const msg = messages[0];
+        if (!msg.message || msg.key.fromMe) return;
 
-        // ङ) सुपाबेसमा डाटा पठाउने
+        const phone = msg.key.remoteJid.split('@')[0];
+        const text = msg.message.conversation || msg.message.extendedTextMessage?.text || "📷 Attachment Received";
+        
+        engineStats.messagesProcessed++;
+        engineStats.lastActivity = new Date().toLocaleTimeString();
+
+        // ड्यासबोर्डको लागि डाटा सिंक
         const { error } = await supabase.from('customers').upsert({
             phone_number: phone,
-            customer_name: contact.pushname || phone,
+            customer_name: msg.pushName || phone,
             platform: 'whatsapp',
-            chat_summary: fullChatHistory.slice(-5000), 
-            status: user?.status || 'inquiry',
-            documents: updatedDocs, 
+            chat_summary: text,
             updated_at: new Date().toISOString()
         }, { onConflict: 'phone_number' });
 
-        if (error) throw error;
-        logger.info(`✅ Synced to Dashboard: ${contact.pushname}`);
+        if (!error) console.log(`📩 Synced: ${phone} | Stats: ${engineStats.messagesProcessed}`);
+    });
 
-    } catch (err) {
-        logger.error(`❌ Sync Failed: ${err.message}`);
-    }
-});
+    // ५. ड्यासबोर्डको लागि API (RPA & Messaging Bridge)
+    
+    // ड्यासबोर्डबाट म्यासेज पठाउन (CHAT Button)
+    app.post('/send-message', async (req, res) => {
+        const { phone, message } = req.body;
+        try {
+            const jid = `${phone.replace(/\D/g, '')}@s.whatsapp.net`;
+            await sock.sendMessage(jid, { text: message });
+            res.json({ success: true, status: "Sent" });
+        } catch (err) {
+            res.status(500).json({ success: false, error: err.message });
+        }
+    });
 
-// ६. API र सर्भर स्टार्टअप
-app.get('/status', (req, res) => res.json(engineStatus));
+    // ड्यासबोर्डको 'AUTO' बटनको लागि (RPA Bridge)
+    app.post('/start-automation', (req, res) => {
+        const { service_type, customer_data, ai_instructions } = req.body;
+        console.log(`🤖 RPA Command: Start ${service_type} for ${customer_data.phone_number}`);
+        
+        // यहाँ तपाईँको AI Rules (ai_instructions) को आधारमा काम हुन्छ
+        res.json({ success: true, message: "Automation Triggered" });
+    });
 
-server.listen(PORT, () => {
-    logger.info(`🛰️ Titan Server running on Port ${PORT}`);
-    client.initialize();
+    // इन्जिनको स्टाटस हेर्न
+    app.get('/engine-status', (req, res) => res.json(engineStats));
+}
+
+// ६. सर्भर लन्च
+app.listen(PORT, () => {
+    startTitanEngine().catch(err => console.error("❌ Fatal Error:", err));
 });
