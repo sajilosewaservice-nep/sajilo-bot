@@ -8,19 +8,21 @@ const fetch = require('node-fetch');
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
 
+// स्थानीय रूपमा चल्दा .env फाइल लोड गर्न (Vercel मा यो सुरक्षित हुन्छ)
+require('dotenv').config();
+
 const app = express();
 app.use(express.json());
 
-// १. कन्फिगरेसन (Config)
+// १. कन्फिगरेसन (Key हरू अब यहाँ सुरक्षित छन्)
 const CONFIG = {
-    SUPABASE_URL: "https://ratgpvubjrcoipardzdp.supabase.co",
-    SUPABASE_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJhdGdwdnVianJjb2lwYXJkemRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzMTg0OTMsImV4cCI6MjA4Mzg5NDQ5M30.t1eofJj9dPK-Psp_oL3LpCWimyz621T21JNpZljEGZk",
-    PAGE_ACCESS_TOKEN: "EAAcaSLIPpeYBQtd8KAJjlnZCmcMWXRCCWSWNeWye0ucjX2KBp5sNp4tO1HD19d4ZBx06BFEsxZCgDcBm7VxlGBwFxU7rZCDnadrXYU3z0yfWHZBByyqOZCoZCIlTARxRbD1AbuXsN2v1UbCWGS72TbfUaDGcVTTL2qW3R8p2eEqv6nqPWjj6qFw3IWvR27ualAO1FEmUtHvUAZDZD",
-    VERIFY_TOKEN: "titan_crm_2026"
+    SUPABASE_URL: process.env.SUPABASE_URL,
+    SUPABASE_KEY: process.env.SUPABASE_KEY,
+    PAGE_ACCESS_TOKEN: process.env.PAGE_ACCESS_TOKEN,
+    VERIFY_TOKEN: process.env.VERIFY_TOKEN || "titan_crm_2026"
 };
 
 const supabase = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_KEY);
-
 // २. फेसबुक प्रोफाइल तान्ने फङ्सन
 async function getFacebookUserProfile(psid) {
     try {
