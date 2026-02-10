@@ -86,13 +86,15 @@ async function startTitanEngine() {
         engineStats.lastActivity = new Date().toLocaleTimeString();
 
         // ड्यासबोर्डको लागि डाटा सिंक
-        const { error } = await supabase.from('customers').upsert({
-            phone_number: phone,
-            customer_name: msg.pushName || phone,
-            platform: 'whatsapp',
-            chat_summary: text,
-            updated_at: new Date().toISOString()
-        }, { onConflict: 'phone_number' });
+        // यो block मा id थप्नुहोस्
+const { error } = await supabase.from('customers').upsert({
+    id: phone, // <--- यो एउटा लाइन थप्नुहोस्
+    phone_number: phone,
+    customer_name: msg.pushName || phone,
+    platform: 'whatsapp',
+    chat_summary: text,
+    updated_at: new Date().toISOString()
+}, { onConflict: 'phone_number' });
 
         if (!error) console.log(`📩 Synced: ${phone} | Stats: ${engineStats.messagesProcessed}`);
     });
