@@ -3,3 +3,4 @@ node_modules
 .vercel
 .wwebjs_auth
 .wwebjs_cachetitan_auth_session
+titan_auth_session
