@@ -42,13 +42,13 @@ async function startTitanEngine() {
     const { state, saveCreds } = await useMultiFileAuthState('titan_auth_session');
 
     const sock = makeWASocket({
-        version,
-        auth: state,
-        printQRInTerminal: true,
-        logger: logger,
-        browser: ["Titan CRM", "MacOS", "4.0.0"],
-        syncFullHistory: false
-    });
+    version,
+    auth: state,
+    // printQRInTerminal: true,  <-- Yo line hataidinu-hos wa false garnu-hos
+    logger: logger,
+    browser: ["Titan CRM", "MacOS", "4.0.0"],
+    syncFullHistory: false
+});
 
     sock.ev.on('creds.update', saveCreds);
 

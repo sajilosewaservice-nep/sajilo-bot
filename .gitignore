@@ -2,4 +2,4 @@ node_modules
 .env
 .vercel
 .wwebjs_auth
-.wwebjs_cache
+.wwebjs_cachetitan_auth_session
