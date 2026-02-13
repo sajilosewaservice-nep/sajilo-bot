@@ -17,6 +17,7 @@ const { createClient } = require('@supabase/supabase-js');
 const express = require('express');
 const cors = require('cors');
 const pino = require('pino');
+const path = require('path');
 
 // १. कन्फिगरेसन र इन्फ्रास्ट्रक्चर
 const logger = pino({ level: 'silent' });
@@ -25,6 +26,7 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use(express.static(path.join(__dirname, '../public')));
 
 const PORT = 5000; // ड्यासबोर्डको शक्ति यही पोर्टमा छ
 
