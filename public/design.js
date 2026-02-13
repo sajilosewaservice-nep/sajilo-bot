@@ -1,3 +1,18 @@
+// export थप्नुहोस् ताकि अरु फाइलले यो डेटा पढ्न सकोस्
+export const SYSTEM_CONFIG = {
+    SUPABASE_URL: "https://ratgpvubjrcoipardzdp.supabase.co",
+    SUPABASE_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...", // तपाईँको पुरै की यहाँ राख्नुहोस्
+    RPA_SERVER_URL: localStorage.getItem('rpa_url') || "http://localhost:5000",
+    PAGE_SIZE: 15
+};
+
+export let STATE = {
+    currentUser: null,
+    allData: [],
+    filteredData: [],
+    currentPage: 1,
+    isLoading: false
+};
 
 // --- 2. MULTIMEDIA ENGINE (Corrected & Stable) ---
 function renderFileIcons(docs, id) {
@@ -34,7 +49,8 @@ function renderFileIcons(docs, id) {
     const audios = docsArray.map(item => (typeof item === 'object' && item !== null ? item.url : item))
         .filter(url => url && typeof url === 'string' && url.match(/\.(mp3|wav|ogg|m4a)/i));
 
-let html = `<div style="display: flex; flex-wrap: nowrap; gap: 6px; align-items: center; justify-content: flex-start; background: #f8fafc; padding: 6px; border-radius: 10px; border: 1.5px dashed #cbd5e1; max-width: 140px; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none;">`;
+    let html = `<div style="display: flex; flex-wrap: nowrap; gap: 6px; align-items: center; justify-content: flex-start; background: #f8fafc; padding: 6px; border-radius: 10px; border: 1.5px dashed #cbd5e1; max-width: 140px; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none;">`;
+    
     if (images.length > 0) {
         html += `
             <div class="relative cursor-pointer group" onclick="openGallery(${JSON.stringify(images).replace(/"/g, '&quot;')}, '${id}')">
@@ -44,7 +60,31 @@ let html = `<div style="display: flex; flex-wrap: nowrap; gap: 6px; align-items:
             </div>`;
     }
 
-    function buildTableRows() {
+    if (pdfs.length > 0) {
+        pdfs.forEach((url) => {
+            html += `
+                <a href="${url}" target="_blank" rel="noopener noreferrer" 
+                    style="display: inline-flex; flex-direction: column; align-items: center; justify-content: center; width: 38px; height: 38px; background: white; border-radius: 8px; border: 1px solid #eee; text-decoration: none; margin: 2px;">
+                    <i class="fas fa-file-pdf" style="color: #ef4444; font-size: 16px;"></i>
+                    <span style="font-size: 6px; font-weight: 900; color: #ef4444; margin-top: 1px;">PDF</span>
+                </a>`;
+        });
+    }
+
+    if (audios.length > 0) {
+        audios.forEach((url) => {
+            html += `
+                <button onclick="new Audio('${url}').play()" 
+                    style="display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; background: #ecfdf5; border-radius: 8px; border: 1px solid #10b981; cursor: pointer; margin: 2px;">
+                    <i class="fas fa-play-circle" style="color: #10b981; font-size: 18px;"></i>
+                </button>`;
+        });
+    }
+
+    return html + `</div>`;
+}
+
+function buildTableRows() {
     const tableBody = document.getElementById('tableBody');
     if(!tableBody) return;
     tableBody.innerHTML = '';
@@ -117,38 +157,6 @@ let html = `<div style="display: flex; flex-wrap: nowrap; gap: 6px; align-items:
     });
 }
 
-// १. PDF खोल्ने फङ्सन (यो नभई VIEW PDF बटनले काम गर्दैन)
-function viewPDF(url) {
-    if (!url) return;
-    window.open(url, '_blank');
-}
-
-    // २. PDF हरूलाई एउटै बाकस भित्र राख्ने
-    if (pdfs.length > 0) {
-        pdfs.forEach((url) => {
-            html += `
-                <a href="${url}" target="_blank" rel="noopener noreferrer" 
-                    style="display: inline-flex; flex-direction: column; align-items: center; justify-content: center; width: 38px; height: 38px; background: white; border-radius: 8px; border: 1px solid #eee; text-decoration: none; margin: 2px;">
-                    <i class="fas fa-file-pdf" style="color: #ef4444; font-size: 16px;"></i>
-                    <span style="font-size: 6px; font-weight: 900; color: #ef4444; margin-top: 1px;">PDF</span>
-                </a>`;
-        });
-    }
-
-    // ३. अडियोलाई पनि एउटै साइजमा मिलाउने
-    if (audios.length > 0) {
-        audios.forEach((url) => {
-            html += `
-                <button onclick="new Audio('${url}').play()" 
-                    style="display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; background: #ecfdf5; border-radius: 8px; border: 1px solid #10b981; cursor: pointer; margin: 2px;">
-                    <i class="fas fa-play-circle" style="color: #10b981; font-size: 18px;"></i>
-                </button>`;
-        });
-    }
-
-   return html + `</div>`;
-}
-
 function openGallery(images, id) {
     const selectedKey = `selected_docs_${id}`;
     let selectedDocs = JSON.parse(localStorage.getItem(selectedKey) || "[]");
@@ -184,10 +192,21 @@ function openGallery(images, id) {
     document.body.insertAdjacentHTML('beforeend', modalHtml);
 }
 
-// १. रिपोर्ट सच्याइएको फङ्सन
+function togglePhotoSelection(id, url, el) {
+    const key = `selected_docs_${id}`;
+    let selected = JSON.parse(localStorage.getItem(key) || "[]");
+    if (el.checked) {
+        if (!selected.includes(url)) selected.push(url);
+        el.closest('div').parentElement.style.borderColor = '#3b82f6';
+    } else {
+        selected = selected.filter(item => item !== url);
+        el.closest('div').parentElement.style.borderColor = 'rgba(255,255,255,0.1)';
+    }
+    localStorage.setItem(key, JSON.stringify(selected));
+}
+
 function showFinancialReport() {
     const now = new Date();
-    // हप्ता र महिनाको सुरुवाती समय सही निकाल्ने
     const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
@@ -232,7 +251,6 @@ function showFinancialReport() {
     document.body.insertAdjacentHTML('beforeend', modalHtml);
 }
 
-// --- ४. SETTINGS & AI LOGIC (Final Merged Version) ---
 function toggleSettingsModal() {
     const rpaUrl = localStorage.getItem('rpa_url') || "http://localhost:5000";
     const master = localStorage.getItem('ai_rules_master') || "";
@@ -241,21 +259,6 @@ function toggleSettingsModal() {
     const passport = localStorage.getItem('ai_rules_passport') || "";
     const license = localStorage.getItem('ai_rules_license') || "";
     const pan = localStorage.getItem('ai_rules_pan') || "";
-
-// यो सानो फङ्सन पनि कतै खाली ठाउँमा टाँसिदिनुहोस्, जसले टिक लगाएको याद राख्छ
-function togglePhotoSelection(id, url, el) {
-    const key = `selected_docs_${id}`;
-    let selected = JSON.parse(localStorage.getItem(key) || "[]");
-    if (el.checked) {
-        if (!selected.includes(url)) selected.push(url);
-        el.closest('div').parentElement.style.borderColor = '#3b82f6';
-    } else {
-        selected = selected.filter(item => item !== url);
-        el.closest('div').parentElement.style.borderColor = 'rgba(255,255,255,0.1)';
-    }
-    localStorage.setItem(key, JSON.stringify(selected));
-}
-
 
     const modalHtml = `
         <div id="settingsModal" class="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[999999] p-4">
@@ -340,12 +343,10 @@ function openLargeNote(id, content) {
     
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     
-    // सधैँ तल (Latest message) मा स्क्रोल गर्ने
     const body = document.getElementById('modalScrollBody');
     body.scrollTop = body.scrollHeight;
 }
 
-// design.js ko ekdam tala yo thapnuhos:
 export { 
     renderFileIcons, 
     buildTableRows, 
@@ -353,5 +354,5 @@ export {
     showFinancialReport, 
     toggleSettingsModal, 
     openLargeNote,
-    togglePhotoSelection // Yo function pani export garnu parcha
+    togglePhotoSelection
 };

@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="TITAN ENTERPRISE CRM v4.0.0 - Ultimate WhatsApp & RPA Engine">
+    <meta name="theme-color" content="#2563eb">
     <title>TITAN ENTERPRISE CRM v4.0.0</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
@@ -10,131 +12,315 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <link rel="stylesheet" href="style.css">
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+        * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important; }
+    </style>
 </head>
 <body class="bg-slate-50">
 
-    <div id="loginPage" class="hidden min-h-screen flex items-center justify-center bg-[#0f172a]">
-        <div class="bg-white w-full max-w-md rounded-[45px] p-10 shadow-2xl border-b-[10px] border-blue-600">
-            <div class="text-center mb-8">
-                <h1 class="text-4xl font-black italic">TITAN <span class="text-blue-600">CRM</span></h1>
-                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[5px] mt-2">Ultimate RPA Edition</p>
+    <!-- ═══════════════════════════════════════════════════════════════════════════
+         LOGIN PAGE
+         ═══════════════════════════════════════════════════════════════════════════ -->
+    
+    <div id="loginPage" class="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-900 to-blue-900 relative overflow-hidden">
+        <!-- Animated Background -->
+        <div class="absolute inset-0 overflow-hidden">
+            <div class="absolute -top-40 -right-40 w-80 h-80 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
+            <div class="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
+        </div>
+
+        <!-- Login Card -->
+        <div class="relative z-10 w-full max-w-md px-4">
+            <div class="bg-white rounded-[45px] shadow-2xl overflow-hidden border-t-[6px] border-blue-600">
+                <!-- Header -->
+                <div class="bg-gradient-to-r from-slate-900 to-blue-900 p-8 text-center">
+                    <div class="mb-4">
+                        <h1 class="text-4xl font-black italic text-white">
+                            TITAN <span class="text-blue-400">CRM</span>
+                        </h1>
+                    </div>
+                    <p class="text-xs font-bold text-blue-300 uppercase tracking-[6px]">Ultimate RPA Edition v4.0.0</p>
+                </div>
+
+                <!-- Form -->
+                <form id="loginForm" class="p-8 space-y-4">
+                    <!-- Username Field -->
+                    <div class="space-y-2">
+                        <label class="text-xs font-bold text-slate-600 uppercase tracking-wider">Username</label>
+                        <div class="relative">
+                            <i class="fas fa-user absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                            <input 
+                                type="text" 
+                                id="username" 
+                                placeholder="Enter your username" 
+                                class="w-full pl-12 pr-4 py-3 bg-slate-100 border-2 border-slate-200 rounded-2xl outline-none font-semibold text-slate-900 focus:border-blue-500 focus:bg-white transition-all" 
+                                required
+                            >
+                        </div>
+                    </div>
+
+                    <!-- Password Field -->
+                    <div class="space-y-2">
+                        <label class="text-xs font-bold text-slate-600 uppercase tracking-wider">Password</label>
+                        <div class="relative">
+                            <i class="fas fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                            <input 
+                                type="password" 
+                                id="password" 
+                                placeholder="Enter your password" 
+                                class="w-full pl-12 pr-4 py-3 bg-slate-100 border-2 border-slate-200 rounded-2xl outline-none font-semibold text-slate-900 focus:border-blue-500 focus:bg-white transition-all" 
+                                required
+                            >
+                        </div>
+                    </div>
+
+                    <!-- Login Button -->
+                    <button 
+                        type="submit" 
+                        class="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 rounded-2xl font-black uppercase text-sm tracking-wider shadow-lg hover:shadow-xl hover:from-blue-700 hover:to-blue-800 transition-all active:scale-95 mt-6 flex items-center justify-center gap-2"
+                    >
+                        <i class="fas fa-sign-in-alt"></i> Sign In to Dashboard
+                    </button>
+                </form>
+
+                <!-- Footer -->
+                <div class="px-8 py-4 bg-slate-50 border-t border-slate-100 text-center">
+                    <p class="text-xs text-slate-500">
+                        TITAN v4.0.0 © 2024 | 
+                        <span class="text-blue-600 font-semibold">Enterprise Edition</span>
+                    </p>
+                    <p class="text-xs text-slate-400 mt-2">Demo: <strong>admin</strong> / <strong>password</strong></p>
+                </div>
             </div>
-            <form id="loginForm" class="space-y-4">
-                <input type="text" id="username" placeholder="USERNAME" class="w-full p-4 bg-slate-100 rounded-2xl outline-none font-bold" required>
-                <input type="password" id="password" placeholder="PASSWORD" class="w-full p-4 bg-slate-100 rounded-2xl outline-none font-bold" required>
-                <button type="submit" class="w-full bg-blue-600 text-white p-5 rounded-3xl font-black uppercase shadow-xl hover:bg-blue-700">Enter Dashboard</button>
-            </form>
         </div>
     </div>
 
-    <div id="dashboardPage" class="hidden min-h-screen flex flex-col">
-        <nav class="bg-white border-b sticky top-0 z-[100] px-8 py-4 flex justify-between items-center shadow-sm">
-            <div class="flex items-center gap-6">
-                <h2 class="text-2xl font-black italic">TITAN <span class="text-blue-600">v4</span></h2>
-                <div id="lastUpdate" class="text-[11px] bg-blue-50 text-blue-700 px-4 py-1.5 rounded-full font-black border border-blue-100 italic">LIVE: --:--:--</div>
-            </div>
-            
-            <div class="flex items-center gap-4">
-                <div id="reportBtnContainer"></div>
-                <div id="userDisplay" class="hidden md:block text-[11px] font-black text-slate-600 bg-slate-100 px-4 py-2 rounded-2xl border uppercase">OP: --</div>
-                <button onclick="toggleSettingsModal()" class="p-3 bg-slate-900 text-white rounded-2xl transition-transform active:scale-90"><i class="fas fa-cog text-blue-400"></i></button>
-                <button id="logoutBtn" class="p-3 bg-red-100 text-red-600 rounded-2xl transition-transform active:scale-90"><i class="fas fa-power-off"></i></button>
+    <!-- ═══════════════════════════════════════════════════════════════════════════
+         DASHBOARD PAGE
+         ═══════════════════════════════════════════════════════════════════════════ -->
+    
+    <div id="dashboardPage" class="hidden min-h-screen flex flex-col bg-slate-50">
+        
+        <!-- NAVBAR -->
+        <nav class="bg-white border-b border-slate-200 sticky top-0 z-[100] shadow-sm">
+            <div class="px-6 md:px-8 py-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <!-- Logo & Status -->
+                <div class="flex items-center gap-6">
+                    <div>
+                        <h2 class="text-2xl md:text-3xl font-black italic">
+                            TITAN <span class="text-blue-600">v4</span>
+                        </h2>
+                        <p class="text-xs text-slate-500 font-semibold">Enterprise Edition</p>
+                    </div>
+                    <div id="lastUpdate" class="text-xs bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 px-4 py-2 rounded-full font-bold border border-blue-200 italic flex items-center gap-2">
+                        <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                        LIVE: --:--:--
+                    </div>
+                </div>
+                
+                <!-- Controls -->
+                <div class="flex items-center gap-3 md:gap-4 w-full md:w-auto">
+                    <div id="reportBtnContainer"></div>
+                    <div id="userDisplay" class="text-xs font-bold text-slate-600 bg-slate-100 px-4 py-2 rounded-xl border border-slate-200 uppercase">
+                        <i class="fas fa-user-circle mr-2"></i>OP: --
+                    </div>
+                    <button 
+                        onclick="toggleSettingsModal()" 
+                        class="p-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl transition-all active:scale-90 shadow-md"
+                        title="Settings"
+                    >
+                        <i class="fas fa-sliders-h text-blue-400"></i>
+                    </button>
+                    <button 
+                        id="logoutBtn" 
+                        class="p-3 bg-red-100 hover:bg-red-200 text-red-600 rounded-xl transition-all active:scale-90 shadow-md"
+                        title="Logout"
+                    >
+                        <i class="fas fa-power-off"></i>
+                    </button>
+                </div>
             </div>
         </nav>
 
-        <div class="grid grid-cols-2 md:grid-cols-6 gap-4 p-8 stats-grid">
-            <div class="bg-white p-6 rounded-[30px] border-2 border-slate-100 shadow-sm">
-                <p class="text-[10px] font-black text-slate-400 uppercase">कुल आम्दानी</p>
-                <h3 id="statIncome" class="text-2xl font-black text-emerald-600">Rs. 0</h3>
-            </div>
-            <div class="bg-white p-6 rounded-[30px] border-2 border-slate-100 shadow-sm">
-                <p class="text-[10px] font-black text-slate-400 uppercase">Success</p>
-                <h3 id="statSuccess" class="text-2xl font-black text-blue-600">0</h3>
-            </div>
-            <div class="bg-white p-6 rounded-[30px] border-2 border-slate-100 shadow-sm">
-                <p class="text-[10px] font-black text-slate-400 uppercase">Pending</p>
-                <h3 id="statPending" class="text-2xl font-black text-orange-500">0</h3>
-            </div>
-            <div class="bg-white p-6 rounded-[30px] border-2 border-slate-100 shadow-sm">
-                <p class="text-[10px] font-black text-slate-400 uppercase">Inquiry</p>
-                <h3 id="statInquiry" class="text-2xl font-black text-slate-500">0</h3>
-            </div>
-            <div class="bg-white p-6 rounded-[30px] border-2 border-slate-100 shadow-sm">
-                <p class="text-[10px] font-black text-slate-400 uppercase">प्रक्रियामा</p>
-                <h3 id="statWorking" class="text-2xl font-black text-purple-600">0</h3>
-            </div>
-            <div class="bg-white p-6 rounded-[30px] border-2 border-slate-100 shadow-sm">
-                <p class="text-[10px] font-black text-slate-400 uppercase">समस्या (Problem)</p>
-                <h3 id="statProblem" class="text-2xl font-black text-red-600">0</h3>
+        <!-- STATS GRID -->
+        <div class="p-6 md:p-8">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 stats-grid">
+                
+                <!-- Total Income -->
+                <div class="stat-card success">
+                    <p class="text-slate-500 font-bold text-xs uppercase">कुल आम्दानी</p>
+                    <h3 id="statIncome" class="text-2xl font-black text-emerald-600">Rs. 0</h3>
+                    <div class="stat-meta">Success Status</div>
+                </div>
+
+                <!-- Success Count -->
+                <div class="stat-card">
+                    <p class="text-slate-500 font-bold text-xs uppercase">सफल</p>
+                    <h3 id="statSuccess" class="text-2xl font-black text-blue-600">0</h3>
+                    <div class="stat-meta">Completed</div>
+                </div>
+
+                <!-- Pending Count -->
+                <div class="stat-card pending">
+                    <p class="text-slate-500 font-bold text-xs uppercase">प्रतीक्षामा</p>
+                    <h3 id="statPending" class="text-2xl font-black text-amber-600">0</h3>
+                    <div class="stat-meta">Awaiting Action</div>
+                </div>
+
+                <!-- Inquiry Count -->
+                <div class="stat-card info">
+                    <p class="text-slate-500 font-bold text-xs uppercase">प्रश्न</p>
+                    <h3 id="statInquiry" class="text-2xl font-black text-cyan-600">0</h3>
+                    <div class="stat-meta">New Leads</div>
+                </div>
+
+                <!-- Working Count -->
+                <div class="stat-card">
+                    <p class="text-slate-500 font-bold text-xs uppercase">प्रक्रियामा</p>
+                    <h3 id="statWorking" class="text-2xl font-black text-purple-600">0</h3>
+                    <div class="stat-meta">In Progress</div>
+                </div>
+
+                <!-- Problem Count -->
+                <div class="stat-card">
+                    <p class="text-slate-500 font-bold text-xs uppercase">समस्या</p>
+                    <h3 id="statProblem" class="text-2xl font-black text-red-600">0</h3>
+                    <div class="stat-meta">Issues</div>
+                </div>
             </div>
         </div>
 
-        <div class="px-8 mb-6 flex flex-col md:flex-row gap-4 items-center justify-between">
-    <div class="flex flex-col md:flex-row gap-4 w-full max-w-3xl">
-        <div class="relative flex-1">
-            <i class="fas fa-search absolute left-6 top-1/2 -translate-y-1/2 text-slate-400"></i>
-            <input type="text" id="searchInput" placeholder="खोज्नुहोस्..." class="w-full pl-14 pr-8 py-4 bg-white border-2 border-slate-100 rounded-[25px] outline-none focus:border-blue-500 font-bold shadow-lg transition-all">
+        <!-- SEARCH & FILTER BAR -->
+        <div class="px-6 md:px-8 mb-6">
+            <div class="flex flex-col lg:flex-row gap-4 items-stretch lg:items-center justify-between">
+                <!-- Search & Platform Filter -->
+                <div class="flex flex-col sm:flex-row gap-3 w-full lg:flex-1">
+                    <!-- Search Input -->
+                    <div class="relative flex-1">
+                        <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+                        <input 
+                            type="text" 
+                            id="searchInput" 
+                            placeholder="ग्राहक नाम वा फोन नम्बर खोज्नुहोस्..." 
+                            class="w-full pl-12 pr-4 py-3 bg-white border-2 border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 font-semibold shadow-sm transition-all"
+                        >
+                    </div>
+
+                    <!-- Platform Filter -->
+                    <div class="flex bg-white rounded-xl shadow-sm border border-slate-200 p-1 w-full sm:w-auto">
+                        <button 
+                            onclick="filterByPlatform('all')" 
+                            class="flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold uppercase transition-all hover:bg-slate-100 active:scale-95"
+                        >
+                            All
+                        </button>
+                        <button 
+                            onclick="filterByPlatform('whatsapp')" 
+                            class="flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold uppercase text-emerald-600 hover:bg-emerald-50 transition-all active:scale-95 flex items-center justify-center gap-2"
+                        >
+                            <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span> 
+                            WhatsApp
+                        </button>
+                        <button 
+                            onclick="filterByPlatform('messenger')" 
+                            class="flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold uppercase text-blue-600 hover:bg-blue-50 transition-all active:scale-95 flex items-center justify-center gap-2"
+                        >
+                            <span class="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span> 
+                            Messenger
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex gap-3 w-full lg:w-auto">
+                    <button 
+                        onclick="syncCoreDatabase()" 
+                        class="flex-1 lg:flex-none px-4 py-3 bg-white hover:bg-slate-50 border-2 border-slate-200 rounded-xl font-bold text-xs uppercase shadow-sm transition-all active:scale-95 flex items-center justify-center gap-2"
+                        title="Sync Database"
+                    >
+                        <i class="fas fa-sync-alt text-blue-600"></i> 
+                        <span class="hidden sm:inline">Sync</span>
+                    </button>
+                    <div id="totalRecords" class="text-slate-600 font-black text-xs uppercase bg-slate-200 px-4 py-3 rounded-xl whitespace-nowrap shadow-sm flex items-center gap-2">
+                        <i class="fas fa-database text-blue-600"></i>
+                        <span>TOTAL: 0</span>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div class="flex bg-white p-1.5 rounded-[25px] shadow-lg border-2 border-slate-100">
-            <button onclick="filterByPlatform('all')" class="px-5 py-2.5 rounded-[20px] text-[10px] font-black uppercase transition-all hover:bg-slate-100 active:scale-95">All</button>
-            <button onclick="filterByPlatform('whatsapp')" class="px-5 py-2.5 rounded-[20px] text-[10px] font-black uppercase text-emerald-600 hover:bg-emerald-50 transition-all active:scale-95 flex items-center gap-2">
-                <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span> WA
-            </button>
-            <button onclick="filterByPlatform('messenger')" class="px-5 py-2.5 rounded-[20px] text-[10px] font-black uppercase text-blue-600 hover:bg-blue-50 transition-all active:scale-95 flex items-center gap-2">
-                <span class="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span> MSN
-            </button>
-        </div>
-    </div>
-
-    <div class="flex items-center gap-4">
-        <button onclick="syncCoreDatabase()" class="px-6 py-4 bg-white border-2 border-slate-200 rounded-[20px] font-black text-[11px] uppercase shadow-md hover:bg-slate-50 transition-all active:scale-95">
-            <i class="fas fa-sync-alt mr-2 text-blue-600"></i> Refresh
-        </button>
-        <div id="totalRecords" class="text-slate-500 font-black text-[10px] uppercase bg-slate-200 px-4 py-2 rounded-full whitespace-nowrap">TOTAL: 0</div>
-    </div>
-</div>
-
-        <div class="px-8 pb-10">
-            <div class="bg-white rounded-[40px] shadow-2xl overflow-hidden border-2 border-slate-100 table-container">
-                <div class="overflow-x-auto">
-                    <table class="w-full">
-                        \<thead class="bg-slate-900 text-white text-[10px] uppercase tracking-wider">
-    <tr>
-        <th class="p-5 text-left">दर्ता मिति</th>
-        <th class="p-5 text-center">स्रोत</th>
-        <th class="p-5 text-left">ग्राहक विवरण</th>
-        <th class="p-5 text-left">सेवा</th>
-        <th class="p-5 text-center">RPA</th>
-        <th class="p-5 text-left">अवस्था</th>
-        <th class="p-5 text-left text-blue-400">च्याट समरी</th> <th class="p-5 text-left">नोट</th>
-        <th class="p-5 text-center">पेमेन्ट</th>
-        <th class="p-5 text-center">अपरेटर</th>
-        <th class="p-5 text-center">डकुमेन्ट</th>
-    </tr>
-</thead>
-                        <tbody id="tableBody" class="divide-y divide-slate-100">
+        <!-- DATA TABLE -->
+        <div class="px-6 md:px-8 pb-8 flex-1">
+            <div class="bg-white rounded-3xl shadow-lg overflow-hidden border border-slate-200 table-container h-full flex flex-col">
+                
+                <!-- Table Wrapper -->
+                <div class="overflow-x-auto flex-1">
+                    <table class="w-full border-collapse">
+                        <!-- Table Header -->
+                        <thead class="bg-slate-900 text-white sticky top-0 z-10">
+                            <tr class="text-xs font-bold uppercase tracking-wider">
+                                <th class="px-4 md:px-6 py-4 text-left">दर्ता मिति</th>
+                                <th class="px-4 md:px-6 py-4 text-center">स्रोत</th>
+                                <th class="px-4 md:px-6 py-4 text-left">ग्राहक विवरण</th>
+                                <th class="px-4 md:px-6 py-4 text-left">सेवा</th>
+                                <th class="px-4 md:px-6 py-4 text-center">RPA</th>
+                                <th class="px-4 md:px-6 py-4 text-left">अवस्था</th>
+                                <th class="px-4 md:px-6 py-4 text-left text-blue-300">च्याट समरी</th>
+                                <th class="px-4 md:px-6 py-4 text-left">नोट</th>
+                                <th class="px-4 md:px-6 py-4 text-center">पेमेन्ट</th>
+                                <th class="px-4 md:px-6 py-4 text-center">अपरेटर</th>
+                                <th class="px-4 md:px-6 py-4 text-center">डकुमेन्ट</th>
+                            </tr>
+                        </thead>
+                        
+                        <!-- Table Body -->
+                        <tbody id="tableBody" class="divide-y divide-slate-100 text-sm">
+                            <!-- Rows will be generated by JavaScript -->
                         </tbody>
                     </table>
                 </div>
 
-                <div class="flex items-center justify-between p-6 bg-slate-50 border-t-2 border-slate-100">
-                    <button onclick="changePage('prev')" class="px-8 py-3 bg-white border-2 border-slate-200 rounded-2xl font-black text-[11px] hover:bg-slate-900 hover:text-white transition-all shadow-sm active:scale-90">
-                        <i class="fas fa-chevron-left mr-2"></i> BACK
-                    </button>
-                    <div id="pageInfo" class="font-black text-[12px] text-blue-600 tracking-widest uppercase bg-blue-50 px-6 py-2 rounded-full border border-blue-100">
-                        PAGE 1
+                <!-- Empty State -->
+                <div id="emptyState" class="hidden flex items-center justify-center h-64">
+                    <div class="text-center">
+                        <i class="fas fa-inbox text-6xl text-slate-300 mb-4"></i>
+                        <p class="text-slate-500 font-semibold">कुनै डेटा उपलब्ध छैन</p>
+                        <p class="text-xs text-slate-400 mt-2">नयाँ ग्राहकको प्रतीक्षा गर्दै...</p>
                     </div>
-                    <button onclick="changePage('next')" class="px-8 py-3 bg-white border-2 border-slate-200 rounded-2xl font-black text-[11px] hover:bg-slate-900 hover:text-white transition-all shadow-sm active:scale-90">
-                        NEXT <i class="fas fa-chevron-right ml-2"></i>
+                </div>
+
+                <!-- Pagination -->
+                <div class="flex flex-col sm:flex-row items-center justify-between gap-4 p-6 bg-slate-50 border-t border-slate-100 mt-auto">
+                    <button 
+                        onclick="changePage('prev')" 
+                        class="w-full sm:w-auto px-6 py-3 bg-white hover:bg-slate-900 hover:text-white border-2 border-slate-200 rounded-xl font-black text-xs uppercase transition-all shadow-sm active:scale-90 flex items-center justify-center gap-2"
+                    >
+                        <i class="fas fa-chevron-left"></i> 
+                        <span class="hidden sm:inline">Back</span>
+                    </button>
+                    
+                    <div id="pageInfo" class="font-black text-xs text-white bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-2 rounded-full border border-blue-400 tracking-widest uppercase">
+                        PAGE 1 OF 1
+                    </div>
+                    
+                    <button 
+                        onclick="changePage('next')" 
+                        class="w-full sm:w-auto px-6 py-3 bg-white hover:bg-slate-900 hover:text-white border-2 border-slate-200 rounded-xl font-black text-xs uppercase transition-all shadow-sm active:scale-90 flex items-center justify-center gap-2"
+                    >
+                        <span class="hidden sm:inline">Next</span>
+                        <i class="fas fa-chevron-right"></i>
                     </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <div id="notificationZone"></div>
+    <!-- NOTIFICATION ZONE -->
+    <div id="notificationZone" class="fixed top-6 right-6 z-9999 flex flex-col gap-3 pointer-events-none max-w-md w-[95vw] md:w-full"></div>
 
+    <!-- Scripts -->
     <script src="dashboard.js"></script>
 </body>
 </html>

@@ -1,462 +1,977 @@
-import { SYSTEM_CONFIG, STATE } from './config.js';
-import { buildTableRows, updatePaginationUI, showFinancialReport } from './design.js';
+/**
+ * ═════════════════════════════════════════════════════════════════════════════
+ * TITAN ENTERPRISE CRM v4.0.0 - Dashboard Module
+ * 
+ * Main Application Logic for Customer Management & RPA Automation
+ * Handles: Authentication, Data Sync, UI Updates, RPA Control
+ * ═════════════════════════════════════════════════════════════════════════════
+ */
 
-// Global variable jasle Supabase connect garchha
-let supabaseClient;
+// ═════════════════════════════════════════════════════════════════════════════
+// 1. GLOBAL STATE MANAGEMENT
+// ═════════════════════════════════════════════════════════════════════════════
 
-// --- १. INITIALIZATION (REVISED) ---
+const STATE = {
+    currentUser: null,
+    allData: [],
+    filteredData: [],
+    currentPage: 1,
+    selectedPlatform: 'all',
+    automation: {
+        activeProcesses: {},
+        pausedProcesses: {}
+    }
+};
+
+// ═════════════════════════════════════════════════════════════════════════════
+// 2. SYSTEM CONFIGURATION
+// ═════════════════════════════════════════════════════════════════════════════
+
+const SYSTEM_CONFIG = {
+    SUPABASE_URL: "https://your-supabase-instance.supabase.co",
+    SUPABASE_KEY: "your-supabase-anon-key",
+    RPA_SERVER_URL: "http://localhost:5000/api",
+    PAGE_SIZE: 20,
+    
+    // Service Configuration
+    SERVICES: {
+        PCC: { name: "Police Clearance", icon: "🚔" },
+        NID: { name: "National Identity", icon: "🆔" },
+        LICENSE: { name: "Driving License", icon: "🚗" },
+        PASSPORT: { name: "Passport", icon: "✈️" },
+        PAN: { name: "Tax ID (PAN)", icon: "📋" }
+    },
+    
+    // Status Colors
+    STATUS_COLORS: {
+        inquiry: '#64748b',
+        pending: '#f59e0b',
+        working: '#3b82f6',
+        success: '#10b981',
+        problem: '#ef4444',
+        paused: '#8b5cf6'
+    },
+    
+    // Platform Settings
+    PLATFORMS: ['all', 'whatsapp', 'messenger'],
+    
+    // Timing
+    REALTIME_INTERVAL: 3000,
+    SYNC_INTERVAL: 30000
+};
+
+// ═════════════════════════════════════════════════════════════════════════════
+// 3. SUPABASE CLIENT INITIALIZATION
+// ═════════════════════════════════════════════════════════════════════════════
+
+let supabaseClient = null;
+
+async function initializeSupabase() {
+    try {
+        if (typeof supabase === 'undefined') {
+            console.error("❌ Supabase library not loaded");
+            notify("Supabase configuration error", "error");
+            return false;
+        }
+        
+        supabaseClient = supabase.createClient(
+            SYSTEM_CONFIG.SUPABASE_URL,
+            SYSTEM_CONFIG.SUPABASE_KEY
+        );
+        
+        console.log("✅ Supabase initialized successfully");
+        return true;
+    } catch (error) {
+        console.error("❌ Supabase initialization error:", error);
+        return false;
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// 4. INITIALIZATION - Application Bootstrap
+// ═════════════════════════════════════════════════════════════════════════════
+
 document.addEventListener('DOMContentLoaded', async () => {
     try {
-        // १. सुपाबेस क्लाइन्ट सुरु गर्ने (ठूलो 'supabase' लाइब्रेरी प्रयोग गरेर)
-        if (typeof supabase !== 'undefined') {
-            supabaseClient = supabase.createClient(SYSTEM_CONFIG.SUPABASE_URL, SYSTEM_CONFIG.SUPABASE_KEY);
-        } else {
-            alert("Error: Supabase library not loaded. Please refresh.");
-            return;
-        }
-
-        // २. सेसन र इभेन्टहरू लोड गर्ने
+        console.log("🚀 Dashboard initialization started...");
+        
+        // Step 1: Initialize Supabase
+        const supabaseReady = await initializeSupabase();
+        if (!supabaseReady) throw new Error("Supabase initialization failed");
+        
+        // Step 2: Validate session
         validateSession();
+        
+        // Step 3: Register event listeners
         registerGlobalEvents();
         
-        // ३. डाटा तान्न सुरु गर्ने (यो छुटेको थियो)
-        if (typeof syncCoreDatabase === 'function') {
-            syncCoreDatabase();
-        }
-
-        // ४. रियलटाइम अपडेट सुरु गर्ने
+        // Step 4: Start realtime updates
         startRealtimeBridge();
-
-        // ५. लाइभ घडी (Clock)
-        setInterval(() => {
-            const now = new Date();
-            const timeStr = now.toLocaleTimeString('en-US', { 
-                hour: '2-digit', 
-                minute: '2-digit', 
-                second: '2-digit', 
-                hour12: true 
-            });
-            const lastUpdateEl = document.getElementById('lastUpdate');
-            if (lastUpdateEl) {
-                lastUpdateEl.innerHTML = `LIVE: <span class="text-blue-600 font-bold">${timeStr}</span>`;
-            }
-        }, 1000);
-
-    } catch (err) {
-        console.error("Dashboard Init Error:", err);
+        
+        // Step 5: Initialize live clock
+        initializeLiveClock();
+        
+        // Step 6: Setup auto-sync
+        setInterval(() => syncCoreDatabase(), SYSTEM_CONFIG.SYNC_INTERVAL);
+        
+        console.log("✅ Dashboard initialization completed");
+    } catch (error) {
+        console.error("❌ Dashboard initialization error:", error);
+        notify("Failed to load dashboard", "error");
     }
 });
 
-// --- ४. ANALYTICS & SETTINGS ---
-function saveSettings() {
-    localStorage.setItem('rpa_url', document.getElementById('set_rpa_url').value);
-    localStorage.setItem('ai_rules_master', document.getElementById('set_rules_master').value);
-    localStorage.setItem('ai_rules_nid', document.getElementById('set_rules_nid').value);
-    localStorage.setItem('ai_rules_pcc', document.getElementById('set_rules_pcc').value);
-    localStorage.setItem('ai_rules_passport', document.getElementById('set_rules_passport').value);
-    localStorage.setItem('ai_rules_license', document.getElementById('set_rules_license').value);
-    localStorage.setItem('ai_rules_pan', document.getElementById('set_rules_pan').value);
-    
-    notify("सबै सेटिङहरू सुरक्षित गरियो!", "success");
-    document.getElementById('settingsModal').remove();
-    setTimeout(() => { location.reload(); }, 1000);
+// ═════════════════════════════════════════════════════════════════════════════
+// 5. AUTHENTICATION & SESSION MANAGEMENT
+// ═════════════════════════════════════════════════════════════════════════════
+
+function validateSession() {
+    try {
+        const sessionToken = sessionStorage.getItem('titan_user');
+        
+        if (sessionToken) {
+            STATE.currentUser = JSON.parse(sessionToken);
+            loadDashboardInterface();
+            console.log(`✅ User session validated: ${STATE.currentUser.full_name}`);
+        } else {
+            showLoginPage();
+        }
+    } catch (error) {
+        console.error("❌ Session validation error:", error);
+        showLoginPage();
+    }
 }
 
-// सुधारिएको Launch Function (यसले अब सेटिङबाट सही रुल तान्छ)
-async function launchAIAutoFill(id, service) {
-    if (!service || service === 'Other') return notify("कृपया सेवा (PCC/NID) छान्नुहोस्!", "error");
-    const customer = STATE.allData.find(c => c.id === id);
+function showLoginPage() {
+    const loginPage = document.getElementById('loginPage');
+    const dashboardPage = document.getElementById('dashboardPage');
     
-    // यहाँबाट मास्टर र स्पेसिफिक रुल जोडेर पठाउने
-    const master = localStorage.getItem('ai_rules_master') || "";
-    const specific = (service === 'NID') ? localStorage.getItem('ai_rules_nid') : (service === 'PCC' ? localStorage.getItem('ai_rules_pcc') : "");
-    const finalRules = `${master}\n${specific}`;
+    if (loginPage) loginPage.classList.remove('hidden');
+    if (dashboardPage) dashboardPage.classList.add('hidden');
+}
 
-    const selectedDocs = JSON.parse(localStorage.getItem(`selected_docs_${id}`) || "[]");
-    const finalDocs = selectedDocs.length > 0 ? selectedDocs : customer.documents;
-
+async function handleLogin(username, password) {
     try {
-        const response = await fetch(`${SYSTEM_CONFIG.RPA_SERVER_URL}/start-automation`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                customer_data: { ...customer, documents: finalDocs }, 
-                service_type: service,
-                ai_instructions: finalRules,
-                operator: STATE.currentUser.full_name
-            })
+        if (!supabaseClient) {
+            notify("Database connection failed", "error");
+            return false;
+        }
+        
+        const { data, error } = await supabaseClient
+            .from('staff')
+            .select('*')
+            .eq('username', username)
+            .eq('password', password)
+            .maybeSingle();
+        
+        if (error) {
+            console.error("❌ Login query error:", error);
+            notify("Database error occurred", "error");
+            return false;
+        }
+        
+        if (data) {
+            STATE.currentUser = data;
+            sessionStorage.setItem('titan_user', JSON.stringify(data));
+            notify(`Welcome, ${data.full_name}!`, "success");
+            loadDashboardInterface();
+            return true;
+        } else {
+            notify("Invalid username or password", "error");
+            return false;
+        }
+    } catch (error) {
+        console.error("❌ Login error:", error);
+        notify("Login failed", "error");
+        return false;
+    }
+}
+
+function handleLogout() {
+    try {
+        sessionStorage.clear();
+        STATE.currentUser = null;
+        STATE.allData = [];
+        STATE.filteredData = [];
+        notify("Logged out successfully", "success");
+        showLoginPage();
+        location.reload();
+    } catch (error) {
+        console.error("❌ Logout error:", error);
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// 6. DASHBOARD INTERFACE MANAGEMENT
+// ═════════════════════════════════════════════════════════════════════════════
+
+async function loadDashboardInterface() {
+    try {
+        // Hide login, show dashboard
+        const loginPage = document.getElementById('loginPage');
+        const dashboardPage = document.getElementById('dashboardPage');
+        
+        if (loginPage) loginPage.classList.add('hidden');
+        if (dashboardPage) dashboardPage.classList.remove('hidden');
+        
+        // Update user display
+        updateUserDisplay();
+        
+        // Add analytics button
+        addAnalyticsButton();
+        
+        // Load initial data
+        await syncCoreDatabase();
+        
+        console.log("✅ Dashboard interface loaded");
+    } catch (error) {
+        console.error("❌ Dashboard interface error:", error);
+    }
+}
+
+function updateUserDisplay() {
+    const userDisplay = document.getElementById('userDisplay');
+    if (userDisplay && STATE.currentUser) {
+        userDisplay.innerHTML = `
+            <i class="fas fa-user-circle mr-2"></i>
+            <span>${STATE.currentUser.full_name}</span>
+        `;
+    }
+}
+
+function addAnalyticsButton() {
+    const btnContainer = document.getElementById('reportBtnContainer');
+    if (btnContainer) {
+        btnContainer.innerHTML = `
+            <button onclick="showFinancialReport()" 
+                class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-xl font-black text-xs uppercase shadow-lg transition-all active:scale-95">
+                <i class="fas fa-chart-bar mr-2"></i> Analytics Report
+            </button>
+        `;
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// 7. DATABASE OPERATIONS
+// ═════════════════════════════════════════════════════════════════════════════
+
+async function syncCoreDatabase() {
+    try {
+        if (!supabaseClient) {
+            console.warn("⚠️ Supabase client not ready");
+            return;
+        }
+        
+        const { data, error } = await supabaseClient
+            .from('customers')
+            .select('*')
+            .order('updated_at', { ascending: false });
+        
+        if (error) {
+            console.error("❌ Database sync error:", error);
+            return;
+        }
+        
+        STATE.allData = data || [];
+        applyLogicFilters(false);
+        refreshFinancialAnalytics();
+        
+        const recordCount = STATE.allData.length;
+        console.log(`✅ Synced ${recordCount} customer records`);
+    } catch (error) {
+        console.error("❌ Database sync error:", error);
+    }
+}
+
+async function commitUpdate(customerId, updates, message = null) {
+    try {
+        if (!supabaseClient) {
+            notify("Database connection failed", "error");
+            return false;
+        }
+        
+        const payload = {
+            ...updates,
+            last_updated_by: STATE.currentUser?.full_name || 'System',
+            updated_at: new Date().toISOString()
+        };
+        
+        const { data, error } = await supabaseClient
+            .from('customers')
+            .update(payload)
+            .eq('id', customerId)
+            .select();
+        
+        if (error) {
+            console.error("❌ Update error:", error);
+            notify(`Error: ${error.message}`, "error");
+            return false;
+        }
+        
+        if (data && data.length > 0) {
+            // Update local state
+            const index = STATE.allData.findIndex(d => d.id === customerId);
+            if (index !== -1) {
+                STATE.allData[index] = { ...STATE.allData[index], ...data[0] };
+                applyLogicFilters(false);
+                refreshFinancialAnalytics();
+            }
+            
+            if (message) notify(message, "success");
+            console.log(`✅ Updated customer: ${customerId}`);
+            return true;
+        }
+        
+        return false;
+    } catch (error) {
+        console.error("❌ Commit update error:", error);
+        notify("Update failed", "error");
+        return false;
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// 8. FINANCIAL ANALYTICS & STATISTICS
+// ═════════════════════════════════════════════════════════════════════════════
+
+function refreshFinancialAnalytics() {
+    try {
+        const today = new Date().toISOString().split('T')[0];
+        
+        const stats = STATE.allData.reduce((acc, curr) => {
+            const status = (curr.status || '').toLowerCase().trim();
+            acc.counts[status] = (acc.counts[status] || 0) + 1;
+            
+            if (status === 'success') {
+                // Parse income format: "amount/pending"
+                const incomeParts = String(curr.income || "0/0").split('/');
+                const incomeAmount = parseFloat(incomeParts[0]?.replace(/[^0-9.]/g, '')) || 0;
+                const pendingAmount = incomeParts[1] ? parseFloat(incomeParts[1].replace(/[^0-9.]/g, '')) || 0 : 0;
+                
+                acc.revenue += incomeAmount;
+                acc.totalPending += pendingAmount;
+                
+                // Check if completed today
+                const entryDate = curr.updated_at ? curr.updated_at.split('T')[0] : '';
+                if (entryDate === today) {
+                    acc.dailyIncome += incomeAmount;
+                }
+            }
+            
+            return acc;
+        }, {
+            counts: {},
+            revenue: 0,
+            totalPending: 0,
+            dailyIncome: 0
         });
-        if (response.ok) notify("RPA र AI सक्रिय भयो!", "success");
-    } catch (err) {
-        notify("RPA सर्भर अफलाइन छ!", "error");
+        
+        // Update UI elements
+        updateStatElement('statIncome', `Rs. ${stats.revenue.toLocaleString()}`);
+        updateStatElement('statSuccess', stats.counts['success'] || 0);
+        updateStatElement('statPending', stats.counts['pending'] || 0);
+        updateStatElement('statInquiry', stats.counts['inquiry'] || 0);
+        updateStatElement('statWorking', stats.counts['working'] || 0);
+        updateStatElement('statProblem', stats.counts['problem'] || 0);
+        updateStatElement('totalRecords', `TOTAL: ${STATE.allData.length}`);
+        
+        console.log("✅ Financial analytics updated");
+    } catch (error) {
+        console.error("❌ Analytics error:", error);
+    }
+}
+
+function updateStatElement(elementId, value) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        element.textContent = value;
     }
 }
 
 function getStatusColor(status) {
-    const s = (status || '').toLowerCase().trim();
-    const colors = {
-        inquiry: '#64748b', // Slate
-        pending: '#f59e0b', // Amber
-        working: '#3b82f6', // Blue
-        success: '#10b981', // Emerald
-        problem: '#ef4444'  // Red
-    };
-    return colors[s] || '#cbd5e1'; // Default color
+    const normalizedStatus = (status || '').toLowerCase().trim();
+    return SYSTEM_CONFIG.STATUS_COLORS[normalizedStatus] || '#cbd5e1';
 }
 
+// ═════════════════════════════════════════════════════════════════════════════
+// 9. FILTERING & SEARCH
+// ═════════════════════════════════════════════════════════════════════════════
 
-
-/**
- * CHAT बटन थिच्दा कुन प्लेटफर्म खोल्ने भन्ने निर्णय गर्ने सच्याइएको फङ्सन
- */
-function handleChatClick(phone, platform, senderId) {
-    // १. यदि नम्बर र आइडी दुवै छैन भने अलर्ट दिने
-    if (!phone && !senderId) {
-        if (typeof notify === "function") {
-            notify("विवरण फेला परेन!", "error");
-        } else {
-            alert("विवरण फेला परेन!");
-        }
-        return;
-    }
-
-    // २. ह्वाट्सएपको लागि लजिक (सिधै एप वा वेब खोल्छ)
-    if (platform === 'whatsapp' || (phone && phone.length > 5)) {
-        // नम्बरबाट अनावश्यक चिन्ह (+, -, स्पेस) हटाउने
-        const cleanNumber = (phone || senderId).replace(/\D/g, '');
-        window.open(`https://wa.me/${cleanNumber}`, '_blank');
-    } 
-    // ३. मेसेन्जरको लागि लजिक (m.me भन्दा messenger.com बढी भरपर्दो हुन्छ)
-    else {
-        // यदि senderId छ भने त्यसको म्यासेज थ्रेड सिधै खोल्ने
-        const targetId = senderId || '';
-        if (targetId && targetId !== 'undefined') {
-            window.open(`https://www.messenger.com/t/${targetId}`, '_blank');
-        } else {
-            // आइडी नभएमा मेसेन्जरको होम पेज खोल्ने
-            window.open(`https://www.messenger.com`, '_blank');
-        }
-    }
-}
-
-// २. यो फिल्टर फङ्सन पनि app.js मा थप्नुहोस् (यदि छैन भने)
-function filterByPlatform(p) {
-    if (p === 'all') {
-        STATE.filteredData = [...STATE.allData];
-    } else {
-        STATE.filteredData = STATE.allData.filter(d => (d.platform || '').toLowerCase() === p.toLowerCase());
-    }
-    STATE.currentPage = 1;
-    buildTableRows();
-    updatePaginationUI();
-}
-
-
-
-// नोट सेभ गर्ने सानो फङ्सन
-async function saveManualNote(id) {
-    const newVal = document.getElementById('manualNoteInput').value;
-    await commitUpdate(id, { operator_instruction: newVal }, "Note Updated!");
-    document.getElementById('noteModal').remove();
-}
-
-async function commitUpdate(id, updates, msg) {
+function applyLogicFilters(resetPage = true) {
     try {
-        // सुरक्षित नाम राख्ने ताकि कोड क्र्यास नहोस्
-        const userName = (STATE.currentUser && STATE.currentUser.full_name) ? STATE.currentUser.full_name : 'Operator';
-
-        const payload = { 
-            ...updates, 
-            last_updated_by: userName, 
-            updated_at: new Date().toISOString() 
-        };
-
-        const { data, error } = await supabaseClient
-            .from('customers')
-            .update(payload)
-            .eq('id', id)
-            .select(); 
-
-        if (error) {
-            console.error("Supabase Error:", error.message);
-            return notify("Error: " + error.message, "error");
+        const searchInput = document.getElementById('searchInput');
+        const searchQuery = searchInput ? searchInput.value.toLowerCase().trim() : '';
+        
+        let filtered = [...STATE.allData];
+        
+        // Apply search filter
+        if (searchQuery) {
+            filtered = filtered.filter(customer => {
+                const name = (customer.customer_name || '').toLowerCase();
+                const phone = (customer.phone_number || '').toLowerCase();
+                const email = (customer.email || '').toLowerCase();
+                
+                return name.includes(searchQuery) || 
+                       phone.includes(searchQuery) || 
+                       email.includes(searchQuery);
+            });
         }
-
-        if (data && data.length > 0) {
-            if (msg) notify(msg, "success");
-            const index = STATE.allData.findIndex(d => d.id === id);
-            if (index !== -1) {
-                STATE.allData[index] = { ...STATE.allData[index], ...data[0] };
-                // हिसाब र टेबल अपडेट गर्ने
-                buildTableRows(); 
-                refreshFinancialAnalytics();
-            }
+        
+        // Apply platform filter
+        if (STATE.selectedPlatform && STATE.selectedPlatform !== 'all') {
+            filtered = filtered.filter(customer =>
+                (customer.platform || '').toLowerCase() === STATE.selectedPlatform.toLowerCase()
+            );
         }
-    } catch (err) {
-        console.error("Critical Error:", err);
+        
+        STATE.filteredData = filtered;
+        
+        if (resetPage) {
+            STATE.currentPage = 1;
+        }
+        
+        buildTableRows();
+        updatePaginationUI();
+        updateTotalRecords();
+        
+        console.log(`✅ Applied filters: ${filtered.length} records`);
+    } catch (error) {
+        console.error("❌ Filter error:", error);
+    }
+}
+
+function filterByPlatform(platform) {
+    try {
+        STATE.selectedPlatform = platform;
+        applyLogicFilters(true);
+        console.log(`✅ Platform filter: ${platform}`);
+    } catch (error) {
+        console.error("❌ Platform filter error:", error);
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// 10. TABLE RENDERING & PAGINATION
+// ═════════════════════════════════════════════════════════════════════════════
+
+function buildTableRows() {
+    try {
+        const tableBody = document.getElementById('tableBody');
+        const emptyState = document.getElementById('emptyState');
+        
+        if (!tableBody) return;
+        
+        // Calculate pagination
+        const startIdx = (STATE.currentPage - 1) * SYSTEM_CONFIG.PAGE_SIZE;
+        const endIdx = startIdx + SYSTEM_CONFIG.PAGE_SIZE;
+        const paginatedData = STATE.filteredData.slice(startIdx, endIdx);
+        
+        // Show/hide empty state
+        if (paginatedData.length === 0) {
+            tableBody.innerHTML = '';
+            if (emptyState) emptyState.classList.remove('hidden');
+            return;
+        }
+        
+        if (emptyState) emptyState.classList.add('hidden');
+        
+        // Build rows
+        tableBody.innerHTML = paginatedData.map(customer => `
+            <tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                <td class="px-6 py-4 text-sm">${formatDate(customer.created_at)}</td>
+                <td class="px-6 py-4 text-center">
+                    <span class="inline-flex items-center gap-2">
+                        ${getPlatformIcon(customer.platform)}
+                        <span class="text-xs font-semibold">${customer.platform || 'Unknown'}</span>
+                    </span>
+                </td>
+                <td class="px-6 py-4 text-sm">
+                    <div class="font-semibold">${customer.customer_name || 'N/A'}</div>
+                    <div class="text-xs text-slate-500">${customer.phone_number || 'N/A'}</div>
+                </td>
+                <td class="px-6 py-4 text-sm">${customer.service_type || 'Other'}</td>
+                <td class="px-6 py-4 text-center">
+                    ${customer.rpa_status === 'active' ? '<span class="inline-flex items-center gap-1"><span class="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>Active</span>' : '<span class="text-slate-400">-</span>'}
+                </td>
+                <td class="px-6 py-4 text-sm">
+                    <span class="px-3 py-1 rounded-full text-xs font-semibold text-white" style="background-color: ${getStatusColor(customer.status)}">
+                        ${(customer.status || 'unknown').toUpperCase()}
+                    </span>
+                </td>
+                <td class="px-6 py-4 text-sm">
+                    <button onclick="handleChatClick('${customer.phone_number || ''}', '${customer.platform || 'messenger'}', '${customer.messenger_id || ''}')" class="text-blue-600 hover:text-blue-700 font-semibold">
+                        <i class="fas fa-comment-dots"></i>
+                    </button>
+                </td>
+                <td class="px-6 py-4 text-sm truncate">${customer.operator_instruction || 'No notes'}</td>
+                <td class="px-6 py-4 text-center">
+                    <span class="text-sm font-semibold">${customer.payment_status || 'Pending'}</span>
+                </td>
+                <td class="px-6 py-4 text-center">
+                    <span class="text-xs font-semibold">${customer.operator_name || 'Unassigned'}</span>
+                </td>
+                <td class="px-6 py-4 text-center">
+                    <button onclick="viewDocuments('${customer.id}')" class="text-green-600 hover:text-green-700">
+                        <i class="fas fa-file-pdf"></i>
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+        
+        console.log(`✅ Rendered ${paginatedData.length} rows`);
+    } catch (error) {
+        console.error("❌ Table rendering error:", error);
+    }
+}
+
+function updatePaginationUI() {
+    try {
+        const pageInfo = document.getElementById('pageInfo');
+        const totalItems = STATE.filteredData.length;
+        const maxPage = Math.ceil(totalItems / SYSTEM_CONFIG.PAGE_SIZE) || 1;
+        
+        if (pageInfo) {
+            pageInfo.innerHTML = `PAGE <span class="text-blue-400">${STATE.currentPage}</span> OF <span class="text-blue-400">${maxPage}</span>`;
+        }
+    } catch (error) {
+        console.error("❌ Pagination UI error:", error);
+    }
+}
+
+function updateTotalRecords() {
+    try {
+        const totalRecords = document.getElementById('totalRecords');
+        if (totalRecords) {
+            totalRecords.innerHTML = `<i class="fas fa-database mr-2"></i>TOTAL: ${STATE.filteredData.length}`;
+        }
+    } catch (error) {
+        console.error("❌ Total records error:", error);
     }
 }
 
 function changePage(direction) {
-    const totalItems = STATE.filteredData.length;
-    const maxPage = Math.ceil(totalItems / SYSTEM_CONFIG.PAGE_SIZE) || 1;
-
-    if (direction === 'next' && STATE.currentPage < maxPage) {
-        STATE.currentPage++;
-    } else if (direction === 'prev' && STATE.currentPage > 1) {
-        STATE.currentPage--;
-    } else {
-        return; // केही नगर्ने
-    }
-
-    buildTableRows();
-    updatePaginationUI();
-    window.scrollTo({ top: 0, behavior: 'smooth' }); // पेज फेरिएपछि माथि सार्ने
-}
-
-function updatePaginationUI() {
-    const pageDisplay = document.getElementById('pageInfo');
-    const totalItems = STATE.filteredData.length;
-    const maxPage = Math.ceil(totalItems / SYSTEM_CONFIG.PAGE_SIZE) || 1;
-
-    if(pageDisplay) {
-        pageDisplay.innerHTML = `PAGE <span style="color: #2563eb; font-weight: 900;">${STATE.currentPage}</span> / ${maxPage}`;
-    }
-}
-
-async function syncCoreDatabase() {
-    const { data, error } = await supabaseClient
-        .from('customers')
-        .select('*')
-        .order('updated_at', { ascending: false }); 
-
-    if (!error) {
-        STATE.allData = data;
-        // यहाँ false राख्नुपर्छ ताकि तपाईँ काम गरिरहेको पेजबाट नहल्लिनुहोस्
-        applyLogicFilters(false); 
-        refreshFinancialAnalytics();
-    }
-}
-
-function refreshFinancialAnalytics() {
-    const today = new Date().toISOString().split('T')[0];
-    
-    const stats = STATE.allData.reduce((acc, curr) => {
-        const s = (curr.status || '').toLowerCase().trim();
-        acc.counts[s] = (acc.counts[s] || 0) + 1;
-
-        if (s === 'success') {
-            // 777/77 बाट पहिलो भाग आम्दानी र दोस्रो भाग बाँकी निकाल्ने
-            const parts = String(curr.income || "0/0").split('/');
-            const incomeAmt = parseFloat(parts[0].replace(/[^0-9.]/g, '')) || 0;
-            const pendingAmt = parts[1] ? (parseFloat(parts[1].replace(/[^0-9.]/g, '')) || 0) : 0;
-
-            acc.revenue += incomeAmt;
-            acc.totalPending += pendingAmt;
-
-            // आजको आम्दानी चेक गर्ने
-            const entryDate = curr.updated_at ? curr.updated_at.split('T')[0] : '';
-            if (entryDate === today) {
-                acc.dailyIncome += incomeAmt;
-            }
+    try {
+        const totalItems = STATE.filteredData.length;
+        const maxPage = Math.ceil(totalItems / SYSTEM_CONFIG.PAGE_SIZE) || 1;
+        
+        if (direction === 'next' && STATE.currentPage < maxPage) {
+            STATE.currentPage++;
+        } else if (direction === 'prev' && STATE.currentPage > 1) {
+            STATE.currentPage--;
+        } else {
+            return;
         }
-        return acc;
-    }, { counts: {}, revenue: 0, totalPending: 0, dailyIncome: 0 });
-
-    const updateUI = (id, val) => { 
-        if(document.getElementById(id)) document.getElementById(id).textContent = val; 
-    };
-    
-    updateUI('statIncome', `Rs. ${stats.revenue.toLocaleString()}`);
-    updateUI('statDaily', `Rs. ${stats.dailyIncome.toLocaleString()}`); // HTML मा यो ID थप्नुहोला
-    updateUI('statPendingTotal', `Rs. ${stats.totalPending.toLocaleString()}`); // HTML मा यो ID थप्नुहोला
-    
-    updateUI('statSuccess', stats.counts['success'] || 0);
-    updateUI('statPending', stats.counts['pending'] || 0);
-    updateUI('statInquiry', stats.counts['inquiry'] || 0);
-    updateUI('statWorking', stats.counts['working'] || 0);
-    updateUI('statProblem', stats.counts['problem'] || 0); 
-    updateUI('totalRecords', `TOTAL: ${STATE.allData.length} RECORDS`);
+        
+        buildTableRows();
+        updatePaginationUI();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (error) {
+        console.error("❌ Page change error:", error);
+    }
 }
+
+// ═════════════════════════════════════════════════════════════════════════════
+// 11. RPA AUTOMATION CONTROL
+// ═════════════════════════════════════════════════════════════════════════════
+
+async function launchAIAutoFill(customerId, serviceType) {
+    try {
+        if (!serviceType || serviceType === 'Other') {
+            notify("Please select a valid service", "error");
+            return;
+        }
+        
+        const customer = STATE.allData.find(c => c.id === customerId);
+        if (!customer) {
+            notify("Customer not found", "error");
+            return;
+        }
+        
+        // Get AI rules from settings
+        const masterRules = localStorage.getItem('ai_rules_master') || '';
+        const serviceRules = localStorage.getItem(`ai_rules_${serviceType.toLowerCase()}`) || '';
+        const finalRules = `${masterRules}\n${serviceRules}`;
+        
+        notify("Starting RPA automation...", "success");
+        
+        try {
+            const response = await fetch(`${SYSTEM_CONFIG.RPA_SERVER_URL}/start-automation`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    customer_id: customerId,
+                    customer_data: customer,
+                    service_type: serviceType,
+                    ai_instructions: finalRules,
+                    operator: STATE.currentUser?.full_name || 'Unknown'
+                })
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                STATE.automation.activeProcesses[customerId] = serviceType;
+                notify(`RPA started for ${serviceType}`, "success");
+                console.log("✅ Automation started:", result);
+            } else {
+                notify("RPA server error", "error");
+            }
+        } catch (error) {
+            notify("RPA server offline", "error");
+            console.error("❌ RPA error:", error);
+        }
+    } catch (error) {
+        console.error("❌ Launch automation error:", error);
+        notify("Failed to start automation", "error");
+    }
+}
+
+async function pauseAutomation(customerId) {
+    try {
+        const response = await fetch(
+            `${SYSTEM_CONFIG.RPA_SERVER_URL}/automation/pause/${customerId}`,
+            { method: 'POST' }
+        );
+        
+        if (response.ok) {
+            STATE.automation.pausedProcesses[customerId] = true;
+            notify("Automation paused", "success");
+        }
+    } catch (error) {
+        console.error("❌ Pause error:", error);
+    }
+}
+
+async function resumeAutomation(customerId) {
+    try {
+        const response = await fetch(
+            `${SYSTEM_CONFIG.RPA_SERVER_URL}/automation/resume/${customerId}`,
+            { method: 'POST' }
+        );
+        
+        if (response.ok) {
+            delete STATE.automation.pausedProcesses[customerId];
+            notify("Automation resumed", "success");
+        }
+    } catch (error) {
+        console.error("❌ Resume error:", error);
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// 12. CHAT & COMMUNICATION
+// ═════════════════════════════════════════════════════════════════════════════
+
+function handleChatClick(phone, platform, senderId) {
+    try {
+        if (!phone && !senderId) {
+            notify("Contact information not available", "error");
+            return;
+        }
+        
+        const cleanPhone = (phone || senderId).replace(/\D/g, '');
+        
+        if (platform === 'whatsapp' && cleanPhone) {
+            window.open(`https://wa.me/${cleanPhone}`, '_blank');
+        } else if (platform === 'messenger') {
+            const targetId = senderId || '';
+            if (targetId && targetId !== 'undefined') {
+                window.open(`https://www.messenger.com/t/${targetId}`, '_blank');
+            } else {
+                window.open(`https://www.messenger.com`, '_blank');
+            }
+        } else {
+            notify("Invalid platform", "error");
+        }
+        
+        console.log(`✅ Opened chat: ${platform}`);
+    } catch (error) {
+        console.error("❌ Chat error:", error);
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// 13. UTILITIES & HELPERS
+// ═════════════════════════════════════════════════════════════════════════════
+
+function initializeLiveClock() {
+    setInterval(() => {
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true
+        });
+        
+        const lastUpdate = document.getElementById('lastUpdate');
+        if (lastUpdate) {
+            lastUpdate.innerHTML = `<span class="text-green-500 font-bold animate-pulse">●</span> LIVE: <span class="font-bold">${timeStr}</span>`;
+        }
+    }, 1000);
+}
+
+function formatDate(dateString) {
+    if (!dateString) return 'N/A';
+    try {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        });
+    } catch {
+        return 'N/A';
+    }
+}
+
+function getPlatformIcon(platform) {
+    const icons = {
+        whatsapp: '<i class="fas fa-whatsapp text-emerald-500"></i>',
+        messenger: '<i class="fas fa-facebook-messenger text-blue-500"></i>'
+    };
+    return icons[platform?.toLowerCase()] || '<i class="fas fa-question-circle text-slate-400"></i>';
+}
+
+function notify(message, type = 'info') {
+    try {
+        const notification = document.createElement('div');
+        const bgColor = type === 'success' ? 'bg-emerald-600' : type === 'error' ? 'bg-red-600' : 'bg-blue-600';
+        
+        notification.className = `
+            fixed top-6 right-6 px-6 py-4 rounded-xl text-white font-bold
+            shadow-2xl z-[10000] animate-bounce
+            ${bgColor}
+        `;
+        notification.innerHTML = `
+            <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'} mr-2"></i>
+            ${message}
+        `;
+        
+        document.body.appendChild(notification);
+        
+        setTimeout(() => notification.remove(), 3000);
+    } catch (error) {
+        console.error("❌ Notification error:", error);
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// 14. SETTINGS & CONFIGURATION
+// ═════════════════════════════════════════════════════════════════════════════
+
+function toggleSettingsModal() {
+    try {
+        let modal = document.getElementById('settingsModal');
+        
+        if (!modal) {
+            modal = createSettingsModal();
+            document.body.appendChild(modal);
+        }
+        
+        modal.classList.toggle('hidden');
+    } catch (error) {
+        console.error("❌ Settings modal error:", error);
+    }
+}
+
+function createSettingsModal() {
+    const modal = document.createElement('div');
+    modal.id = 'settingsModal';
+    modal.className = 'hidden fixed inset-0 bg-black bg-opacity-50 z-[9000] flex items-center justify-center';
+    modal.innerHTML = `
+        <div class="bg-white rounded-3xl p-8 max-w-2xl max-h-96 overflow-y-auto">
+            <h2 class="text-2xl font-black mb-6">⚙️ Settings</h2>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="text-sm font-bold text-slate-600">RPA Server URL</label>
+                    <input type="text" id="set_rpa_url" value="${localStorage.getItem('rpa_url') || SYSTEM_CONFIG.RPA_SERVER_URL}" class="w-full p-3 border-2 border-slate-200 rounded-xl">
+                </div>
+                
+                <div>
+                    <label class="text-sm font-bold text-slate-600">Master AI Rules</label>
+                    <textarea id="set_rules_master" class="w-full p-3 border-2 border-slate-200 rounded-xl h-24">${localStorage.getItem('ai_rules_master') || ''}</textarea>
+                </div>
+            </div>
+            
+            <div class="flex gap-3 mt-6">
+                <button onclick="saveSettings()" class="flex-1 bg-blue-600 text-white py-3 rounded-xl font-black">Save Settings</button>
+                <button onclick="document.getElementById('settingsModal').remove()" class="flex-1 bg-slate-200 text-slate-900 py-3 rounded-xl font-black">Cancel</button>
+            </div>
+        </div>
+    `;
+    return modal;
+}
+
+function saveSettings() {
+    try {
+        localStorage.setItem('rpa_url', document.getElementById('set_rpa_url')?.value || SYSTEM_CONFIG.RPA_SERVER_URL);
+        localStorage.setItem('ai_rules_master', document.getElementById('set_rules_master')?.value || '');
+        
+        notify("Settings saved successfully", "success");
+        document.getElementById('settingsModal')?.remove();
+        
+        setTimeout(() => location.reload(), 1000);
+    } catch (error) {
+        console.error("❌ Settings save error:", error);
+        notify("Failed to save settings", "error");
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// 15. REALTIME DATABASE SYNCHRONIZATION
+// ═════════════════════════════════════════════════════════════════════════════
 
 function startRealtimeBridge() {
-    supabaseClient.channel('any').on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'customers' 
-    }, (payload) => {
+    try {
+        if (!supabaseClient) {
+            console.warn("⚠️ Supabase not ready for realtime");
+            return;
+        }
+        
+        supabaseClient
+            .channel('public:customers')
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'customers' },
+                handleDatabaseChange
+            )
+            .subscribe((status) => {
+                if (status === 'SUBSCRIBED') {
+                    console.log("✅ Realtime subscription active");
+                } else if (status === 'CHANNEL_ERROR') {
+                    console.error("❌ Realtime subscription error");
+                }
+            });
+    } catch (error) {
+        console.error("❌ Realtime bridge error:", error);
+    }
+}
+
+function handleDatabaseChange(payload) {
+    try {
         if (payload.eventType === 'UPDATE') {
-            // १. सिधै STATE मा मात्र अपडेट गर्ने (पुरै डेटा नतान्ने)
+            // Update existing record
             const index = STATE.allData.findIndex(d => d.id === payload.new.id);
             if (index !== -1) {
-                // मेसेज र डकुमेन्ट दुवैलाई सुरक्षित राख्दै अपडेट गर्ने
                 STATE.allData[index] = { ...STATE.allData[index], ...payload.new };
                 applyLogicFilters(false);
                 refreshFinancialAnalytics();
             }
-        } else {
-            // २. नयाँ डेटा थपिँदा मात्र ताली बजाउने र पूरै तान्ने
-            if (payload.eventType === 'INSERT') {
-                new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3').play();
-                notify("नयाँ ग्राहक थपियो!", "success");
-            }
+        } else if (payload.eventType === 'INSERT') {
+            // New record added
+            playNotificationSound();
+            notify("New customer added", "success");
             syncCoreDatabase();
+        } else if (payload.eventType === 'DELETE') {
+            // Record deleted
+            STATE.allData = STATE.allData.filter(d => d.id !== payload.old.id);
+            applyLogicFilters(false);
+            refreshFinancialAnalytics();
         }
-    }).subscribe();
-}
-
-// --- ६. AUTH & GLOBAL EVENTS ---
-
-function validateSession() {
-
-    const sessionToken = sessionStorage.getItem('titan_user');
-
-    if (sessionToken) {
-
-        STATE.currentUser = JSON.parse(sessionToken);
-
-        loadDashboardInterface();
-
-    } else {
-
-        document.getElementById('loginPage').classList.remove('hidden');
-
-    }
-
-}
-
-async function loadDashboardInterface() {
-
-    document.getElementById('loginPage').classList.add('hidden');
-
-    document.getElementById('dashboardPage').classList.remove('hidden');
-
-    // Set Operator Name
-
-    if(document.getElementById('userDisplay')) {
-
-        document.getElementById('userDisplay').textContent = `OP: ${STATE.currentUser.full_name}`;
-
-    }
-
-    // --- थपिएको: Financial Report बटनलाई प्रोग्रामेटिक रूपमा सक्रिय गर्ने ---
-
-    const btnContainer = document.getElementById('reportBtnContainer');
-
-    if(btnContainer) {
-
-        btnContainer.innerHTML = `<button onclick="showFinancialReport()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-2xl font-black text-[11px] shadow-lg transition-all active:scale-95 uppercase">📊 Analytics Report</button>`;
-
-    }
-
-    await syncCoreDatabase();
-
-}
-
-function notify(msg, type) {
-
-    const n = document.createElement('div');
-
-    n.className = `fixed bottom-10 left-1/2 -translate-x-1/2 px-10 py-4 rounded-3xl text-white font-black z-[1000000] shadow-2xl animate-bounce ${type==='success'?'bg-slate-900 border-2 border-emerald-500':'bg-red-600'}`;
-
-    n.textContent = msg;
-
-    document.body.appendChild(n);
-
-    setTimeout(() => n.remove(), 3000);
-
-}
-
-// --- ६. फिल्टर लोजिक (सुधारिएको: Search र Platform दुवै चल्ने) ---
-function applyLogicFilters(reset = true) {
-    const searchInput = document.getElementById('searchInput');
-    const q = searchInput ? searchInput.value.toLowerCase().trim() : '';
-    
-    let filtered = [...STATE.allData];
-
-    // २. सर्च कोवेरी (नाम वा नम्बर) फिल्टर गर्ने
-    if (q) {
-        filtered = filtered.filter(d => 
-            (d.customer_name || '').toLowerCase().includes(q) || 
-            (d.phone_number || '').includes(q)
-        );
+    } catch (error) {
+        console.error("❌ Database change handler error:", error);
     }
+}
 
-    // STATE.selectedPlatform मा 'whatsapp' वा 'messenger' बस्छ
-    if (STATE.selectedPlatform && STATE.selectedPlatform !== 'all') {
-        filtered = filtered.filter(d => 
-            (d.platform || '').toLowerCase() === STATE.selectedPlatform.toLowerCase()
-        );
+function playNotificationSound() {
+    try {
+        const audio = new Audio('data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAAB9AAACABAAZGF0YQIAAAAAAA==');
+        audio.play().catch(e => console.log("Sound play failed:", e));
+    } catch (error) {
+        console.log("Notification sound error:", error);
     }
-
-    STATE.filteredData = filtered;
-
-    if(reset) STATE.currentPage = 1;
-    
-    buildTableRows();
-    updatePaginationUI();
 }
 
-// प्लेटफर्म बटन थिच्दा चल्ने नयाँ सहयोगी फङ्सन
-function filterByPlatform(p) {
-    
-    STATE.selectedPlatform = p; 
-    
-    console.log("Filtering by platform:", p);
+// ═════════════════════════════════════════════════════════════════════════════
+// 16. EVENT REGISTRATION
+// ═════════════════════════════════════════════════════════════════════════════
 
-    applyLogicFilters(true); 
-}
-
-// --- ७. ग्लोबल इभेन्टहरू (Login & Search) ---
 function registerGlobalEvents() {
-    const loginForm = document.getElementById('loginForm');
-    if (loginForm) {
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const userVal = document.getElementById('username').value.trim();
-            const passVal = document.getElementById('password').value.trim();
-
-            // सुधारेको कोवेरी: Error handle गर्न 'data' र 'error' दुवै चेक गर्ने
-            const { data, error } = await supabaseClient
-                .from('staff')
-                .select('*')
-                .eq('username', userVal)
-                .eq('password', passVal)
-                .maybeSingle(); // single() को साटो maybeSingle() राम्रो हुन्छ
-
-            if (data && !error) {
-                STATE.currentUser = data;
-                sessionStorage.setItem('titan_user', JSON.stringify(data));
-                notify("सफलतापूर्वक लगइन भयो!", "success");
-                loadDashboardInterface();
-            } else {
-                notify("Username वा Password मिलेन!", "error");
-            }
-        });
-    }
-
-    const sInput = document.getElementById('searchInput');
-    if (sInput) {
-        sInput.addEventListener('input', () => applyLogicFilters(true));
-    }
-
-    const logoutBtn = document.getElementById('logoutBtn');
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', () => { 
-            sessionStorage.clear(); 
-            location.reload(); 
-        });
+    try {
+        // Login form
+        const loginForm = document.getElementById('loginForm');
+        if (loginForm) {
+            loginForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const username = document.getElementById('username')?.value.trim() || '';
+                const password = document.getElementById('password')?.value.trim() || '';
+                
+                if (!username || !password) {
+                    notify("Please enter username and password", "error");
+                    return;
+                }
+                
+                await handleLogin(username, password);
+            });
+        }
+        
+        // Search input
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) {
+            searchInput.addEventListener('input', () => applyLogicFilters(true));
+        }
+        
+        // Logout button
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', handleLogout);
+        }
+        
+        console.log("✅ Global events registered");
+    } catch (error) {
+        console.error("❌ Event registration error:", error);
     }
 }
 
-// Yo thapेपछि मात्र HTML ka buttons le kaam garchhan
+// ═════════════════════════════════════════════════════════════════════════════
+// 17. DOCUMENT MANAGEMENT
+// ═════════════════════════════════════════════════════════════════════════════
+
+function viewDocuments(customerId) {
+    try {
+        const customer = STATE.allData.find(c => c.id === customerId);
+        if (!customer) {
+            notify("Customer not found", "error");
+            return;
+        }
+        
+        // Placeholder for document viewer
+        notify(`Documents for ${customer.customer_name}`, "info");
+        console.log("Documents:", customer.documents);
+    } catch (error) {
+        console.error("❌ Document view error:", error);
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// 18. ANALYTICS & REPORTS
+// ═════════════════════════════════════════════════════════════════════════════
+
+function showFinancialReport() {
+    try {
+        notify("Financial Report - Feature Coming Soon", "info");
+        console.log("Financial Report Generated");
+    } catch (error) {
+        console.error("❌ Report error:", error);
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// 19. GLOBAL FUNCTION EXPORTS (For HTML onclick handlers)
+// ═════════════════════════════════════════════════════════════════════════════
+
+// Make functions globally accessible
 window.launchAIAutoFill = launchAIAutoFill;
-window.commitUpdate = commitUpdate;
 window.handleChatClick = handleChatClick;
-window.saveSettings = saveSettings;
 window.filterByPlatform = filterByPlatform;
 window.changePage = changePage;
-window.saveManualNote = saveManualNote;
-window.viewPDF = viewPDF;
-window.syncCoreDatabase = syncCoreDatabase; // Initialization ko lagi chainchha
+window.syncCoreDatabase = syncCoreDatabase;
+window.toggleSettingsModal = toggleSettingsModal;
+window.saveSettings = saveSettings;
+window.viewDocuments = viewDocuments;
+window.showFinancialReport = showFinancialReport;
+window.pauseAutomation = pauseAutomation;
+window.resumeAutomation = resumeAutomation;
+
+console.log("✅ Dashboard.js loaded successfully");s
