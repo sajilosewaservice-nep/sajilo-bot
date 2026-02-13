@@ -6,15 +6,15 @@
       "use": "@vercel/node"
     },
     {
-      "src": "index.html",
+      "src": "public/index.html",
       "use": "@vercel/static"
     },
     {
-      "src": "dashboard.js",
+      "src": "public/dashboard.js",
       "use": "@vercel/static"
     },
     {
-      "src": "style.css",
+      "src": "public/style.css",
       "use": "@vercel/static"
     }
   ],
@@ -22,7 +22,7 @@
     { "source": "/api/(.*)", "destination": "/api/$1" },
     { 
       "source": "/((?!dashboard\\.js|style\\.css|app\\.js|.*\\.png|.*\\.jpg|.*\\.mp3).*)", 
-      "destination": "/index.html" 
+      "destination": "/public/index.html" 
     }
   ]
 }
