@@ -1,7 +1,7 @@
 export const SYSTEM_CONFIG = {
-    // ?. को प्रयोग गर्नाले यदि window.ENV छैन भने पनि कोड क्र्यास हुँदैन
-    SUPABASE_URL: window.ENV?.SUPABASE_URL || "",
-    SUPABASE_KEY: window.ENV?.SUPABASE_ANON_KEY || "", 
+    // यसलाई Dynamic बनाउनुहोस् ताकि यो सधैँ ताजा रहोस्
+    get SUPABASE_URL() { return window.ENV?.SUPABASE_URL || ""; },
+    get SUPABASE_KEY() { return window.ENV?.SUPABASE_ANON_KEY || ""; }, 
     RPA_SERVER_URL: localStorage.getItem('rpa_url') || "http://localhost:5000",
     PAGE_SIZE: 15
 };

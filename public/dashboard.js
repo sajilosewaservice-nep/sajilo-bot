@@ -31,7 +31,7 @@ const SYSTEM_CONFIG = {
     SUPABASE_URL: "",
     SUPABASE_KEY: "",
     RPA_SERVER_URL: "http://localhost:5000/api",
-    PAGE_SIZE: 20,
+    PAGE_SIZE: 15,
     
     // Service Configuration
     SERVICES: {
@@ -92,27 +92,39 @@ async function initializeSupabase() {
 // ═════════════════════════════════════════════════════════════════════════════
 
 document.addEventListener('DOMContentLoaded', async () => {
-    await loadConfigFromBackend();
+    // Step 1: Load configuration settings
+    const configLoaded = await loadConfigFromBackend();
+    if (!configLoaded) {
+        notify("Failed to load configuration", "error");
+        return;
+    }
+
     try {
         console.log("🚀 Dashboard initialization started...");
         
-        // Step 1: Initialize Supabase
+        // Step 2: Initialize Supabase client using loaded settings
         const supabaseReady = await initializeSupabase();
         if (!supabaseReady) throw new Error("Supabase initialization failed");
         
-        // Step 2: Validate session
+        // Step 3: Fetch data
+        await syncCoreDatabase();
+
+        // Step 4: Render the table
+        buildTableRows();
+
+        // Validate session
         validateSession();
         
-        // Step 3: Register event listeners
+        // Register event listeners
         registerGlobalEvents();
         
-        // Step 4: Start realtime updates
+        // Start realtime updates
         startRealtimeBridge();
         
-        // Step 5: Initialize live clock
+        // Initialize live clock
         initializeLiveClock();
         
-        // Step 6: Setup auto-sync
+        // Setup auto-sync
         setInterval(() => syncCoreDatabase(), SYSTEM_CONFIG.SYNC_INTERVAL);
         
         console.log("✅ Dashboard initialization completed");
@@ -121,6 +133,29 @@ document.addEventListener('DOMContentLoaded', async () => {
         notify("Failed to load dashboard", "error");
     }
 });
+
+// Load config from backend API (env via /api/config.js)
+async function loadConfigFromBackend() {
+    try {
+        const response = await fetch('/api/config', { method: 'GET' });
+        if (!response.ok) {
+            console.error("❌ Config fetch failed:", response.status, response.statusText);
+            return false;
+        }
+        const cfg = await response.json();
+        if (!cfg.supabaseUrl || !cfg.supabaseAnonKey) {
+            console.error("❌ Config missing keys:", cfg);
+            return false;
+        }
+        SYSTEM_CONFIG.SUPABASE_URL = cfg.supabaseUrl;
+        SYSTEM_CONFIG.SUPABASE_KEY = cfg.supabaseAnonKey;
+        console.log("✅ Configuration loaded from backend");
+        return true;
+    } catch (error) {
+        console.error("❌ Configuration load error:", error);
+        return false;
+    }
+}
 
 // ═════════════════════════════════════════════════════════════════════════════
 // 5. AUTHENTICATION & SESSION MANAGEMENT
@@ -926,7 +961,7 @@ function registerGlobalEvents() {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// 17. DOCUMENT MANAGEMENT
+/** 17. DOCUMENT MANAGEMENT */
 // ═════════════════════════════════════════════════════════════════════════════
 
 function viewDocuments(customerId) {
@@ -959,7 +994,7 @@ function showFinancialReport() {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// 19. GLOBAL FUNCTION EXPORTS (For HTML onclick handlers)
+/** 19. GLOBAL FUNCTION EXPORTS (For HTML onclick handlers) */
 // ═════════════════════════════════════════════════════════════════════════════
 
 // Make functions globally accessible
@@ -975,5 +1010,4 @@ window.showFinancialReport = showFinancialReport;
 window.pauseAutomation = pauseAutomation;
 window.resumeAutomation = resumeAutomation;
 
-console.log("✅ Dashboard.js loaded successfully");s
-
+console.log("✅ Dashboard.js loaded successfully");
