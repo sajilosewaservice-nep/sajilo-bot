@@ -1,170 +1,506 @@
 /**
- * TITAN MESSENGER ENGINE v4.0.0 (SYNC READY)
- * -----------------------------------------
- * यो कोडले फेसबुक म्यासेन्जरका म्यासेजहरूलाई सिधै सुपवेसमा सिंक गर्छ।
+ * =============================================================================
+ * TITAN ENTERPRISE CRM v4.0.0 - MESSENGER SYNC ENGINE
+ * WhatsApp & Messenger Integration | Production Ready
+ * =============================================================================
  */
 
 const fetch = require('node-fetch');
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
 
-// स्थानीय रूपमा चल्दा .env फाइल लोड गर्न (Vercel मा यो सुरक्षित हुन्छ)
 require('dotenv').config();
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
-// १. कन्फिगरेसन (Key हरू अब यहाँ सुरक्षित छन्)
+/* ═══════════════════════════════════════════════════════════════════════════
+   1. SYSTEM CONFIGURATION & VALIDATION
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 const CONFIG = {
-    SUPABASE_URL: process.env.SUPABASE_URL,
-    SUPABASE_KEY: process.env.SUPABASE_KEY,
-    PAGE_ACCESS_TOKEN: process.env.PAGE_ACCESS_TOKEN,
-    VERIFY_TOKEN: process.env.VERIFY_TOKEN || "titan_crm_2026"
+    SUPABASE_URL: process.env.SUPABASE_URL || '',
+    SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY || '',
+    PAGE_ACCESS_TOKEN: process.env.PAGE_ACCESS_TOKEN || '',
+    VERIFY_TOKEN: process.env.VERIFY_TOKEN || 'titan_crm_2026',
+    PORT: parseInt(process.env.PORT || '3000'),
+    NODE_ENV: process.env.NODE_ENV || 'development',
+    FACEBOOK_API_VERSION: 'v21.0',
+    FACEBOOK_GRAPH_URL: 'https://graph.facebook.com'
 };
 
-const supabase = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_KEY);
-// २. फेसबुक प्रोफाइल तान्ने फङ्सन
+// Configuration validation
+const validateConfiguration = () => {
+    const required = ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'PAGE_ACCESS_TOKEN'];
+    const missing = required.filter(key => !CONFIG[key]);
+
+    if (missing.length > 0) {
+        console.error(`❌ Missing required environment variables: ${missing.join(', ')}`);
+        console.error('📋 Required .env variables:');
+        console.error('   - SUPABASE_URL');
+        console.error('   - SUPABASE_ANON_KEY');
+        console.error('   - PAGE_ACCESS_TOKEN');
+        process.exit(1);
+    }
+};
+
+validateConfiguration();
+
+// Initialize Supabase
+let supabase = null;
+
+try {
+    supabase = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+    console.log('✅ Supabase client initialized');
+} catch (error) {
+    console.error('❌ Supabase initialization failed:', error.message);
+    process.exit(1);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   2. UTILITY & HELPER FUNCTIONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Fetch Facebook user profile information
+ */
 async function getFacebookUserProfile(psid) {
     try {
-        const response = await fetch(`https://graph.facebook.com/${psid}?fields=first_name,last_name,profile_pic&access_token=${CONFIG.PAGE_ACCESS_TOKEN}`);
+        if (!psid) {
+            throw new Error('Invalid PSID');
+        }
+
+        const url = `${CONFIG.FACEBOOK_GRAPH_URL}/${psid}?fields=first_name,last_name,profile_pic&access_token=${CONFIG.PAGE_ACCESS_TOKEN}`;
+        const response = await fetch(url);
+
+        if (!response.ok) {
+            console.warn(`⚠️ Facebook API Status: ${response.status}`);
+            return {
+                name: 'Messenger User',
+                profilePic: null,
+                success: false
+            };
+        }
+
         const data = await response.json();
+
+        if (data.error) {
+            console.warn('⚠️ Facebook API Error:', data.error.message);
+            return {
+                name: 'Messenger User',
+                profilePic: null,
+                success: false
+            };
+        }
+
         return {
-            name: data.first_name ? `${data.first_name} ${data.last_name || ''}`.trim() : "Messenger User",
-            profilePic: data.profile_pic || null
+            name: data.first_name
+                ? `${data.first_name} ${data.last_name || ''}`.trim()
+                : 'Messenger User',
+            profilePic: data.profile_pic || null,
+            success: !!data.first_name
         };
     } catch (error) {
-        console.error("❌ Profile Fetch Error:", error);
-        return { name: "Messenger User", profilePic: null };
+        console.error('❌ Profile Fetch Error:', error.message);
+        return {
+            name: 'Messenger User',
+            profilePic: null,
+            success: false
+        };
     }
 }
 
-// ३. फेसबुक भेरिफिकेसन (GET Method)
+/**
+ * Get existing customer from database
+ */
+async function getExistingCustomer(messengerId) {
+    try {
+        if (!supabase) {
+            throw new Error('Supabase not initialized');
+        }
+
+        const { data, error } = await supabase
+            .from('customers')
+            .select('*')
+            .eq('messenger_id', messengerId)
+            .maybeSingle();
+
+        if (error) {
+            console.warn('⚠️ Database Query Error:', error.message);
+            return null;
+        }
+
+        return data;
+    } catch (error) {
+        console.error('❌ Database Error:', error.message);
+        return null;
+    }
+}
+
+/**
+ * Safely parse document array
+ */
+function parseDocuments(rawDocs) {
+    try {
+        if (!rawDocs) return [];
+        if (typeof rawDocs === 'string') return JSON.parse(rawDocs);
+        if (Array.isArray(rawDocs)) return rawDocs;
+        return [];
+    } catch (e) {
+        console.warn('⚠️ Document Parse Error:', e.message);
+        return [];
+    }
+}
+
+/**
+ * Sanitize input to prevent injection attacks
+ */
+function sanitizeInput(text, maxLength = 1000) {
+    return String(text || '')
+        .trim()
+        .substring(0, maxLength)
+        .replace(/[<>]/g, '');
+}
+
+/**
+ * Format timestamp
+ */
+function getCurrentTimestamp() {
+    return new Date().toISOString();
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   3. WEBHOOK VERIFICATION ENDPOINT
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 app.get('/api/webhook', (req, res) => {
     const mode = req.query['hub.mode'];
     const token = req.query['hub.verify_token'];
     const challenge = req.query['hub.challenge'];
 
     if (mode === 'subscribe' && token === CONFIG.VERIFY_TOKEN) {
-        console.log("✅ Messenger Webhook Verified!");
+        console.log('✅ Messenger Webhook Verified Successfully');
         return res.status(200).send(challenge);
     }
+
+    console.warn('⚠️ Webhook Verification Failed - Invalid Token');
     res.sendStatus(403);
 });
 
-// ४. मुख्य इन्जिन: म्यासेज रिसिभ र CRM सिंक (POST Method)
+/* ═══════════════════════════════════════════════════════════════════════════
+   4. INCOMING MESSAGE HANDLER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Main webhook POST handler for incoming messages
+ */
 app.post('/api/webhook', async (req, res) => {
     const body = req.body;
-    if (body.object !== 'page') return res.sendStatus(404);
 
-    for (const entry of body.entry) {
-        if (!entry.messaging) continue;
+    // Verify request object type
+    if (body.object !== 'page') {
+        console.warn('⚠️ Invalid object type:', body.object);
+        return res.sendStatus(404);
+    }
 
-        const event = entry.messaging[0];
-        const psid = event.sender.id;
+    res.status(200).send('EVENT_RECEIVED');
 
-        if (event.message) {
-            const messageText = event.message.text || "";
-            let attachments = [];
-            if (event.message.attachments) {
-                attachments = event.message.attachments.map(a => a.payload.url);
-            }
+    try {
+        for (const entry of body.entry || []) {
+            if (!entry.messaging) continue;
 
-            // १. पहिले डेटाबेसबाट पुरानो डेटा खोज्ने
-const { data: existingCustomer } = await supabase
-    .from('customers')
-    .select('*')
-    .eq('phone_number', psid)
-    .maybeSingle();
+            for (const event of entry.messaging) {
+                const psid = event.sender?.id;
 
-// २. अनि मात्र फेसबुकबाट प्रोफाइल तान्ने
-const userProfile = await getFacebookUserProfile(psid);
+                if (!psid) {
+                    console.warn('⚠️ Missing sender ID in event');
+                    continue;
+                }
 
-// ३. नामको निर्णय गर्ने: यदि फेसबुकले नाम दिएन भने पुरानै 'customer_name' राख्ने
-const finalName = (userProfile.name !== "Messenger User") 
-    ? userProfile.name 
-    : (existingCustomer?.customer_name || "New Customer");
-
-            // १. पुराना डकुमेन्टहरू सुरक्षित रूपमा तान्ने (JSONB Safe)
-            let oldDocs = [];
-            try {
-                const rawDocs = existingCustomer?.documents;
-                // यदि डाटा String छ भने Parse गर्ने, नत्र Array मान्ने
-                oldDocs = typeof rawDocs === 'string' ? JSON.parse(rawDocs) : (Array.isArray(rawDocs) ? rawDocs : []);
-            } catch (e) {
-                oldDocs = [];
-            }
-
-            // २. नयाँ आएका फोटोहरू र पुरानालाई मिसाउने
-            const updatedDocs = [...new Set([...oldDocs, ...attachments])].filter(Boolean);
-
-            const finalMessage = messageText || (attachments.length > 0 ? "📷 Sent an attachment" : "New Message");
-
-            // ग) TITAN v4.0.0 Logic: फेसबुक ID लाई नै चिनारी (Unique ID) मानेर सिंक गर्ने
-// --- यसलाई फेर्नुहोस् ---
-const customerData = {
-    phone_number: psid, 
-    customer_name: finalName, 
-    chat_summary: finalMessage,
-    platform: 'messenger',
-    status: existingCustomer ? existingCustomer.status : 'inquiry',
-    service: existingCustomer ? existingCustomer.service : 'Other',
-    documents: updatedDocs, // ✅ यहाँबाट JSON.stringify हटाियो, सिधै एरे (Array) पठाउनुहोस्
-    last_updated_by: 'MESSENGER_BOT',
-    updated_at: new Date().toISOString()
-};
-// ----------------------
-
-try {
-    await Promise.all([
-        // Customers टेबल सिंक (यहाँ phone_number कोलम भित्र PSID म्याच गरिन्छ)
-        supabase.from('customers').upsert(customerData, { onConflict: 'phone_number' }),
-        // ... बाँकी म्यासेज इन्सर्ट गर्ने कोड उस्तै रहन्छ ...
-                    
-                    // History को लागि Messages टेबलमा इन्सर्ट
-                    supabase.from('messages').insert([{
-                        customer_id: psid,
-                        content: finalMessage,
-                        is_from_customer: true,
-                        metadata: { urls: attachments, profile_pic: userProfile.profilePic }
-                    }])
-                ]);
-                console.log(`✅ CRM Synced: ${finalName} [${customerData.status}]`);
-            } catch (err) {
-                console.error("❌ Sync Error:", err.message);
+                if (event.message) {
+                    await handleIncomingMessage(psid, event.message);
+                }
             }
         }
+    } catch (error) {
+        console.error('❌ Webhook Processing Error:', error.message);
     }
-    res.status(200).send('EVENT_RECEIVED');
 });
 
-// ५. ड्यासबोर्डबाट रिप्लाई पठाउने API
+/**
+ * Process incoming message and sync to CRM
+ */
+async function handleIncomingMessage(psid, messageData) {
+    try {
+        if (!supabase) {
+            throw new Error('Supabase not initialized');
+        }
+
+        // Extract and validate message content
+        const messageText = sanitizeInput(messageData.text || '');
+        let attachments = [];
+
+        if (messageData.attachments && Array.isArray(messageData.attachments)) {
+            attachments = messageData.attachments
+                .map(a => a.payload?.url)
+                .filter(url => url && typeof url === 'string')
+                .map(url => sanitizeInput(url));
+        }
+
+        // Fetch existing customer
+        const existingCustomer = await getExistingCustomer(psid);
+
+        // Fetch Facebook user profile
+        const userProfile = await getFacebookUserProfile(psid);
+
+        // Determine final customer name
+        const finalName = userProfile.success
+            ? userProfile.name
+            : (existingCustomer?.customer_name || 'New Customer');
+
+        // Parse existing documents
+        let oldDocs = [];
+        if (existingCustomer) {
+            oldDocs = parseDocuments(existingCustomer.documents);
+        }
+
+        // Merge and deduplicate documents
+        const updatedDocs = [...new Set([...oldDocs, ...attachments])].filter(Boolean);
+
+        // Create final message
+        const finalMessage = messageText
+            || (attachments.length > 0 ? '📷 Sent an attachment' : 'New Message');
+
+        // Prepare customer data object
+        const customerData = {
+            messenger_id: psid,
+            customer_name: finalName,
+            chat_summary: finalMessage,
+            platform: 'messenger',
+            status: existingCustomer?.status || 'inquiry',
+            service_type: existingCustomer?.service_type || 'Other',
+            documents: updatedDocs,
+            last_updated_by: 'MESSENGER_BOT',
+            updated_at: getCurrentTimestamp()
+        };
+
+        // Upsert customer record
+        const { error: upsertError } = await supabase
+            .from('customers')
+            .upsert(customerData, { onConflict: 'messenger_id' });
+
+        if (upsertError) {
+            console.error('❌ Customer Upsert Error:', upsertError.message);
+            return;
+        }
+
+        // Insert message to history
+        const { error: insertError } = await supabase
+            .from('messages')
+            .insert([{
+                customer_id: psid,
+                platform: 'messenger',
+                content: finalMessage,
+                is_from_customer: true,
+                created_at: getCurrentTimestamp(),
+                metadata: {
+                    urls: attachments,
+                    profile_pic: userProfile.profilePic,
+                    customer_name: finalName
+                }
+            }]);
+
+        if (insertError) {
+            console.error('❌ Message Insert Error:', insertError.message);
+            return;
+        }
+
+        console.log(`✅ CRM Synced: ${finalName} [Messenger] [${customerData.status}]`);
+
+    } catch (error) {
+        console.error('❌ Handle Message Error:', error.message);
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   5. DIRECT REPLY ENDPOINT (Dashboard to Customer)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 app.post('/api/direct-reply', async (req, res) => {
     const { psid, messageText } = req.body;
+
+    // Validate required fields
+    if (!psid || !messageText) {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing required fields: psid, messageText'
+        });
+    }
+
+    if (!supabase) {
+        return res.status(500).json({
+            success: false,
+            error: 'Database not initialized'
+        });
+    }
+
     try {
-        const response = await fetch(`https://graph.facebook.com/v21.0/me/messages?access_token=${CONFIG.PAGE_ACCESS_TOKEN}`, {
+        const sanitizedMessage = sanitizeInput(messageText);
+
+        // Send message via Facebook API
+        const url = `${CONFIG.FACEBOOK_GRAPH_URL}/${CONFIG.FACEBOOK_API_VERSION}/me/messages?access_token=${CONFIG.PAGE_ACCESS_TOKEN}`;
+
+        const response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 recipient: { id: psid },
-                message: { text: messageText }
+                message: { text: sanitizedMessage }
             })
         });
 
-        if (response.ok) {
-            await supabase.from('messages').insert([{
-                customer_id: psid,
-                content: messageText,
-                is_from_customer: false
-            }]);
-            res.status(200).json({ success: true });
-        } else {
-            const err = await response.json();
-            res.status(500).json({ success: false, error: err });
+        const result = await response.json();
+
+        if (!response.ok) {
+            console.error('❌ Facebook API Error:', result);
+            return res.status(500).json({
+                success: false,
+                error: result.error?.message || 'Facebook API Error'
+            });
         }
-    } catch (err) {
-        res.status(500).json({ success: false, error: "Server Error" });
+
+        // Log sent message to database
+        const { error: logError } = await supabase
+            .from('messages')
+            .insert([{
+                customer_id: psid,
+                platform: 'messenger',
+                content: sanitizedMessage,
+                is_from_customer: false,
+                created_at: getCurrentTimestamp(),
+                metadata: { message_id: result.message_id }
+            }]);
+
+        if (logError) {
+            console.warn('⚠️ Message log error:', logError.message);
+        }
+
+        console.log(`✅ Reply Sent to ${psid} [Message ID: ${result.message_id}]`);
+
+        res.status(200).json({
+            success: true,
+            messageId: result.message_id,
+            timestamp: getCurrentTimestamp()
+        });
+
+    } catch (error) {
+        console.error('❌ Reply Error:', error.message);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
     }
 });
 
-const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => console.log(`🚀 Messenger Webhook Engine running on port ${PORT}`));
+/* ═══════════════════════════════════════════════════════════════════════════
+   6. HEALTH CHECK & DIAGNOSTICS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+app.get('/api/health', (req, res) => {
+    res.status(200).json({
+        status: 'ok',
+        service: 'TITAN Messenger Engine v4.0.0',
+        version: '4.0.0',
+        uptime: process.uptime(),
+        timestamp: getCurrentTimestamp(),
+        supabase: supabase ? 'connected' : 'disconnected',
+        environment: CONFIG.NODE_ENV,
+        port: CONFIG.PORT
+    });
+});
+
+app.get('/api/config-status', (req, res) => {
+    res.status(200).json({
+        supabaseUrl: CONFIG.SUPABASE_URL ? '✅' : '❌',
+        supabaseAnonKey: CONFIG.SUPABASE_ANON_KEY ? '✅' : '❌',
+        pageAccessToken: CONFIG.PAGE_ACCESS_TOKEN ? '✅' : '❌',
+        verifyToken: CONFIG.VERIFY_TOKEN ? '✅' : '❌'
+    });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   7. ERROR HANDLING MIDDLEWARE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+app.use((error, req, res, next) => {
+    console.error('❌ Unhandled Error:', error.message);
+    console.error('Stack:', error.stack);
+
+    res.status(500).json({
+        success: false,
+        error: 'Internal Server Error',
+        message: CONFIG.NODE_ENV === 'development' ? error.message : 'An error occurred',
+        timestamp: getCurrentTimestamp()
+    });
+});
+
+app.use((req, res) => {
+    res.status(404).json({
+        success: false,
+        error: 'Endpoint Not Found',
+        path: req.path,
+        method: req.method
+    });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   8. SERVER INITIALIZATION & GRACEFUL SHUTDOWN
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const SERVER = app.listen(CONFIG.PORT, () => {
+    console.log(`
+╔═══════════════════════════════════════════════════════════════╗
+║         🚀 TITAN ENTERPRISE CRM v4.0.0                        ║
+║         Messenger Sync Engine                                 ║
+╠═══════════════════════════════════════════════════════════════╣
+║ ✅ Status: Ready for Webhook Events                           ║
+║ 📡 Port: ${CONFIG.PORT}                                          ║
+║ 🌍 Environment: ${CONFIG.NODE_ENV}                             ║
+║ 🛠️  Supabase: Connected                                       ║
+║ ⏰ Started: ${getCurrentTimestamp()}                   ║
+╠═══════════════════════════════════════════════════════════════╣
+║ 📋 Available Endpoints:                                       ║
+║   GET  /api/webhook          - Verification                   ║
+║   POST /api/webhook          - Message Handler                ║
+║   POST /api/direct-reply     - Send Reply                     ║
+║   GET  /api/health           - Health Check                   ║
+║   GET  /api/config-status    - Configuration Status           ║
+╚═══════════════════════════════════════════════════════════════╝
+    `);
+});
+
+// Graceful shutdown handlers
+process.on('SIGTERM', () => {
+    console.log('⚠️ SIGTERM received, shutting down gracefully...');
+    SERVER.close(() => {
+        console.log('✅ Server closed');
+        process.exit(0);
+    });
+});
+
+process.on('SIGINT', () => {
+    console.log('⚠️ SIGINT received, shutting down gracefully...');
+    SERVER.close(() => {
+        console.log('✅ Server closed');
+        process.exit(0);
+    });
+});
+
+// Unhandled rejection handler
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+    process.exit(1);
+});
+
+module.exports = app;
