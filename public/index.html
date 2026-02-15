@@ -1,36 +1,4 @@
 <!DOCTYPE html>
-<script>
-  // Vercel API बाट सुरक्षित तरिकाले Keys लोड गर्ने
-  async function loadConfig() {
-    try {
-      const res = await fetch('/api/config');
-      const data = await res.json();
-      
-      if (data.error) {
-        console.error("Config Error:", data.message);
-        return;
-      }
-
-      // Global Environment सेट गर्ने
-      window.ENV = {
-        SUPABASE_URL: data.supabaseUrl,
-        SUPABASE_ANON_KEY: data.supabaseAnonKey
-      };
-
-      console.log("✅ TITAN Engine: Keys loaded.");
-
-      // डाटा आएपछि मात्र ड्यासबोर्ड सुरु गर्ने
-      if (typeof initDashboard === 'function') {
-        initDashboard();
-      }
-    } catch (err) {
-      console.error("❌ API Fetch Failed:", err);
-    }
-  }
-
-  loadConfig();
-</script>
-
 <html lang="ne">
 <head>
     <meta charset="UTF-8">
@@ -352,6 +320,6 @@
     <!-- NOTIFICATION ZONE -->
     <div id="notificationZone" class="fixed top-6 right-6 z-9999 flex flex-col gap-3 pointer-events-none max-w-md w-[95vw] md:w-full"></div>
 
-    <script src="design.js"></script>     <script src="dashboard.js"></script>
+    <script src="dashboard.js"></script>
 </body>
 </html>

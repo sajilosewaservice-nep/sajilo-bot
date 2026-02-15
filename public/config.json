@@ -1,0 +1,1 @@
+{ "apiBaseUrl": "http://localhost:3000", "auth": { "clientId": "{client_id}", "clientSecret": "{client_secret}" } }

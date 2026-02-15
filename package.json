@@ -1,5 +1,8 @@
 {
   "type": "module",
+  "scripts": {
+    "start": "node api/messenger.js"
+  },
   "dependencies": {
     "@supabase/supabase-js": "^2.95.3",
     "@whiskeysockets/baileys": "^7.0.0-rc.9",
