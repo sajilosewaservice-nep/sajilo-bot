@@ -28,8 +28,8 @@ const STATE = {
 // ═════════════════════════════════════════════════════════════════════════════
 
 const SYSTEM_CONFIG = {
-    SUPABASE_URL: "https://your-supabase-instance.supabase.co",
-    SUPABASE_KEY: "your-supabase-anon-key",
+    SUPABASE_URL: "",
+    SUPABASE_KEY: "",
     RPA_SERVER_URL: "http://localhost:5000/api",
     PAGE_SIZE: 20,
     
@@ -92,6 +92,7 @@ async function initializeSupabase() {
 // ═════════════════════════════════════════════════════════════════════════════
 
 document.addEventListener('DOMContentLoaded', async () => {
+    await loadConfigFromBackend();
     try {
         console.log("🚀 Dashboard initialization started...");
         
@@ -975,3 +976,4 @@ window.pauseAutomation = pauseAutomation;
 window.resumeAutomation = resumeAutomation;
 
 console.log("✅ Dashboard.js loaded successfully");s
+
