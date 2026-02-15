@@ -1,6 +1,7 @@
 export const SYSTEM_CONFIG = {
-    SUPABASE_URL: window.ENV.SUPABASE_URL,
-    SUPABASE_KEY: window.ENV.SUPABASE_ANON_KEY,
+    // ?. को प्रयोग गर्नाले यदि window.ENV छैन भने पनि कोड क्र्यास हुँदैन
+    SUPABASE_URL: window.ENV?.SUPABASE_URL || "",
+    SUPABASE_KEY: window.ENV?.SUPABASE_ANON_KEY || "", 
     RPA_SERVER_URL: localStorage.getItem('rpa_url') || "http://localhost:5000",
     PAGE_SIZE: 15
 };
@@ -13,11 +14,14 @@ export let STATE = {
     isLoading: false
 };
 
+// --- 2. MULTIMEDIA ENGINE (Corrected & Stable) ---
 function renderFileIcons(docs, id) {
     let docsArray = [];
+    
     if (!docs || docs === '[]' || docs === '') {
         return '<span class="text-slate-300 italic text-[9px]">No Docs</span>';
     }
+
     try {
         docsArray = typeof docs === 'string' ? JSON.parse(docs) : docs;
         if (typeof docsArray === 'string') docsArray = JSON.parse(docsArray);
@@ -25,6 +29,7 @@ function renderFileIcons(docs, id) {
         console.error("Parsing error:", e);
         docsArray = [];
     }
+
     if (!Array.isArray(docsArray) || docsArray.length === 0) {
         return '<span class="text-slate-300 italic text-[9px]">No Docs</span>';
     }
@@ -45,7 +50,7 @@ function renderFileIcons(docs, id) {
         .filter(url => url && typeof url === 'string' && url.match(/\.(mp3|wav|ogg|m4a)/i));
 
     let html = `<div style="display: flex; flex-wrap: nowrap; gap: 6px; align-items: center; justify-content: flex-start; background: #f8fafc; padding: 6px; border-radius: 10px; border: 1.5px dashed #cbd5e1; max-width: 140px; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none;">`;
-
+    
     if (images.length > 0) {
         html += `
             <div class="relative cursor-pointer group" onclick="openGallery(${JSON.stringify(images).replace(/"/g, '&quot;')}, '${id}')">
@@ -83,14 +88,14 @@ function buildTableRows() {
     const tableBody = document.getElementById('tableBody');
     if(!tableBody) return;
     tableBody.innerHTML = '';
-
+    
     const startIndex = (STATE.currentPage - 1) * SYSTEM_CONFIG.PAGE_SIZE;
     const items = STATE.filteredData.slice(startIndex, startIndex + SYSTEM_CONFIG.PAGE_SIZE);
 
     items.forEach(row => {
         const tr = document.createElement('tr');
         tr.className = 'border-b hover:bg-slate-50 transition-colors text-[10px]';
-
+        
         tr.innerHTML = `
             <td class="p-4 font-mono text-slate-500">${new Date(row.created_at).toLocaleDateString('ne-NP')}</td>
             <td class="p-1 text-center">${row.platform === 'whatsapp' ? '🟢' : '🔵'}</td>
@@ -98,34 +103,39 @@ function buildTableRows() {
                 <div class="font-black text-slate-800 text-[11px]">${row.customer_name || 'rt9736782'}</div>
                 <div class="text-[10px] text-blue-600 font-bold">${row.phone_number || ''}</div>
             </td>
+            
             <td class="p-4">
                 <select class="w-full border rounded-lg p-1.5 font-black bg-white shadow-sm" onchange="commitUpdate('${row.id}', {service: this.value}, 'सेवा फेरियो')">
-                    <option value="Passport" ${row.service==='Passport'?'selected':'}>Passport</option>
-                    <option value="PCC" ${row.service==='PCC'?'selected':'}>PCC</option>
-                    <option value="NID" ${row.service==='NID'?'selected':'}>NID</option>
-                    <option value="License" ${row.service==='License'?'selected':'}>License</option>
-                    <option value="PAN" ${row.service==='PAN'?'selected':'}>PAN</option>
-                    <option value="Visa" ${row.service==='Visa'?'selected':'}>Visa</option>
-                    <option value="Other" ${row.service==='Other'?'selected':'}>Other</option>
+                    <option value="Passport" ${row.service==='Passport'?'selected':''}>Passport</option>
+                    <option value="PCC" ${row.service==='PCC'?'selected':''}>PCC</option>
+                    <option value="NID" ${row.service==='NID'?'selected':''}>NID</option>
+                    <option value="License" ${row.service==='License'?'selected':''}>License</option>
+                    <option value="PAN" ${row.service==='PAN'?'selected':''}>PAN</option>
+                    <option value="Visa" ${row.service==='Visa'?'selected':''}>Visa</option>
+                    <option value="Other" ${row.service==='Other'?'selected':''}>Other</option>
                 </select>
                 <input type="text" class="w-full text-[8px] border-b border-dotted mt-1 outline-none italic text-slate-400" 
                 placeholder="More..." value="${row.other_service_name || ''}" 
                 onblur="commitUpdate('${row.id}', {other_service_name: this.value.toUpperCase()}, 'Saved')">
             </td>
+
             <td class="p-4">
                 <div class="flex flex-col gap-1.5">
                     <button onclick="launchAIAutoFill('${row.id}', '${row.service}')" class="bg-orange-600 text-white text-[9px] font-black py-1.5 px-3 rounded-lg shadow-md hover:bg-orange-700 transition">🚀 AUTO</button>
+                    
                     <button onclick="handleChatClick('${row.phone_number}', '${row.platform}', '${row.sender_id}')" 
-                        class="bg-blue-600 text-white text-[9px] font-black py-1.5 px-3 rounded-lg shadow-md hover:bg-blue-700 transition">💬 CHAT</button>
+                        class="bg-blue-600 text-white text-[9px] font-black py-1.5 px-3 rounded-lg shadow-md hover:bg-blue-700 transition">
+                        💬 CHAT
+                    </button>
                 </div>
             </td>
             <td class="p-4">
                 <select class="w-full font-black p-1 rounded border-2 bg-white" onchange="commitUpdate('${row.id}', {status: this.value}, 'Status Updated')" style="border-color: ${getStatusColor(row.status)}; color: ${getStatusColor(row.status)}">
-                    <option value="inquiry" ${row.status==='inquiry'?'selected':'}>📩 INQ</option>
-                    <option value="pending" ${row.status==='pending'?'selected':'}>⏳ PND</option>
-                    <option value="working" ${row.status==='working'?'selected':'}>🛠️ WRK</option>
-                    <option value="success" ${row.status==='success'?'selected':'}>✅ SUC</option>
-                    <option value="problem" ${row.status==='problem'?'selected':'}>❌ PRB</option>
+                    <option value="inquiry" ${row.status==='inquiry'?'selected':''}>📩 INQ</option>
+                    <option value="pending" ${row.status==='pending'?'selected':''}>⏳ PND</option>
+                    <option value="working" ${row.status==='working'?'selected':''}>🛠️ WRK</option>
+                    <option value="success" ${row.status==='success'?'selected':''}>✅ SUC</option>
+                    <option value="problem" ${row.status==='problem'?'selected':''}>❌ PRB</option>
                 </select>
             </td>
             <td class="p-4">
@@ -197,9 +207,7 @@ function togglePhotoSelection(id, url, el) {
 
 function showFinancialReport() {
     const now = new Date();
-    const startOfWeek = new Date(now);
-    startOfWeek.setDate(now.getDate() - now.getDay());
-    startOfWeek.setHours(0, 0, 0, 0);
+    const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
     const stats = STATE.allData.reduce((acc, curr) => {
@@ -253,7 +261,7 @@ function toggleSettingsModal() {
     const pan = localStorage.getItem('ai_rules_pan') || "";
 
     const modalHtml = `
-        <div id="settingsModal" class="fixed inset-0 bg-black/80 backdrop-blur-md flex items center justify-center z-[999999] p-4">
+        <div id="settingsModal" class="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[999999] p-4">
             <div class="bg-white w-full max-w-3xl rounded-[30px] shadow-2xl overflow-hidden border-4 border-slate-900">
                 <div class="bg-slate-900 p-5 text-white flex justify-between items-center">
                     <h2 class="font-black italic text-sm text-blue-400">TITAN AI CONTROL PANEL (ALL SERVICES)</h2>
@@ -264,11 +272,13 @@ function toggleSettingsModal() {
                         <label class="block text-[10px] font-black text-slate-500 uppercase mb-1">🤖 RPA Server URL</label>
                         <input type="text" id="set_rpa_url" value="${rpaUrl}" class="w-full border-2 rounded-xl p-3 text-xs outline-none focus:border-blue-500">
                     </div>
+                    
                     <div class="space-y-4">
                         <div>
                             <label class="text-[9px] font-bold text-blue-600 uppercase">Master Rules (सबैमा लागु हुने साझा नियम)</label>
                             <textarea id="set_rules_master" rows="2" class="w-full border-2 rounded-xl p-3 text-xs outline-none focus:border-blue-500">${master}</textarea>
                         </div>
+                        
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label class="text-[9px] font-bold text-orange-500 uppercase">NID Rules</label>
@@ -303,10 +313,10 @@ function toggleSettingsModal() {
 }
 
 function openLargeNote(id, content) {
-    const safeContent = content || '';
     const modalHtml = `
         <div id="noteModal" class="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-[9999999] flex items-center justify-center p-4 animate-in fade-in duration-200">
             <div class="bg-white w-full max-w-2xl rounded-[30px] shadow-2xl overflow-hidden border-4 border-slate-900 flex flex-col max-h-[85vh]">
+                
                 <div class="bg-slate-900 p-5 text-white flex justify-between items-center">
                     <div class="flex items-center gap-3">
                         <div class="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
@@ -314,13 +324,15 @@ function openLargeNote(id, content) {
                     </div>
                     <button onclick="document.getElementById('noteModal').remove()" class="text-3xl hover:text-red-500 transition-colors">&times;</button>
                 </div>
+
                 <div class="p-6 overflow-y-auto flex-1 bg-slate-50 space-y-4 font-mono text-xs" id="modalScrollBody">
                     <div class="bg-blue-100 border-l-4 border-blue-600 p-4 rounded-r-xl text-blue-900 whitespace-pre-wrap leading-relaxed shadow-sm">
-                        ${safeContent || 'अहिलेसम्म कुनै लग रेकर्ड गरिएको छैन।'}
+                        ${content || 'अहिलेसम्म कुनै लग रेकर्ड गरिएको छैन।'}
                     </div>
                 </div>
+
                 <div class="p-4 bg-white border-t border-slate-200 flex flex-col gap-3">
-                    <textarea id="manualNoteInput" class="w-full border-2 border-slate-200 rounded-2xl p-3 text-xs outline-none focus:border-blue-500 h-20 resize-none" placeholder="यहाँ केही लेख्नुहोस् (उदा: ok)...">${safeContent.replace(/<br>/g, '\n')}</textarea>
+                    <textarea id="manualNoteInput" class="w-full border-2 border-slate-200 rounded-2xl p-3 text-xs outline-none focus:border-blue-500 h-20 resize-none" placeholder="यहाँ केही लेख्नुहोस् (उदा: ok)...">${content.replace(/<br>/g, '\n')}</textarea>
                     <div class="flex gap-2">
                         <button onclick="document.getElementById('noteModal').remove()" class="flex-1 py-3 font-black text-slate-400 uppercase text-[10px]">Close</button>
                         <button onclick="saveManualNote('${id}')" class="flex-[2] py-3 bg-slate-900 text-white rounded-xl font-black shadow-lg text-[10px] hover:bg-blue-700 transition-all">UPDATE NOTE / SEND OK</button>
@@ -328,9 +340,11 @@ function openLargeNote(id, content) {
                 </div>
             </div>
         </div>`;
+    
     document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
     const body = document.getElementById('modalScrollBody');
-    if (body) body.scrollTop = body.scrollHeight;
+    body.scrollTop = body.scrollHeight;
 }
 
 export { 
@@ -342,4 +356,3 @@ export {
     openLargeNote,
     togglePhotoSelection
 };
-
