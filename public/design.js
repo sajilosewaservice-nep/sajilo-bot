@@ -1,10 +1,24 @@
-export const SYSTEM_CONFIG = {
-    // यसलाई Dynamic बनाउनुहोस् ताकि यो सधैँ ताजा रहोस्
-    get SUPABASE_URL() { return window.ENV?.SUPABASE_URL || ""; },
-    get SUPABASE_KEY() { return window.ENV?.SUPABASE_ANON_KEY || ""; }, 
-    RPA_SERVER_URL: localStorage.getItem('rpa_url') || "http://localhost:5000",
-    PAGE_SIZE: 15
-};
+let supabase;
+
+function setupSupabase() {
+    const url = window.ENV?.SUPABASE_URL;
+    const key = window.ENV?.SUPABASE_ANON_KEY;
+
+    if (!url || !key) {
+        console.log("⏳ TITAN: Waiting for environment keys...");
+        setTimeout(setupSupabase, 500);
+        return;
+    }
+
+    supabase = supabase.createClient(url, key);
+    console.log("✅ TITAN Engine: Supabase Connected Successfully!");
+    
+    if (typeof initDashboard === 'function') {
+        initDashboard();
+    }
+}
+
+setupSupabase();
 
 export let STATE = {
     currentUser: null,
