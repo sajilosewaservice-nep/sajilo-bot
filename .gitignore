@@ -1,6 +1,9 @@
-node_modules
+node_modules/
 .env
-.vercel
-.wwebjs_auth
-.wwebjs_cachetitan_auth_session
-titan_auth_session
+.env.local
+.env.*.local
+*.log
+dist/
+build/
+.DS_Store
+titan_auth_session/
