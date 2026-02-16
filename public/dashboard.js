@@ -97,6 +97,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // Config loader
 async function loadConfigFromBackend() {
+  // Priority 1: Check window.__CONFIG (hardcoded fallback)
+  if (window.__CONFIG && window.__CONFIG.supabaseUrl && window.__CONFIG.supabaseAnonKey) {
+    SYSTEM_CONFIG.SUPABASE_URL = window.__CONFIG.supabaseUrl;
+    SYSTEM_CONFIG.SUPABASE_KEY = window.__CONFIG.supabaseAnonKey;
+    if (window.__CONFIG.rpaServerUrl) SYSTEM_CONFIG.RPA_SERVER_URL = window.__CONFIG.rpaServerUrl;
+    console.log('✅ Configuration loaded from window.__CONFIG (hardcoded fallback)');
+    return true;
+  }
+
+  // Priority 2: Try /api/config endpoint
   try {
     const response = await fetch('/api/config', { method: 'GET' });
     if (response.ok) {
@@ -105,34 +115,30 @@ async function loadConfigFromBackend() {
         SYSTEM_CONFIG.SUPABASE_URL = cfg.supabaseUrl;
         SYSTEM_CONFIG.SUPABASE_KEY = cfg.supabaseAnonKey;
         if (cfg.rpaServerUrl) SYSTEM_CONFIG.RPA_SERVER_URL = cfg.rpaServerUrl;
-        console.log('✅ Configuration loaded from backend');
+        console.log('✅ Configuration loaded from /api/config backend');
         return true;
       }
-      console.error('❌ Config missing keys:', cfg);
+      console.error('❌ /api/config missing keys:', cfg);
     } else {
-      console.error('❌ Config fetch failed:', response.status, response.statusText);
+      console.error('❌ /api/config fetch failed:', response.status, response.statusText);
     }
   } catch (error) {
-    console.error('❌ Configuration load error:', error);
+    console.error('❌ /api/config error:', error);
   }
 
-  // Fallbacks
-  const winCfg = window.__CONFIG || {};
+  // Priority 3: localStorage fallback
   const lsUrl = localStorage.getItem('supabaseUrl');
   const lsKey = localStorage.getItem('supabaseAnonKey');
   const lsRpaUrl = localStorage.getItem('rpa_url');
 
-  const supabaseUrl = winCfg.supabaseUrl || lsUrl;
-  const supabaseAnonKey = winCfg.supabaseAnonKey || lsKey;
-  const rpaServerUrl = winCfg.rpaServerUrl || lsRpaUrl;
-
-  if (supabaseUrl && supabaseAnonKey) {
-    SYSTEM_CONFIG.SUPABASE_URL = supabaseUrl;
-    SYSTEM_CONFIG.SUPABASE_KEY = supabaseAnonKey;
-    if (rpaServerUrl) SYSTEM_CONFIG.RPA_SERVER_URL = rpaServerUrl;
-    console.warn('⚠️ Using fallback configuration');
+  if (lsUrl && lsKey) {
+    SYSTEM_CONFIG.SUPABASE_URL = lsUrl;
+    SYSTEM_CONFIG.SUPABASE_KEY = lsKey;
+    if (lsRpaUrl) SYSTEM_CONFIG.RPA_SERVER_URL = lsRpaUrl;
+    console.warn('⚠️ Using localStorage fallback configuration');
     return true;
   }
+
   notify('Failed to load configuration', 'error');
   return false;
 }
