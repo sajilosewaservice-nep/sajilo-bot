@@ -138,23 +138,38 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function loadConfigFromBackend() {
     try {
         const response = await fetch('/api/config', { method: 'GET' });
-        if (!response.ok) {
-            console.error("❌ Config fetch failed:", response.status, response.statusText);
-            return false;
+        if (response.ok) {
+            const cfg = await response.json();
+            if (cfg.supabaseUrl && cfg.supabaseAnonKey) {
+                SYSTEM_CONFIG.SUPABASE_URL = cfg.supabaseUrl;
+                SYSTEM_CONFIG.SUPABASE_KEY = cfg.supabaseAnonKey;
+                console.log('✅ Configuration loaded from backend');
+                return true;
+            }
+            console.error('❌ Config missing keys:', cfg);
+        } else {
+            console.error('❌ Config fetch failed:', response.status, response.statusText);
         }
-        const cfg = await response.json();
-        if (!cfg.supabaseUrl || !cfg.supabaseAnonKey) {
-            console.error("❌ Config missing keys:", cfg);
-            return false;
-        }
-        SYSTEM_CONFIG.SUPABASE_URL = cfg.supabaseUrl;
-        SYSTEM_CONFIG.SUPABASE_KEY = cfg.supabaseAnonKey;
-        console.log("✅ Configuration loaded from backend");
-        return true;
     } catch (error) {
-        console.error("❌ Configuration load error:", error);
-        return false;
+        console.error('❌ Configuration load error:', error);
     }
+
+    // Fallbacks: window.__CONFIG or localStorage
+    const winCfg = window.__CONFIG || {};
+    const lsUrl = localStorage.getItem('supabaseUrl');
+    const lsKey = localStorage.getItem('supabaseAnonKey');
+
+    const supabaseUrl = winCfg.supabaseUrl || lsUrl;
+    const supabaseAnonKey = winCfg.supabaseAnonKey || lsKey;
+
+    if (supabaseUrl && supabaseAnonKey) {
+        SYSTEM_CONFIG.SUPABASE_URL = supabaseUrl;
+        SYSTEM_CONFIG.SUPABASE_KEY = supabaseAnonKey;
+        console.warn('⚠️ Using fallback configuration');
+        return true;
+    }
+    notify('Failed to load configuration', 'error');
+    return false;
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -1196,11 +1211,26 @@ function toggleSettingsModal() {
     document.body.insertAdjacentHTML('beforeend', modalHtml);
 }
 
+function saveManualNote(id) {
+    try {
+        const textarea = document.getElementById('manualNoteInput');
+        const value = (textarea?.value || '').trim();
+        if (!value) return notify('Note is empty', 'error');
+        commitUpdate(id, { operator_instruction: value }, 'Note Updated')
+            .then(ok => ok && document.getElementById('noteModal')?.remove());
+    } catch (e) {
+        console.error('❌ saveManualNote error:', e);
+        notify('Failed to update note', 'error');
+    }
+}
+
 function openLargeNote(id, content) {
-    const modalHtml = `
+        const safe = typeof content === 'string' ? content : '';
+        const displayContent = safe || 'अहिलेसम्म कुनै लग रेकर्ड गरिएको छैन।';
+        const textareaContent = safe ? safe.replace(/<br>/g, '\n') : '';
+        const modalHtml = `
         <div id="noteModal" class="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-[9999999] flex items-center justify-center p-4 animate-in fade-in duration-200">
             <div class="bg-white w-full max-w-2xl rounded-[30px] shadow-2xl overflow-hidden border-4 border-slate-900 flex flex-col max-h-[85vh]">
-                
                 <div class="bg-slate-900 p-5 text-white flex justify-between items-center">
                     <div class="flex items-center gap-3">
                         <div class="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
@@ -1208,15 +1238,13 @@ function openLargeNote(id, content) {
                     </div>
                     <button onclick="document.getElementById('noteModal').remove()" class="text-3xl hover:text-red-500 transition-colors">&times;</button>
                 </div>
-
                 <div class="p-6 overflow-y-auto flex-1 bg-slate-50 space-y-4 font-mono text-xs" id="modalScrollBody">
                     <div class="bg-blue-100 border-l-4 border-blue-600 p-4 rounded-r-xl text-blue-900 whitespace-pre-wrap leading-relaxed shadow-sm">
-                        ${content || 'अहिलेसम्म कुनै लग रेकर्ड गरिएको छैन।'}
+                        ${displayContent}
                     </div>
                 </div>
-
                 <div class="p-4 bg-white border-t border-slate-200 flex flex-col gap-3">
-                    <textarea id="manualNoteInput" class="w-full border-2 border-slate-200 rounded-2xl p-3 text-xs outline-none focus:border-blue-500 h-20 resize-none" placeholder="यहाँ केही लेख्नुहोस् (उदा: ok)...">${content.replace(/<br>/g, '\n')}</textarea>
+                    <textarea id="manualNoteInput" class="w-full border-2 border-slate-200 rounded-2xl p-3 text-xs outline-none focus:border-blue-500 h-20 resize-none" placeholder="यहाँ केही लेख्नुहोस् (उदा: ok)...">${textareaContent}</textarea>
                     <div class="flex gap-2">
                         <button onclick="document.getElementById('noteModal').remove()" class="flex-1 py-3 font-black text-slate-400 uppercase text-[10px]">Close</button>
                         <button onclick="saveManualNote('${id}')" class="flex-[2] py-3 bg-slate-900 text-white rounded-xl font-black shadow-lg text-[10px] hover:bg-blue-700 transition-all">UPDATE NOTE / SEND OK</button>
@@ -1224,11 +1252,9 @@ function openLargeNote(id, content) {
                 </div>
             </div>
         </div>`;
-    
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
-    
-    const body = document.getElementById('modalScrollBody');
-    body.scrollTop = body.scrollHeight;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        const body = document.getElementById('modalScrollBody');
+        if (body) body.scrollTop = body.scrollHeight;
 }
 
 // Re-export appended functions for inline handlers
