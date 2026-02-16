@@ -16,10 +16,10 @@ const STATE = {
   automation: { activeProcesses: {}, pausedProcesses: {} }
 };
 
-// 2. SYSTEM CONFIG
+// 2. SYSTEM CONFIG (hardcoded fallback values included)
 const SYSTEM_CONFIG = {
-  SUPABASE_URL: "",
-  SUPABASE_KEY: "",
+  SUPABASE_URL: "https://ratgpvubjrcoipardzdp.supabase.co",
+  SUPABASE_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJhdGdwdnVianJjb2lwYXJkemRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzMTg0OTMsImV4cCI6MjA4Mzg5NDQ5M30.t1eofJj9dPK-Psp_oL3LpCWimyz621T21JNpZljEGZk",
   RPA_SERVER_URL: "",
   PAGE_SIZE: 15,
 
@@ -136,6 +136,12 @@ async function loadConfigFromBackend() {
     SYSTEM_CONFIG.SUPABASE_KEY = lsKey;
     if (lsRpaUrl) SYSTEM_CONFIG.RPA_SERVER_URL = lsRpaUrl;
     console.warn('⚠️ Using localStorage fallback configuration');
+    return true;
+  }
+
+  // Priority 4: SYSTEM_CONFIG constants fallback (already populated above)
+  if (SYSTEM_CONFIG.SUPABASE_URL && SYSTEM_CONFIG.SUPABASE_KEY) {
+    console.warn('⚠️ Using SYSTEM_CONFIG constant fallback');
     return true;
   }
 
@@ -930,7 +936,7 @@ function showFinancialReport() {
             <span class="text-xs font-black text-blue-700">यो महिना:</span>
             <span class="text-xl font-black text-blue-800">Rs. ${stats.monthly.toLocaleString()}</span>
           </div>
-          <div class="flex justify-between p-4 bg-slate-100 rounded-2xl">
+          <div class="flex justify_between p-4 bg-slate-100 rounded-2xl">
             <span class="text-xs font-black text-slate-600">कुल जम्मा:</span>
             <span class="text-xl font-black text-slate-900">Rs. ${stats.total.toLocaleString()}</span>
           </div>
@@ -953,7 +959,7 @@ function toggleSettingsModal() {
   const pan = localStorage.getItem('ai_rules_pan') || "";
 
   const modalHtml = `
-    <div id="settingsModal" class="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[999999] p-4">
+    <div id="settingsModal" class="fixed inset-0 bg-black/80 backdrop-blur-md flex items_center justify_center z-[999999] p-4">
       <div class="bg-white w-full max-w-3xl rounded-[30px] shadow-2xl overflow-hidden border-4 border-slate-900">
         <div class="bg-slate-900 p-5 text-white flex justify-between items-center">
           <h2 class="font-black italic text-sm text-blue-400">TITAN AI CONTROL PANEL (ALL SERVICES)</h2>
@@ -1022,8 +1028,8 @@ function openLargeNote(id, content) {
   const modalHtml = `
     <div id="noteModal" class="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-[9999999] flex items-center justify-center p-4 animate-in fade-in duration-200">
       <div class="bg-white w-full max-w-2xl rounded-[30px] shadow-2xl overflow-hidden border-4 border-slate-900 flex flex-col max-h-[85vh]">
-        <div class="bg-slate-900 p-5 text-white flex justify-between items-center">
-          <div class="flex items-center gap-3">
+        <div class="bg-slate-900 p-5 text-white flex justify_between items_center">
+          <div class="flex items_center gap-3">
             <div class="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
             <h2 class="font-black italic text-sm tracking-widest uppercase">Titan AI Process Logs</h2>
           </div>

@@ -1,462 +1,165 @@
-/**
- * =============================================================================
- * TITAN ENTERPRISE CRM v4.0.0 - MESSENGER SYNC ENGINE
- * WhatsApp & Messenger Integration | Production Ready
- * =============================================================================
- */
+// TITAN ENTERPRISE CRM v4.0.0 - Messenger Webhook (Vercel Serverless)
+// Reads keys from environment variables. Compatible with Dashboard.js expectations.
 
-import express from 'express';
 import { createClient } from '@supabase/supabase-js';
 
-const app = express();
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   1. SYSTEM CONFIGURATION & VALIDATION
-   ═══════════════════════════════════════════════════════════════════════════ */
-
 const CONFIG = {
-    SUPABASE_URL: process.env.SUPABASE_URL || '',
-    SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY || '',
-    PAGE_ACCESS_TOKEN: process.env.PAGE_ACCESS_TOKEN || '',
-    VERIFY_TOKEN: process.env.VERIFY_TOKEN || 'titan_crm_2026',
-    PORT: parseInt(process.env.PORT || '3000'),
-    NODE_ENV: process.env.NODE_ENV || 'development',
-    FACEBOOK_API_VERSION: 'v21.0',
-    FACEBOOK_GRAPH_URL: 'https://graph.facebook.com'
+  SUPABASE_URL: process.env.SUPABASE_URL || '',
+  SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY || '',
+  PAGE_ACCESS_TOKEN: process.env.PAGE_ACCESS_TOKEN || '',
+  VERIFY_TOKEN: process.env.VERIFY_TOKEN || 'titan_crm_2026',
+  FACEBOOK_API_VERSION: 'v21.0',
+  FACEBOOK_GRAPH_URL: 'https://graph.facebook.com',
 };
 
-// Configuration validation (non-blocking for serverless)
-const validateConfiguration = () => {
-    const required = ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'PAGE_ACCESS_TOKEN'];
-    const missing = required.filter(key => !CONFIG[key]);
+// Initialize Supabase only if env present
+const supabase = (CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY)
+  ? createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY)
+  : null;
 
-    if (missing.length > 0) {
-        console.warn(`⚠️ Missing environment variables: ${missing.join(', ')}`);
-        console.warn('📋 Set these in Vercel Environment Variables:');
-        console.warn('   - SUPABASE_URL');
-        console.warn('   - SUPABASE_ANON_KEY');
-        console.warn('   - PAGE_ACCESS_TOKEN');
-    }
+// Utils
+const sanitize = (t, n = 1000) => String(t || '').trim().substring(0, n).replace(/[<>]/g, '');
+const parseDocs = (raw) => {
+  try {
+    if (!raw) return [];
+    if (typeof raw === 'string') return JSON.parse(raw);
+    if (Array.isArray(raw)) return raw;
+    return [];
+  } catch { return []; }
 };
+const nowISO = () => new Date().toISOString();
 
-validateConfiguration();
-
-// Initialize Supabase
-let supabase = null;
-
-try {
-    if (CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY) {
-        supabase = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
-        console.log('✅ Supabase client initialized');
+async function getProfile(psid) {
+  try {
+    if (!psid || !CONFIG.PAGE_ACCESS_TOKEN) {
+      return { name: 'Messenger User', profilePic: null, success: false };
     }
-} catch (error) {
-    console.error('❌ Supabase initialization failed:', error.message);
+    const url = `${CONFIG.FACEBOOK_GRAPH_URL}/${psid}?fields=first_name,last_name,profile_pic&access_token=${CONFIG.PAGE_ACCESS_TOKEN}`;
+    const r = await fetch(url);
+    if (!r.ok) return { name: 'Messenger User', profilePic: null, success: false };
+    const d = await r.json();
+    if (d?.error) return { name: 'Messenger User', profilePic: null, success: false };
+    return {
+      name: d.first_name ? `${d.first_name} ${d.last_name || ''}`.trim() : 'Messenger User',
+      profilePic: d.profile_pic || null,
+      success: !!d.first_name,
+    };
+  } catch {
+    return { name: 'Messenger User', profilePic: null, success: false };
+  }
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   2. UTILITY & HELPER FUNCTIONS
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-/**
- * Fetch Facebook user profile information
- */
-async function getFacebookUserProfile(psid) {
-    try {
-        if (!psid) {
-            throw new Error('Invalid PSID');
-        }
-
-        const url = `${CONFIG.FACEBOOK_GRAPH_URL}/${psid}?fields=first_name,last_name,profile_pic&access_token=${CONFIG.PAGE_ACCESS_TOKEN}`;
-        const response = await fetch(url);
-
-        if (!response.ok) {
-            console.warn(`⚠️ Facebook API Status: ${response.status}`);
-            return {
-                name: 'Messenger User',
-                profilePic: null,
-                success: false
-            };
-        }
-
-        const data = await response.json();
-
-        if (data.error) {
-            console.warn('⚠️ Facebook API Error:', data.error.message);
-            return {
-                name: 'Messenger User',
-                profilePic: null,
-                success: false
-            };
-        }
-
-        return {
-            name: data.first_name
-                ? `${data.first_name} ${data.last_name || ''}`.trim()
-                : 'Messenger User',
-            profilePic: data.profile_pic || null,
-            success: !!data.first_name
-        };
-    } catch (error) {
-        console.error('❌ Profile Fetch Error:', error.message);
-        return {
-            name: 'Messenger User',
-            profilePic: null,
-            success: false
-        };
-    }
+async function getExisting(psid) {
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from('customers')
+    .select('*')
+    .eq('messenger_id', psid)
+    .maybeSingle();
+  if (error) return null;
+  return data;
 }
 
-/**
- * Get existing customer from database
- */
-async function getExistingCustomer(messengerId) {
-    try {
-        if (!supabase) {
-            throw new Error('Supabase not initialized');
-        }
+// Core handler to ingest and sync to CRM (Dashboard-compatible schema)
+async function handleIncoming(psid, messageData) {
+  if (!supabase) return;
 
-        const { data, error } = await supabase
-            .from('customers')
-            .select('*')
-            .eq('messenger_id', messengerId)
-            .maybeSingle();
+  const text = sanitize(messageData.text || '');
+  let attachments = [];
+  if (Array.isArray(messageData.attachments)) {
+    attachments = messageData.attachments
+      .map(a => a.payload?.url)
+      .filter(u => typeof u === 'string' && u)
+      .map(sanitize);
+  }
 
-        if (error) {
-            console.warn('⚠️ Database Query Error:', error.message);
-            return null;
-        }
+  const existing = await getExisting(psid);
+  const profile = await getProfile(psid);
 
-        return data;
-    } catch (error) {
-        console.error('❌ Database Error:', error.message);
-        return null;
-    }
+  // Dashboard expects 'id' and 'service'
+  const id = `messenger_${psid}`;
+  const name = profile.success ? profile.name : (existing?.customer_name || 'Messenger User');
+
+  const oldDocs = existing ? parseDocs(existing.documents) : [];
+  const docs = [...new Set([...oldDocs, ...attachments])].filter(Boolean);
+
+  const finalMsg = text || (attachments.length ? '📷 Sent an attachment' : 'New Message');
+
+  const customer = {
+    id,                          // IMPORTANT: used by Dashboard commitUpdate()
+    messenger_id: psid,          // for webhook linkage
+    customer_name: name,
+    chat_summary: finalMsg,
+    platform: 'messenger',
+    status: existing?.status || 'inquiry',
+    service: existing?.service || 'Other',   // use 'service' (not service_type)
+    documents: docs,
+    last_updated_by: 'MESSENGER_BOT',
+    updated_at: nowISO(),
+    // keep created_at unchanged if exists; upsert will retain it
+  };
+
+  // Upsert by messenger_id (ensure UNIQUE on messenger_id in DB)
+  const { error: upsertErr } = await supabase
+    .from('customers')
+    .upsert(customer, { onConflict: 'messenger_id' });
+  if (upsertErr) {
+    console.error('Customer Upsert Error:', upsertErr.message);
+    return;
+  }
+
+  // Insert message history
+  const { error: insertErr } = await supabase
+    .from('messages')
+    .insert([{
+      customer_id: id,                // link by Dashboard-visible id
+      platform: 'messenger',
+      content: finalMsg,
+      is_from_customer: true,
+      created_at: nowISO(),
+      metadata: { urls: attachments, profile_pic: profile.profilePic, customer_name: name },
+    }]);
+  if (insertErr) console.error('Message Insert Error:', insertErr.message);
 }
 
-/**
- * Safely parse document array
- */
-function parseDocuments(rawDocs) {
-    try {
-        if (!rawDocs) return [];
-        if (typeof rawDocs === 'string') return JSON.parse(rawDocs);
-        if (Array.isArray(rawDocs)) return rawDocs;
-        return [];
-    } catch (e) {
-        console.warn('⚠️ Document Parse Error:', e.message);
-        return [];
-    }
-}
-
-/**
- * Sanitize input to prevent injection attacks
- */
-function sanitizeInput(text, maxLength = 1000) {
-    return String(text || '')
-        .trim()
-        .substring(0, maxLength)
-        .replace(/[<>]/g, '');
-}
-
-/**
- * Format timestamp
- */
-function getCurrentTimestamp() {
-    return new Date().toISOString();
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   3. WEBHOOK VERIFICATION ENDPOINT
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-app.get('/api/webhook', (req, res) => {
-    const mode = req.query['hub.mode'];
-    const token = req.query['hub.verify_token'];
-    const challenge = req.query['hub.challenge'];
-
-    if (mode === 'subscribe' && token === CONFIG.VERIFY_TOKEN) {
-        console.log('✅ Messenger Webhook Verified Successfully');
-        return res.status(200).send(challenge);
-    }
-
-    console.warn('⚠️ Webhook Verification Failed - Invalid Token');
-    res.sendStatus(403);
-});
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   4. INCOMING MESSAGE HANDLER
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-/**
- * Main webhook POST handler for incoming messages
- */
-app.post('/api/webhook', async (req, res) => {
-    const body = req.body;
-
-    // Verify request object type
-    if (body.object !== 'page') {
-        console.warn('⚠️ Invalid object type:', body.object);
-        return res.sendStatus(404);
-    }
-
-    res.status(200).send('EVENT_RECEIVED');
-
-    try {
-        for (const entry of body.entry || []) {
-            if (!entry.messaging) continue;
-
-            for (const event of entry.messaging) {
-                const psid = event.sender?.id;
-
-                if (!psid) {
-                    console.warn('⚠️ Missing sender ID in event');
-                    continue;
-                }
-
-                if (event.message) {
-                    await handleIncomingMessage(psid, event.message);
-                }
-            }
-        }
-    } catch (error) {
-        console.error('❌ Webhook Processing Error:', error.message);
-    }
-});
-
-/**
- * Process incoming message and sync to CRM
- */
-async function handleIncomingMessage(psid, messageData) {
-    try {
-        if (!supabase) {
-            throw new Error('Supabase not initialized');
-        }
-
-        // Extract and validate message content
-        const messageText = sanitizeInput(messageData.text || '');
-        let attachments = [];
-
-        if (messageData.attachments && Array.isArray(messageData.attachments)) {
-            attachments = messageData.attachments
-                .map(a => a.payload?.url)
-                .filter(url => url && typeof url === 'string')
-                .map(url => sanitizeInput(url));
-        }
-
-        // Fetch existing customer
-        const existingCustomer = await getExistingCustomer(psid);
-
-        // Fetch Facebook user profile
-        const userProfile = await getFacebookUserProfile(psid);
-
-        // Determine final customer name
-        const finalName = userProfile.success
-            ? userProfile.name
-            : (existingCustomer?.customer_name || 'New Customer');
-
-        // Parse existing documents
-        let oldDocs = [];
-        if (existingCustomer) {
-            oldDocs = parseDocuments(existingCustomer.documents);
-        }
-
-        // Merge and deduplicate documents
-        const updatedDocs = [...new Set([...oldDocs, ...attachments])].filter(Boolean);
-
-        // Create final message
-        const finalMessage = messageText
-            || (attachments.length > 0 ? '📷 Sent an attachment' : 'New Message');
-
-        // Prepare customer data object
-        const customerData = {
-            messenger_id: psid,
-            customer_name: finalName,
-            chat_summary: finalMessage,
-            platform: 'messenger',
-            status: existingCustomer?.status || 'inquiry',
-            service_type: existingCustomer?.service_type || 'Other',
-            documents: updatedDocs,
-            last_updated_by: 'MESSENGER_BOT',
-            updated_at: getCurrentTimestamp()
-        };
-
-        // Upsert customer record
-        const { error: upsertError } = await supabase
-            .from('customers')
-            .upsert(customerData, { onConflict: 'messenger_id' });
-
-        if (upsertError) {
-            console.error('❌ Customer Upsert Error:', upsertError.message);
-            return;
-        }
-
-        // Insert message to history
-        const { error: insertError } = await supabase
-            .from('messages')
-            .insert([{
-                customer_id: psid,
-                platform: 'messenger',
-                content: finalMessage,
-                is_from_customer: true,
-                created_at: getCurrentTimestamp(),
-                metadata: {
-                    urls: attachments,
-                    profile_pic: userProfile.profilePic,
-                    customer_name: finalName
-                }
-            }]);
-
-        if (insertError) {
-            console.error('❌ Message Insert Error:', insertError.message);
-            return;
-        }
-
-        console.log(`✅ CRM Synced: ${finalName} [Messenger] [${customerData.status}]`);
-
-    } catch (error) {
-        console.error('❌ Handle Message Error:', error.message);
-    }
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   5. DIRECT REPLY ENDPOINT (Dashboard to Customer)
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-app.post('/api/direct-reply', async (req, res) => {
-    const { psid, messageText } = req.body;
-
-    // Validate required fields
-    if (!psid || !messageText) {
-        return res.status(400).json({
-            success: false,
-            error: 'Missing required fields: psid, messageText'
-        });
-    }
-
-    if (!supabase) {
-        return res.status(500).json({
-            success: false,
-            error: 'Database not initialized'
-        });
-    }
-
-    try {
-        const sanitizedMessage = sanitizeInput(messageText);
-
-        // Send message via Facebook API
-        const url = `${CONFIG.FACEBOOK_GRAPH_URL}/${CONFIG.FACEBOOK_API_VERSION}/me/messages?access_token=${CONFIG.PAGE_ACCESS_TOKEN}`;
-
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                recipient: { id: psid },
-                message: { text: sanitizedMessage }
-            })
-        });
-
-        const result = await response.json();
-
-        if (!response.ok) {
-            console.error('❌ Facebook API Error:', result);
-            return res.status(500).json({
-                success: false,
-                error: result.error?.message || 'Facebook API Error'
-            });
-        }
-
-        // Log sent message to database
-        const { error: logError } = await supabase
-            .from('messages')
-            .insert([{
-                customer_id: psid,
-                platform: 'messenger',
-                content: sanitizedMessage,
-                is_from_customer: false,
-                created_at: getCurrentTimestamp(),
-                metadata: { message_id: result.message_id }
-            }]);
-
-        if (logError) {
-            console.warn('⚠️ Message log error:', logError.message);
-        }
-
-        console.log(`✅ Reply Sent to ${psid} [Message ID: ${result.message_id}]`);
-
-        res.status(200).json({
-            success: true,
-            messageId: result.message_id,
-            timestamp: getCurrentTimestamp()
-        });
-
-    } catch (error) {
-        console.error('❌ Reply Error:', error.message);
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
-    }
-});
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   6. HEALTH CHECK & DIAGNOSTICS
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-app.get('/api/health', (req, res) => {
-    res.status(200).json({
-        status: 'ok',
-        service: 'TITAN Messenger Engine v4.0.0',
-        version: '4.0.0',
-        uptime: process.uptime(),
-        timestamp: getCurrentTimestamp(),
-        supabase: supabase ? 'connected' : 'disconnected',
-        environment: CONFIG.NODE_ENV,
-        port: CONFIG.PORT
-    });
-});
-
-app.get('/api/config-status', (req, res) => {
-    res.status(200).json({
-        supabaseUrl: CONFIG.SUPABASE_URL ? '✅' : '❌',
-        supabaseAnonKey: CONFIG.SUPABASE_ANON_KEY ? '✅' : '❌',
-        pageAccessToken: CONFIG.PAGE_ACCESS_TOKEN ? '✅' : '❌',
-        verifyToken: CONFIG.VERIFY_TOKEN ? '✅' : '❌'
-    });
-});
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   7. ERROR HANDLING MIDDLEWARE
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-app.use((error, req, res, next) => {
-    console.error('❌ Unhandled Error:', error.message);
-    console.error('Stack:', error.stack);
-
-    res.status(500).json({
-        success: false,
-        error: 'Internal Server Error',
-        message: CONFIG.NODE_ENV === 'development' ? error.message : 'An error occurred',
-        timestamp: getCurrentTimestamp()
-    });
-});
-
-app.use((req, res) => {
-    res.status(404).json({
-        success: false,
-        error: 'Endpoint Not Found',
-        path: req.path,
-        method: req.method
-    });
-});
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   8. SERVERLESS EXPORT (Vercel Production)
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-console.log('🚀 TITAN ENTERPRISE CRM - Messenger Engine v4.0.0 (Serverless Mode)');
-
+// Serverless entry
 export default async function handler(req, res) {
-    return app(req, res);
+  try {
+    if (req.method === 'GET') {
+      const mode = req.query['hub.mode'];
+      const token = req.query['hub.verify_token'];
+      const challenge = req.query['hub.challenge'];
+      if (mode === 'subscribe' && token === CONFIG.VERIFY_TOKEN) {
+        console.log('✅ Messenger Webhook Verified');
+        return res.status(200).send(challenge);
+      }
+      return res.status(403).send('Forbidden');
+    }
+
+    if (req.method === 'POST') {
+      const body = req.body;
+      if (body.object !== 'page') return res.sendStatus(404);
+      // ACK Facebook immediately
+      res.status(200).send('EVENT_RECEIVED');
+
+      try {
+        for (const entry of body.entry || []) {
+          if (!entry.messaging) continue;
+          for (const evt of entry.messaging) {
+            const psid = evt.sender?.id;
+            if (!psid) continue;
+            if (evt.message) await handleIncoming(psid, evt.message);
+          }
+        }
+      } catch (e) {
+        console.error('Webhook Processing Error:', e.message);
+      }
+      return;
+    }
+
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  } catch (err) {
+    console.error('Unhandled Error:', err.message);
+    return res.status(500).json({ success: false, error: 'Internal Server Error' });
+  }
 }
