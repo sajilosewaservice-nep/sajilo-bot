@@ -8,20 +8,12 @@
 import express from 'express';
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 dotenv.config();
 
 const app = express();
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
-
-// Serve static files from the public directory
-app.use(express.static(path.join(__dirname, '../public')));
 
 // Provide environment-backed config for the frontend
 app.get('/api/config', (req, res) => {
@@ -44,11 +36,6 @@ app.get('/api/config', (req, res) => {
     });
 });
 
-// Serve the dashboard at root
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, '../public/index.html'));
-});
-
 /* ═══════════════════════════════════════════════════════════════════════════
    1. SYSTEM CONFIGURATION & VALIDATION
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -64,18 +51,17 @@ const CONFIG = {
     FACEBOOK_GRAPH_URL: 'https://graph.facebook.com'
 };
 
-// Configuration validation
+// Configuration validation (non-blocking for serverless)
 const validateConfiguration = () => {
     const required = ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'PAGE_ACCESS_TOKEN'];
     const missing = required.filter(key => !CONFIG[key]);
 
     if (missing.length > 0) {
-        console.error(`❌ Missing required environment variables: ${missing.join(', ')}`);
-        console.error('📋 Required .env variables:');
-        console.error('   - SUPABASE_URL');
-        console.error('   - SUPABASE_ANON_KEY');
-        console.error('   - PAGE_ACCESS_TOKEN');
-        process.exit(1);
+        console.warn(`⚠️ Missing environment variables: ${missing.join(', ')}`);
+        console.warn('📋 Set these in Vercel Environment Variables:');
+        console.warn('   - SUPABASE_URL');
+        console.warn('   - SUPABASE_ANON_KEY');
+        console.warn('   - PAGE_ACCESS_TOKEN');
     }
 };
 
@@ -85,11 +71,12 @@ validateConfiguration();
 let supabase = null;
 
 try {
-    supabase = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
-    console.log('✅ Supabase client initialized');
+    if (CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY) {
+        supabase = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+        console.log('✅ Supabase client initialized');
+    }
 } catch (error) {
     console.error('❌ Supabase initialization failed:', error.message);
-    process.exit(1);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -489,52 +476,9 @@ app.use((req, res) => {
 });
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   8. SERVER INITIALIZATION & GRACEFUL SHUTDOWN
+   8. SERVERLESS EXPORT (Vercel Production)
    ═══════════════════════════════════════════════════════════════════════════ */
 
-const SERVER = app.listen(CONFIG.PORT, () => {
-    console.log(`
-╔═══════════════════════════════════════════════════════════════╗
-║         🚀 TITAN ENTERPRISE CRM v4.0.0                        ║
-║         Messenger Sync Engine                                 ║
-╠═══════════════════════════════════════════════════════════════╣
-║ ✅ Status: Ready for Webhook Events                           ║
-║ 📡 Port: ${CONFIG.PORT}                                          ║
-║ 🌍 Environment: ${CONFIG.NODE_ENV}                             ║
-║ 🛠️  Supabase: Connected                                       ║
-║ ⏰ Started: ${getCurrentTimestamp()}                   ║
-╠═══════════════════════════════════════════════════════════════╣
-║ 📋 Available Endpoints:                                       ║
-║   GET  /api/webhook          - Verification                   ║
-║   POST /api/webhook          - Message Handler                ║
-║   POST /api/direct-reply     - Send Reply                     ║
-║   GET  /api/health           - Health Check                   ║
-║   GET  /api/config-status    - Configuration Status           ║
-╚═══════════════════════════════════════════════════════════════╝
-    `);
-});
-
-// Graceful shutdown handlers
-process.on('SIGTERM', () => {
-    console.log('⚠️ SIGTERM received, shutting down gracefully...');
-    SERVER.close(() => {
-        console.log('✅ Server closed');
-        process.exit(0);
-    });
-});
-
-process.on('SIGINT', () => {
-    console.log('⚠️ SIGINT received, shutting down gracefully...');
-    SERVER.close(() => {
-        console.log('✅ Server closed');
-        process.exit(0);
-    });
-});
-
-// Unhandled rejection handler
-process.on('unhandledRejection', (reason, promise) => {
-    console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
-    process.exit(1);
-});
+console.log('🚀 TITAN ENTERPRISE CRM - Messenger Engine v4.0.0 (Serverless Mode)');
 
 export default app;
