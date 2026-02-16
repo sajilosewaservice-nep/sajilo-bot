@@ -30,7 +30,7 @@ const STATE = {
 const SYSTEM_CONFIG = {
     SUPABASE_URL: "",
     SUPABASE_KEY: "",
-    RPA_SERVER_URL: "http://localhost:5000/api",
+    RPA_SERVER_URL: "",
     PAGE_SIZE: 15,
     
     // Service Configuration
@@ -143,6 +143,9 @@ async function loadConfigFromBackend() {
             if (cfg.supabaseUrl && cfg.supabaseAnonKey) {
                 SYSTEM_CONFIG.SUPABASE_URL = cfg.supabaseUrl;
                 SYSTEM_CONFIG.SUPABASE_KEY = cfg.supabaseAnonKey;
+                if (cfg.rpaServerUrl) {
+                    SYSTEM_CONFIG.RPA_SERVER_URL = cfg.rpaServerUrl;
+                }
                 console.log('✅ Configuration loaded from backend');
                 return true;
             }
@@ -158,13 +161,18 @@ async function loadConfigFromBackend() {
     const winCfg = window.__CONFIG || {};
     const lsUrl = localStorage.getItem('supabaseUrl');
     const lsKey = localStorage.getItem('supabaseAnonKey');
+    const lsRpaUrl = localStorage.getItem('rpa_url');
 
     const supabaseUrl = winCfg.supabaseUrl || lsUrl;
     const supabaseAnonKey = winCfg.supabaseAnonKey || lsKey;
+    const rpaServerUrl = winCfg.rpaServerUrl || lsRpaUrl;
 
     if (supabaseUrl && supabaseAnonKey) {
         SYSTEM_CONFIG.SUPABASE_URL = supabaseUrl;
         SYSTEM_CONFIG.SUPABASE_KEY = supabaseAnonKey;
+        if (rpaServerUrl) {
+            SYSTEM_CONFIG.RPA_SERVER_URL = rpaServerUrl;
+        }
         console.warn('⚠️ Using fallback configuration');
         return true;
     }

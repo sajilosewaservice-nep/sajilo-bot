@@ -7,34 +7,10 @@
 
 import express from 'express';
 import { createClient } from '@supabase/supabase-js';
-import dotenv from 'dotenv';
-
-dotenv.config();
 
 const app = express();
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
-
-// Provide environment-backed config for the frontend
-app.get('/api/config', (req, res) => {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Content-Type', 'application/json');
-
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
-
-    if (!supabaseUrl || !supabaseAnonKey) {
-        return res.status(500).json({
-            error: 'Configuration Missing',
-            message: 'Please set SUPABASE_URL and SUPABASE_ANON_KEY in .env'
-        });
-    }
-
-    return res.status(200).json({
-        supabaseUrl: supabaseUrl,
-        supabaseAnonKey: supabaseAnonKey
-    });
-});
 
 /* ═══════════════════════════════════════════════════════════════════════════
    1. SYSTEM CONFIGURATION & VALIDATION
@@ -481,4 +457,6 @@ app.use((req, res) => {
 
 console.log('🚀 TITAN ENTERPRISE CRM - Messenger Engine v4.0.0 (Serverless Mode)');
 
-export default app;
+export default async function handler(req, res) {
+    return app(req, res);
+}
