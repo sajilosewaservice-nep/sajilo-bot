@@ -1,8 +1,11 @@
 {
   "version": 2,
   "functions": {
-    "api/**.js": {
+    "api/**/*.js": {
       "runtime": "nodejs20.x"
+    },
+    "api/**/*.py": {
+      "runtime": "python3.9"
     }
   },
   "routes": [
