@@ -8,11 +8,25 @@
 </head>
 <body>
   <div class="card">
-    <h1>Minimal TITAN Dashboard (Preview)</h1>
-    <p>This is a temporary minimal dashboard scaffold to verify deployment and UI loading.</p>
-    <p id="status">Status: initializing...</p>
+    <h1>Minimal TITAN Dashboard — Demo</h1>
+    <p>This preview shows a simplified dashboard UI without authentication.</p>
     <div style="margin-top:18px">
-      <button id="open-demo">Open Demo Dashboard</button>
+      <button id="refresh-data">Refresh Demo Data</button>
+    </div>
+
+    <div id="dashboard" style="margin-top:22px;text-align:left">
+      <h3>Statistics</h3>
+      <ul id="stats-list">
+        <li>Total Records: <strong id="total-records">0</strong></li>
+        <li>Success: <strong id="stat-success">0</strong></li>
+        <li>Pending: <strong id="stat-pending">0</strong></li>
+      </ul>
+
+      <h3 style="margin-top:14px">Recent Entries</h3>
+      <table id="demo-table" style="width:100%;border-collapse:collapse;margin-top:8px">
+        <thead><tr><th style="text-align:left">Name</th><th>Status</th><th>Service</th></tr></thead>
+        <tbody id="demo-rows"></tbody>
+      </table>
     </div>
   </div>
   <script src="/dashboard.js"></script>
