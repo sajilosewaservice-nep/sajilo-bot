@@ -1,0 +1,17 @@
+{
+  "name": "titan-whatsapp-engine",
+  "private": true,
+  "version": "1.0.0",
+  "main": "whatsapp_engine.js",
+  "scripts": {
+    "start": "node whatsapp_engine.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.43.0",
+    "@whiskeysockets/baileys": "^6.7.7",
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "pino": "^9.1.0",
+    "qrcode-terminal": "^0.12.0"
+  }
+}
