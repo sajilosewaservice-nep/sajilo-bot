@@ -2,6 +2,9 @@ node_modules/
 .env
 .env.local
 .env.*.local
+*.env.bak
+.env.bak
+*.env.backup
 *.log
 dist/
 build/
