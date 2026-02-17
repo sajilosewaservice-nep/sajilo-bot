@@ -705,6 +705,15 @@ function registerGlobalEvents() {
           notify("Please enter username and password", "error");
           return;
         }
+        // Temporary demo bypass for debugging: allow admin/password to open dashboard without Supabase
+        if (username === 'admin' && password === 'password') {
+          STATE.currentUser = { full_name: 'Demo Admin', username: 'admin' };
+          sessionStorage.setItem('titan_user', JSON.stringify(STATE.currentUser));
+          notify('Demo login successful — dashboard opened', 'success');
+          loadDashboardInterface();
+          return;
+        }
+
         await handleLogin(username, password);
       });
     }
