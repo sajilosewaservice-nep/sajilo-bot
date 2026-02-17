@@ -2,8 +2,7 @@
   "type": "module",
   "scripts": {
     "start:whatsapp": "node api/index.js",
-    "dev:vercel": "vercel dev",
-    "vercel-build": "npx playwright install --with-deps"
+    "dev:vercel": "vercel dev"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.95.3",
