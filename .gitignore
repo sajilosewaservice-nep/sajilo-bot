@@ -7,3 +7,6 @@ dist/
 build/
 .DS_Store
 titan_auth_session/
+api/titan_auth_session/
+public_minimal/
+engines/.env
