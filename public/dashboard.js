@@ -69,6 +69,7 @@ async function initializeSupabase() {
 
 // 4. INITIALIZATION
 document.addEventListener('DOMContentLoaded', async () => {
+  console.log('🚦 DOMContentLoaded fired — window.__CONFIG =', window.__CONFIG);
   const configLoaded = await loadConfigFromBackend();
   if (!configLoaded) {
     notify("Failed to load configuration", "error");
@@ -97,8 +98,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // Config loader
 async function loadConfigFromBackend() {
+  console.log('🔎 loadConfigFromBackend() start — window.__CONFIG:', window.__CONFIG);
   // Priority 1: Check window.__CONFIG (hardcoded fallback)
   if (window.__CONFIG && window.__CONFIG.supabaseUrl && window.__CONFIG.supabaseAnonKey) {
+    console.log('🔁 Using window.__CONFIG fallback values');
     SYSTEM_CONFIG.SUPABASE_URL = window.__CONFIG.supabaseUrl;
     SYSTEM_CONFIG.SUPABASE_KEY = window.__CONFIG.supabaseAnonKey;
     if (window.__CONFIG.rpaServerUrl) SYSTEM_CONFIG.RPA_SERVER_URL = window.__CONFIG.rpaServerUrl;
@@ -141,6 +144,7 @@ async function loadConfigFromBackend() {
 
   // Priority 4: SYSTEM_CONFIG constants fallback (already populated above)
   if (SYSTEM_CONFIG.SUPABASE_URL && SYSTEM_CONFIG.SUPABASE_KEY) {
+    console.log('⚠️ Using SYSTEM_CONFIG constant fallback', { SUPABASE_URL: !!SYSTEM_CONFIG.SUPABASE_URL, SUPABASE_KEY: !!SYSTEM_CONFIG.SUPABASE_KEY });
     console.warn('⚠️ Using SYSTEM_CONFIG constant fallback');
     return true;
   }
