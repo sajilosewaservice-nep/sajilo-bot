@@ -6,7 +6,13 @@
  * Schema Sync: customers (income, operator_instruction, chat_summary)
  * =============================================================================
  */
-
+// dashboard.js ko top ma halnus
+if (typeof supabase === 'undefined') {
+    console.error("Supabase SDK load bhayena! Check your internet or CDN link.");
+    alert("Supabase SDK is missing. Please refresh the page.");
+} else {
+    console.log("Supabase SDK loaded successfully!");
+}
 const TITAN_CONFIG = {
     URL: "https://ratgpvubjrcoipardzdp.supabase.co",
     KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJhdGdwdnVianJjb2lwYXJkemRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzMTg0OTMsImV4cCI6MjA4Mzg5NDQ5M30.t1eofJj9dPK-Psp_oL3LpCWimyz621T21JNpZljEGZk",
