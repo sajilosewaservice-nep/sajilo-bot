@@ -1,30 +1,11 @@
 {
   "version": 2,
   "name": "titan-crm-v4",
-  "builds": [
-    {
-      "src": "api/**/*.js",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "*.html",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "*.js",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "*.css",
-      "use": "@vercel/static"
-    }
-  ],
   "headers": [
     {
       "source": "/(.*)",
       "headers": [
         { "key": "Access-Control-Allow-Origin", "value": "*" },
-        { "key": "Access-Control-Allow-Methods", "value": "GET,POST,OPTIONS" },
         { "key": "X-Frame-Options", "value": "DENY" },
         { "key": "X-Content-Type-Options", "value": "nosniff" }
       ]
@@ -33,6 +14,8 @@
   "rewrites": [
     { "source": "/api/messenger", "destination": "/api/messenger.js" },
     { "source": "/api/whatsapp", "destination": "/api/whatsapp.js" },
+    { "source": "/dashboard.js", "destination": "/dashboard.js" },
+    { "source": "/style.css", "destination": "/style.css" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "cleanUrls": true
