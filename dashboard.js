@@ -7,6 +7,12 @@
  * =============================================================================
  */
 // dashboard.js ko top ma halnus
+// dashboard.js को सुरुमै यो थप्नुहोस् ताकि लगिन छ भने सिधै भित्र जाओस्
+if (localStorage.getItem('titan_session') === 'active') {
+    document.getElementById('loginPage').style.display = 'none';
+    document.getElementById('dashboardPage').style.display = 'block';
+}
+
 if (typeof supabase === 'undefined') {
     console.error("Supabase SDK load bhayena! Check your internet or CDN link.");
     alert("Supabase SDK is missing. Please refresh the page.");
@@ -350,36 +356,44 @@ function showGlobalToast(msg, type) {
     setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 3000);
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// AUTH & SESSION MANAGEMENT
-// ═══════════════════════════════════════════════════════════════════════════
-
 function authGuard() {
     const form = document.getElementById('loginForm');
     if (!form) return;
 
-    form.addEventListener('submit', (e) => {
+    form.addEventListener('submit', async (e) => {
         e.preventDefault();
+        
         const u = document.getElementById('username').value;
         const p = document.getElementById('password').value;
 
+        // प्रोफेसनल एनिमेसन थप्न बटनको टेक्स्ट बदल्ने
+        const btn = form.querySelector('button');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Verifying...';
+        btn.disabled = true;
+
+        // केही समय पर्खने (Realism को लागि)
+        await new Promise(resolve => setTimeout(resolve, 800));
+
         if (u === 'admin' && p === 'password') {
             localStorage.setItem('titan_session', 'active');
-            location.reload();
+            
+            // रिफ्रेस नगरी सिधै ड्यासबोर्ड खोल्ने (Advanced Way)
+            document.getElementById('loginPage')?.classList.add('hidden');
+            document.getElementById('dashboardPage')?.classList.remove('hidden');
+            
+            // ड्यासबोर्डका डाटाहरू इनिसियलाइज गर्ने
+            await bootSystem(); 
+            showGlobalToast("Access Granted: Welcome Commander", "success");
         } else {
-            alert("Security Breach: Invalid Credentials");
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+            showGlobalToast("Security Breach: Invalid Credentials", "error");
+            // एनिमेसनको लागि फर्म थर्काउने (Shake effect)
+            form.classList.add('animate-shake');
+            setTimeout(() => form.classList.remove('animate-shake'), 500);
         }
     });
-}
-
-function checkLoginSession() {
-    if (localStorage.getItem('titan_session') === 'active') {
-        document.getElementById('loginPage')?.classList.add('hidden');
-        document.getElementById('dashboardPage')?.classList.remove('hidden');
-        document.getElementById('userDisplay').innerHTML = `<i class="fas fa-shield-alt mr-2 text-blue-500"></i>OP: ROOT_ADMIN`;
-        return true;
-    }
-    return false;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
