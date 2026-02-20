@@ -18,7 +18,7 @@
 const TITAN_CONFIG = {
     URL: "https://ratgpvubjrcoipardzdp.supabase.co",
     KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJhdGdwdnVianJjb2lwYXJkemRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzMTg0OTMsImV4cCI6MjA4Mzg5NDQ5M30.t1eofJj9dPK-Psp_oL3LpCWimyz621T21JNpZljEGZk",
-    TABLE: 'leads',
+    TABLE: 'customers',
     REFRESH_INTERVAL: 30000, // Fallback polling 30s
     VERSION: '4.0.0-Serverless'
 };
