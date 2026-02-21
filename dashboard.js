@@ -6,11 +6,10 @@
  * Schema Sync: customers (income, operator_instruction, chat_summary)
  * =============================================================================
  */
-// dashboard.js ko top ma halnus
-// dashboard.js को सुरुमै यो थप्नुहोस् ताकि लगिन छ भने सिधै भित्र जाओस्
+// यो मात्र फेर्नुहोस् (dashboard.js को टपमा)
 if (localStorage.getItem('titan_session') === 'active') {
-    document.getElementById('loginPage').style.display = 'none';
-    document.getElementById('dashboardPage').style.display = 'block';
+    document.getElementById('loginPage').classList.add('hidden');
+    document.getElementById('dashboardPage').classList.remove('hidden');
 }
 
 if (typeof supabase === 'undefined') {
@@ -431,3 +430,6 @@ window.filterByPlatform = (p) => { TITAN_STATE.ui.currentPlatform = p; applyFilt
 window.syncCoreDatabase = syncCoreData;
 window.exportFinancials = exportData;
 window.viewLeadDetail = (id) => { console.log("Detail View for:", id); };
+function checkLoginSession() {
+    return localStorage.getItem('titan_session') === 'active';
+}
