@@ -1,230 +1,357 @@
+/**
+ * =============================================================================
+ * TITAN ENTERPRISE CRM v4.0.0 - ULTIMATE MASTER ENGINE
+ * =============================================================================
+ * System: Advanced RPA & Neural Interface
+ * Framework: Vanilla JS / Supabase / Tailwind
+ * Modules: Analytics, Real-time Sync, Financial Engine, UI Orchestrator
+ * =============================================================================
+ */
 
-// ═══════════════════════════════════════════════════════════════════════════
-// UI HELPERS & COMPONENTS
-// ═══════════════════════════════════════════════════════════════════════════
+(function() {
+    "use strict";
 
-function renderPlatformBadge(platform) {
-    const cfg = {
-        whatsapp: { icon: 'fab fa-whatsapp', color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-        messenger: { icon: 'fab fa-facebook-messenger', color: 'text-blue-500', bg: 'bg-blue-500/10' }
+    // 1. CONSTANTS & SECURITY CONFIG
+    const CONFIG = {
+        VERSION: '4.2.0-ULTIMATE',
+        DB_TABLE: 'leads',
+        REFRESH_INTERVAL: 30000, // Auto-sync fallback
+        CURRENCY: 'Rs.',
+        LOG_PREFIX: '🚀 [TITAN_CORE]',
+        SOUNDS: {
+            NOTIFICATION: 'https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3',
+            SUCCESS: 'https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3'
+        }
     };
-    
-    const p = cfg[platform.toLowerCase()] || { icon: 'fas fa-robot', color: 'text-slate-400', bg: 'bg-slate-400/10' };
-    
-    return `
-        <div class="inline-flex items-center justify-center w-10 h-10 rounded-xl ${p.bg} border border-white/5">
-            <i class="${p.icon} ${p.color} text-lg"></i>
-        </div>
-    `;
-}
 
-function renderMediaAction(url) {
-    if (!url) return `<span class="text-slate-200">--</span>`;
-    const isPDF = url.toLowerCase().includes('.pdf');
-    return `<button onclick="window.open('${url}', '_blank')" class="h-8 w-8 rounded-full ${isPDF ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'} hover:scale-110 transition-transform shadow-sm">
-                <i class="fas ${isPDF ? 'fa-file-pdf' : 'fa-image'}"></i>
-            </button>`;
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// OPERATIONS ENGINE (UPDATE/DELETE/EXPORT)
-// ═══════════════════════════════════════════════════════════════════════════
-
-async function handleStatusUpdate(id, newStatus) {
-    const { error } = await TITAN_STATE.client.from(TITAN_CONFIG.TABLE).update({ status: newStatus }).eq('id', id);
-    if (error) {
-        showGlobalToast("Status Update Failed", "error");
-    } else {
-        showGlobalToast(`Status changed to ${newStatus}`, "success");
-        await syncCoreData();
-    }
-}
-
-async function handleNoteUpdate(id, note) {
-    const { error } = await TITAN_STATE.client.from(TITAN_CONFIG.TABLE).update({ operator_instruction: note }).eq('id', id);
-    if (!error) showGlobalToast("Instruction updated", "info");
-}
-
-async function triggerDelete(id) {
-    if (confirm("Are you sure? This action cannot be undone.")) {
-        const { error } = await TITAN_STATE.client.from(TITAN_CONFIG.TABLE).delete().eq('id', id);
-        if (!error) {
-            showGlobalToast("Lead deleted permanently", "success");
-            await syncCoreData();
+    // 2. MASTER STATE MANAGEMENT (Central Truth)
+    const STATE = {
+        rawLeads: [],
+        filteredLeads: [],
+        analytics: {
+            revenue: 0,
+            growth: 12.5,
+            successRate: 0,
+            avgResolutionTime: 0
+        },
+        ui: {
+            activePlatform: 'all',
+            searchTerm: '',
+            isSyncing: false,
+            sidebarOpen: true,
+            selectedLeadId: null
+        },
+        auth: {
+            user: JSON.parse(localStorage.getItem('titan_session')),
+            role: 'ADMIN_OPERATOR'
         }
-    }
-}
+    };
 
-function exportData() {
-    const data = TITAN_STATE.filteredLeads;
-    if (data.length === 0) return;
-
-    let csv = "\uFEFF"; // UTF-8 BOM
-    csv += "Registration Date,Platform,Customer Name,Phone,Service,Status,Income,Instructions,Summary\n";
-    
-    data.forEach(l => {
-        csv += `${new Date(l.created_at).toLocaleString()},${l.platform},${l.customer_name},${l.phone_number},${l.service},${l.status},${l.income},"${l.operator_instruction}","${l.chat_summary}"\n`;
-    });
-
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `TITAN_Report_${new Date().toISOString().split('T')[0]}.csv`;
-    link.click();
-    showGlobalToast("Financial Report Exported", "success");
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// SEARCH, FILTER & EVENT BUS
-// ═══════════════════════════════════════════════════════════════════════════
-
-function applyFilters() {
-    let results = [...TITAN_STATE.rawLeads];
-
-    if (TITAN_STATE.ui.currentPlatform !== 'all') {
-        results = results.filter(l => l.platform === TITAN_STATE.ui.currentPlatform);
-    }
-
-    if (TITAN_STATE.ui.searchTerm) {
-        const q = TITAN_STATE.ui.searchTerm.toLowerCase();
-        results = results.filter(l => 
-            (l.customer_name || "").toLowerCase().includes(q) ||
-            (l.phone_number || "").includes(q) ||
-            (l.service || "").toLowerCase().includes(q)
-        );
-    }
-
-    TITAN_STATE.filteredLeads = results;
-    renderMasterTable();
-}
-
-function registerGlobalEvents() {
-    document.getElementById('searchInput')?.addEventListener('input', (e) => {
-        TITAN_STATE.ui.searchTerm = e.target.value;
-        applyFilters();
-    });
-
-    // Logout logic
-    document.getElementById('logoutBtn')?.addEventListener('click', () => {
-        localStorage.removeItem('titan_session');
-        location.reload();
-    });
-}
-
-function showGlobalToast(msg, type) {
-    const zone = document.getElementById('notificationZone');
-    if (!zone) return;
-    const toast = document.createElement('div');
-    toast.className = `p-4 mb-3 rounded-2xl shadow-2xl bg-white border-l-4 ${type === 'success' ? 'border-emerald-500' : 'border-blue-500'} flex items-center animate-slide-in`;
-    toast.innerHTML = `<span class="text-xs font-black uppercase text-slate-700">${msg}</span>`;
-    zone.appendChild(toast);
-    setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 3000);
-}
-
-function authGuard() {
-    const form = document.getElementById('loginForm');
-    if (!form) return;
-
-    // ब्राउजरको बेकारको अटो-फिल रोक्न
-    form.setAttribute('autocomplete', 'off');
-    document.getElementById('username').setAttribute('autocomplete', 'one-time-code');
-    document.getElementById('password').setAttribute('autocomplete', 'new-password');
-
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        // .trim() प्रयोग गर्दा झुक्किएर स्पेस थपिएको भए पनि हट्छ
-        const u = document.getElementById('username').value.trim();
-        const p = document.getElementById('password').value.trim();
-
-        const btn = form.querySelector('button');
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Authenticating...';
-        btn.disabled = true;
-
-        await new Promise(resolve => setTimeout(resolve, 600));
-
-        // यहाँ तपाईँको लगिन चेक हुन्छ
-        if (u === 'admin' && p === 'pass123') { // पासवर्ड SQL सँग मिलाउनुहोस्
-            localStorage.setItem('titan_session', 'active');
+    /**
+     * [MODULE: CORE ENGINE INITIALIZER]
+     */
+    const TitanEngine = {
+        async init() {
+            console.log(`%c ${CONFIG.LOG_PREFIX} INITIALIZING ENGINE v${CONFIG.VERSION} `, 'background: #0f172a; color: #3b82f6; font-weight: bold; border: 1px solid #3b82f6;');
             
-            // ड्यासबोर्ड देखाउने ग्यारेन्टी तरिका
-            const loginPage = document.getElementById('loginPage');
-            const dashboardPage = document.getElementById('dashboardPage');
-            
-            if (loginPage && dashboardPage) {
-                loginPage.classList.add('hidden');
-                dashboardPage.classList.remove('hidden');
-                
-                // लोड हुन सजिलो होस् भनेर २ सेकेन्डको म्याद दिने
-                await bootSystem(); 
-                showGlobalToast("Welcome back, Admin", "success");
+            try {
+                this.setupSupabase();
+                this.attachEventListeners();
+                await this.performFirstSync();
+                this.initRealtimeWebSocket();
+                this.startHeartbeat();
+                this.renderSystemHealth();
+            } catch (err) {
+                ErrorHandler.critical("INIT_FAILURE", err);
             }
-        } else {
-            btn.innerHTML = originalText;
-            btn.disabled = false;
-            showGlobalToast("Login Failed: Check Credentials", "error");
-            form.classList.add('animate-shake');
-            setTimeout(() => form.classList.remove('animate-shake'), 500);
+        },
+
+        setupSupabase() {
+            const url = import.meta.env.VITE_SUPABASE_URL;
+            const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
+            
+            if (!url || !key) throw new Error("Environment Keys Missing");
+            this.client = window.supabase.createClient(url, key);
+        },
+
+        async performFirstSync() {
+            UI.toggleLoader(true);
+            await DataLayer.fetchLeads();
+            AnalyticsEngine.computeAll();
+            UI.refreshAll();
+            UI.toggleLoader(false);
+        },
+
+        initRealtimeWebSocket() {
+            this.client
+                .channel('titan-realtime')
+                .on('postgres_changes', { event: '*', schema: 'public', table: CONFIG.DB_TABLE }, payload => {
+                    this.handleRealtimeEvent(payload);
+                })
+                .subscribe();
+        },
+
+        handleRealtimeEvent(payload) {
+            console.log(`${CONFIG.LOG_PREFIX} REALTIME_EVENT:`, payload.eventType);
+            DataLayer.fetchLeads().then(() => {
+                AnalyticsEngine.computeAll();
+                UI.refreshAll();
+                Utils.playSfx('NOTIFICATION');
+                UI.notify(`DATABASE ${payload.eventType}: ${payload.new?.customer_name || 'System Update'}`, 'info');
+            });
         }
-    });
-}
+    };
 
-// ═══════════════════════════════════════════════════════════════════════════
-// SYSTEM UTILITIES (REALTIME/CLOCK)
-// ═══════════════════════════════════════════════════════════════════════════
+    /**
+     * [MODULE: DATA ACCESS LAYER]
+     */
+    const DataLayer = {
+        async fetchLeads() {
+            STATE.isSyncing = true;
+            const { data, error } = await TitanEngine.client
+                .from(CONFIG.DB_TABLE)
+                .select('*')
+                .order('created_at', { ascending: false });
 
-function setupRealtime() {
-    if (!TITAN_STATE.client) return;
-    TITAN_STATE.client.channel('main_sync')
-        .on('postgres_changes', { event: '*', schema: 'public', table: TITAN_CONFIG.TABLE }, () => {
-            syncCoreData();
-            showGlobalToast("Live Update Inbound", "success");
-        }).subscribe();
-}
+            if (error) throw error;
+            STATE.rawLeads = data;
+            STATE.filteredLeads = [...data];
+            STATE.isSyncing = false;
+        },
 
-function startClock() {
-    setInterval(() => {
-        const el = document.getElementById('lastUpdate');
-        if (el) el.innerHTML = `<span class="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-2"></span> ENGINE_LIVE: ${new Date().toLocaleTimeString()}`;
-    }, 1000);
-}
+        async updateLead(id, updates) {
+            const { error } = await TitanEngine.client
+                .from(CONFIG.DB_TABLE)
+                .update(updates)
+                .eq('id', id);
 
-function toggleMainLoader(show) {
-    const statIncome = document.getElementById('statIncome');
-    if (show && statIncome) statIncome.innerText = "Syncing...";
-}
-
-function updateSyncStatusUI(syncing) {
-    const btn = document.querySelector('[onclick="syncCoreDatabase()"]');
-    if (btn) btn.innerHTML = syncing ? '<i class="fas fa-spinner fa-spin"></i>' : '<i class="fas fa-sync-alt"></i>';
-}
-
-// Window Global Hooks
-window.filterByPlatform = (p) => { TITAN_STATE.ui.currentPlatform = p; applyFilters(); };
-window.syncCoreDatabase = syncCoreData;
-window.exportFinancials = exportData;
-window.viewLeadDetail = (id) => { console.log("Detail View for:", id); };
-function checkLoginSession() {
-    return localStorage.getItem('titan_session') === 'active';
-}
-
-// ड्यासबोर्ड सिधै खुलाउने नियम
-window.onload = async () => {
-    if (checkLoginSession()) {
-        // यदि लगिन छ भने ड्यासबोर्ड देखाउने
-        document.getElementById('loginPage')?.classList.add('hidden');
-        document.getElementById('dashboardPage')?.classList.remove('hidden');
-        
-        // डाटा लोड गर्ने
-        if (typeof bootSystem === 'function') {
-            await bootSystem();
-        } else {
-            await syncCoreData();
-            registerGlobalEvents();
+            if (error) {
+                UI.notify("Update Failed", "error");
+                return false;
+            }
+            UI.notify("Lead Synchronized", "success");
+            return true;
         }
-    } else {
-        // लगिन छैन भने लगिन फर्म सुचारु गर्ने
-        authGuard();
-    }
-};
+    };
+
+    /**
+     * [MODULE: ANALYTICS & LOGIC ENGINE]
+     */
+    const AnalyticsEngine = {
+        computeAll() {
+            const stats = {
+                income: 0,
+                success: 0,
+                pending: 0,
+                inquiry: 0,
+                working: 0,
+                problem: 0,
+                wa: 0,
+                msgr: 0
+            };
+
+            STATE.rawLeads.forEach(l => {
+                const val = parseFloat(l.payment || 0);
+                if (l.status === 'success') {
+                    stats.income += val;
+                    stats.success++;
+                }
+                if (l.status === 'pending') stats.pending++;
+                if (l.status === 'inquiry') stats.inquiry++;
+                if (l.status === 'working') stats.working++;
+                if (l.status === 'problem') stats.problem++;
+
+                l.platform === 'whatsapp' ? stats.wa++ : stats.msgr++;
+            });
+
+            STATE.analytics = stats;
+        }
+    };
+
+    /**
+     * [MODULE: UI ORCHESTRATOR]
+     */
+    const UI = {
+        refreshAll() {
+            this.renderStats();
+            this.renderTable();
+            this.renderCharts(); // Future extension
+        },
+
+        renderStats() {
+            const ids = {
+                'statIncome': `${CONFIG.CURRENCY} ${STATE.analytics.income.toLocaleString()}`,
+                'statSuccess': STATE.analytics.success,
+                'statPending': STATE.analytics.pending,
+                'statInquiry': STATE.analytics.inquiry,
+                'statWorking': STATE.analytics.working,
+                'statProblem': STATE.analytics.problem
+            };
+
+            for (const [id, val] of Object.entries(ids)) {
+                const el = document.getElementById(id);
+                if (el) {
+                    // Animation logic for numbers
+                    el.innerText = val;
+                }
+            }
+        },
+
+        renderTable() {
+            const tbody = document.getElementById('tableBody');
+            if (!tbody) return;
+
+            const filtered = STATE.rawLeads.filter(l => {
+                const matchesSearch = l.customer_name?.toLowerCase().includes(STATE.ui.searchTerm.toLowerCase()) ||
+                                     l.service?.toLowerCase().includes(STATE.ui.searchTerm.toLowerCase());
+                const matchesPlatform = STATE.ui.activePlatform === 'all' || l.platform === STATE.ui.activePlatform;
+                return matchesSearch && matchesPlatform;
+            });
+
+            tbody.innerHTML = filtered.map(lead => this.createRowHTML(lead)).join('');
+        },
+
+        createRowHTML(lead) {
+            const platformIcon = lead.platform === 'whatsapp' 
+                ? '<i class="fab fa-whatsapp text-emerald-500"></i>' 
+                : '<i class="fab fa-facebook-messenger text-blue-500"></i>';
+
+            return `
+                <tr class="vibrant-table-row border-b border-white/5 hover:bg-white/5 transition-all">
+                    <td class="px-3 py-4 text-[10px] font-mono text-slate-400">
+                        ${new Date(lead.created_at).toLocaleString('ne-NP')}
+                    </td>
+                    <td class="px-3 py-4 text-center">${platformIcon}</td>
+                    <td class="px-3 py-4">
+                        <div class="font-bold text-slate-100">${lead.customer_name || 'Walk-in'}</div>
+                        <div class="text-[8px] opacity-40 uppercase">ID: ${lead.id.slice(0,8)}</div>
+                    </td>
+                    <td class="px-3 py-4">
+                        <span class="bg-slate-800/50 px-2 py-1 rounded border border-white/5 text-[10px]">
+                            ${lead.service || 'N/A'}
+                        </span>
+                    </td>
+                    <td class="px-3 py-4">
+                        <select onchange="window.TitanEngine.updateStatus('${lead.id}', this.value)" 
+                                class="bg-transparent text-[9px] font-black uppercase border border-white/10 rounded-md p-1 outline-none">
+                            <option value="inquiry" ${lead.status === 'inquiry' ? 'selected' : ''}>Inquiry</option>
+                            <option value="pending" ${lead.status === 'pending' ? 'selected' : ''}>Pending</option>
+                            <option value="working" ${lead.status === 'working' ? 'selected' : ''}>Working</option>
+                            <option value="success" ${lead.status === 'success' ? 'selected' : ''}>Success</option>
+                            <option value="problem" ${lead.status === 'problem' ? 'selected' : ''}>Problem</option>
+                        </select>
+                    </td>
+                    <td class="px-3 py-4 text-[10px] text-blue-300 italic max-w-[150px] truncate">
+                        ${lead.summary || 'Waiting for AI...'}
+                    </td>
+                    <td class="px-3 py-4">
+                         <input type="text" value="${lead.operator_note || ''}" 
+                                onblur="window.TitanEngine.updateNote('${lead.id}', this.value)"
+                                class="bg-transparent border-b border-white/10 w-full text-[10px] outline-none focus:border-blue-500">
+                    </td>
+                    <td class="px-3 py-4 text-right font-black text-emerald-400">
+                        ${CONFIG.CURRENCY} ${parseFloat(lead.payment || 0).toLocaleString()}
+                    </td>
+                    <td class="px-3 py-4 text-center">
+                        ${lead.file_url ? `<button onclick="window.open('${lead.file_url}')" class="text-blue-400 hover:text-white"><i class="fas fa-file-alt"></i></button>` : '-'}
+                    </td>
+                    <td class="px-3 py-4 text-right">
+                        <button onclick="window.TitanEngine.deleteRow('${lead.id}')" class="text-red-500/50 hover:text-red-500">
+                            <i class="fas fa-trash-alt text-xs"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        },
+
+        notify(msg, type = 'info') {
+            const zone = document.getElementById('notificationZone');
+            if (!zone) return;
+
+            const toast = document.createElement('div');
+            const colors = {
+                success: 'border-emerald-500 bg-emerald-500/10 text-emerald-400',
+                error: 'border-red-500 bg-red-500/10 text-red-400',
+                info: 'border-blue-500 bg-blue-500/10 text-blue-400'
+            };
+
+            toast.className = `glass-panel px-6 py-3 rounded-xl border-l-4 shadow-2xl mb-3 animate-slide-in ${colors[type]}`;
+            toast.innerHTML = `<div class="flex items-center gap-3">
+                                <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-info-circle'}"></i>
+                                <span class="text-[10px] font-black uppercase tracking-widest">${msg}</span>
+                               </div>`;
+            
+            zone.appendChild(toast);
+            setTimeout(() => toast.remove(), 4000);
+        },
+
+        toggleLoader(show) {
+            const btn = document.querySelector('button[onclick="syncCoreDatabase()"]');
+            if (btn) {
+                btn.innerHTML = show ? '<i class="fas fa-circle-notch animate-spin"></i> SYNCING...' : '<i class="fas fa-sync-alt"></i> Force Cloud Sync';
+                btn.disabled = show;
+            }
+        }
+    };
+
+    /**
+     * [MODULE: UTILS & HELPERS]
+     */
+    const Utils = {
+        playSfx(key) {
+            const audio = new Audio(CONFIG.SOUNDS[key]);
+            audio.volume = 0.4;
+            audio.play().catch(() => {});
+        },
+        debounce(func, wait) {
+            let timeout;
+            return function(...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), wait);
+            };
+        }
+    };
+
+    /**
+     * [EXPORTING GLOBAL ACTIONS]
+     */
+    window.TitanEngine = {
+        async updateStatus(id, status) {
+            const ok = await DataLayer.updateLead(id, { status });
+            if (ok) await TitanEngine.performFirstSync();
+        },
+        async updateNote(id, operator_note) {
+            await DataLayer.updateLead(id, { operator_note });
+        },
+        async deleteRow(id) {
+            if (!confirm("Confirm Destruction?")) return;
+            const { error } = await TitanEngine.client.from(CONFIG.DB_TABLE).delete().eq('id', id);
+            if (!error) {
+                UI.notify("Record Deleted", "error");
+                await TitanEngine.performFirstSync();
+            }
+        },
+        filterPlatform(p) {
+            STATE.ui.activePlatform = p;
+            UI.renderTable();
+        }
+    };
+
+    window.syncCoreDatabase = () => TitanEngine.performFirstSync();
+
+    // Start Everything
+    TitanEngine.init();
+
+    // Attach Search Debounce
+    document.getElementById('searchInput')?.addEventListener('input', Utils.debounce((e) => {
+        STATE.ui.searchTerm = e.target.value;
+        UI.renderTable();
+    }, 300));
+
+})();
+
+/**
+ * =============================================================================
+ * END OF MASTER ENGINE - TITAN CRM v4
+ * =============================================================================
+ */
