@@ -320,6 +320,9 @@ const TITAN_CONFIG = {
      * [EXPORTING GLOBAL ACTIONS]
      */
     window.TitanEngine = {
+        // यो लाइन थप्नुस्, यसले नै लगइन पेजलाई Database सँग जोड्छ
+        client: TitanEngine.client, 
+        
         async updateStatus(id, status) {
             const ok = await DataLayer.updateLead(id, { status });
             if (ok) await TitanEngine.performFirstSync();

@@ -4,7 +4,7 @@
   "rewrites": [
     { "source": "/api/messenger", "destination": "/api/messenger.js" },
     { "source": "/api/whatsapp", "destination": "/api/whatsapp.js" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/((?!.*\\.(js|css|png|jpg|svg)$).*)", "destination": "/index.html" }
   ],
   "cleanUrls": true
 }
