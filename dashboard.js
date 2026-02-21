@@ -159,80 +159,85 @@ function renderMasterTable() {
     const tbody = document.getElementById('tableBody');
     if (!tbody) return;
 
-    if (TITAN_STATE.filteredLeads.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="11" class="text-center py-24 opacity-20 italic">No Database Records</td></tr>`;
+    // यदि डाटा छैन भने यो देखाउँछ
+    if (!TITAN_STATE.filteredLeads || TITAN_STATE.filteredLeads.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="11" class="text-center py-20 opacity-20 italic font-black tracking-[5px]">NEURAL DATA EMPTY</td></tr>`;
         return;
     }
 
+    // डाटा टेबलमा भर्ने मुख्य कोड
     tbody.innerHTML = TITAN_STATE.filteredLeads.map(lead => `
-        <tr class="group hover:bg-white/[0.03] transition-all border-b border-white/5 text-[11px] text-slate-300">
-            <td class="px-4 py-4 whitespace-nowrap">
-                <div class="font-bold text-blue-400">${new Date(lead.created_at).toLocaleDateString()}</div>
-                <div class="text-[9px] text-slate-500">${new Date(lead.created_at).toLocaleTimeString()}</div>
+        <tr class="group hover:bg-blue-500/[0.04] transition-all border-b border-white/5 text-slate-300">
+            <td class="px-3 py-2 whitespace-nowrap border-l-2 border-transparent group-hover:border-blue-500 transition-all">
+                <div class="font-bold text-blue-400 text-[10px]">${new Date(lead.created_at).toLocaleDateString()}</div>
+                <div class="text-[8px] text-slate-500 font-mono uppercase">${new Date(lead.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
             </td>
 
-            <td class="px-4 py-4 text-center">
-                ${renderPlatformBadge(lead.platform)}
+            <td class="px-3 py-2 text-center">
+                <div class="scale-75 origin-center">${typeof renderPlatformBadge === 'function' ? renderPlatformBadge(lead.platform) : lead.platform}</div>
             </td>
 
-            <td class="px-4 py-4 min-w-[140px]">
-                <div class="font-black text-slate-100">${lead.customer_name || 'Anonymous'}</div>
-                <div class="text-[9px] text-blue-500 font-bold tracking-tighter">${lead.phone_number || 'No Number'}</div>
+            <td class="px-3 py-2 min-w-[130px]">
+                <div class="font-black text-slate-100 text-[11px] truncate uppercase tracking-tight">${lead.customer_name || 'Anonymous'}</div>
+                <div class="text-[9px] text-blue-500/70 font-mono">${lead.phone_number || '---'}</div>
             </td>
 
-            <td class="px-4 py-4">
-                <span class="px-2 py-0.5 bg-slate-900 border border-white/10 rounded text-[9px] font-black uppercase">
+            <td class="px-3 py-2">
+                <span class="px-2 py-0.5 bg-slate-900/50 border border-white/10 rounded-full text-[8px] font-black uppercase text-slate-400 tracking-tighter">
                     ${lead.service || 'General'}
                 </span>
             </td>
 
-            <td class="px-4 py-4">
+            <td class="px-3 py-2">
                 <select onchange="handleStatusUpdate('${lead.id}', this.value)" 
-                    class="bg-slate-950 text-[10px] font-black uppercase p-1 rounded border border-white/10 text-slate-300 w-full cursor-pointer focus:border-blue-500 outline-none">
+                    class="bg-slate-950 text-[9px] font-black uppercase px-2 py-1 rounded-lg border border-white/5 text-slate-400 w-full cursor-pointer hover:border-blue-500/50 outline-none transition-all">
                     ${['inquiry', 'pending', 'working', 'success', 'problem'].map(s => 
                         `<option value="${s}" ${lead.status === s ? 'selected' : ''}>${s}</option>`
                     ).join('')}
                 </select>
             </td>
 
-            <td class="px-4 py-4 max-w-[180px]">
-                <p class="text-[10px] leading-tight text-slate-400 italic line-clamp-2" title="${lead.chat_summary || ''}">
-                    ${lead.chat_summary || 'No neural summary available.'}
+            <td class="px-3 py-2 max-w-[160px]">
+                <p class="text-[9px] leading-tight text-slate-500 italic line-clamp-1 group-hover:text-slate-300 transition-colors" title="${lead.chat_summary || ''}">
+                    ${lead.chat_summary || 'Waiting for neural sync...'}
                 </p>
             </td>
 
-            <td class="px-4 py-4">
+            <td class="px-3 py-2">
                 <textarea onchange="handleNoteUpdate('${lead.id}', this.value)" 
-                    placeholder="Operator note..."
-                    class="w-full bg-white/5 border border-white/5 rounded p-1 text-[10px] text-slate-300 outline-none h-8 resize-none focus:h-16 transition-all">${lead.operator_instruction || ''}</textarea>
+                    placeholder="Log note..."
+                    class="w-full bg-white/[0.02] border border-white/5 rounded-lg px-2 py-1 text-[9px] text-slate-400 outline-none h-7 resize-none focus:h-14 focus:bg-slate-900 focus:border-blue-500/30 transition-all font-medium">${lead.operator_instruction || ''}</textarea>
             </td>
 
-            <td class="px-4 py-4 text-right font-black text-emerald-500">
-                ${(parseFloat(lead.income) || 0).toLocaleString()}
+            <td class="px-3 py-2 text-right">
+                <div class="text-[11px] font-black text-emerald-500 tracking-tighter">
+                    <span class="text-[8px] opacity-50 mr-0.5">Rs.</span>${(parseFloat(lead.income) || 0).toLocaleString()}
+                </div>
             </td>
 
-            <td class="px-4 py-4 text-center">
-                ${lead.documents ? `<i class="fas fa-file-invoice text-blue-400 cursor-help" title="Documents Attached"></i>` : `<i class="fas fa-minus text-slate-700"></i>`}
+            <td class="px-3 py-2 text-center">
+                ${lead.documents ? 
+                    `<i class="fas fa-layer-group text-blue-500 text-[10px] animate-pulse"></i>` : 
+                    `<i class="fas fa-minus text-slate-800 text-[9px]"></i>`}
             </td>
 
-            <td class="px-4 py-4 font-mono text-[8px] text-slate-600">
-                ${lead.id.slice(0, 8)}...
+            <td class="px-3 py-2">
+                <code class="text-[8px] bg-white/5 px-1.5 py-0.5 rounded text-slate-600 font-mono">${(lead.id || '').slice(0, 5)}</code>
             </td>
 
-            <td class="px-4 py-4 text-right">
-                <div class="flex items-center justify-end gap-2">
-                    <button onclick="viewLeadDetail('${lead.id}')" class="h-7 w-7 rounded bg-blue-600/10 text-blue-500 hover:bg-blue-600 hover:text-white transition-all shadow-sm">
-                        <i class="fas fa-eye text-[10px]"></i>
+            <td class="px-3 py-2 text-right">
+                <div class="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
+                    <button onclick="viewLeadDetail('${lead.id}')" class="h-7 w-7 rounded-lg bg-blue-500/10 text-blue-500 hover:bg-blue-500 hover:text-white transition-all shadow-lg shadow-blue-500/10">
+                        <i class="fas fa-terminal text-[9px]"></i>
                     </button>
-                    <button onclick="triggerDelete('${lead.id}')" class="h-7 w-7 rounded bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-sm">
-                        <i class="fas fa-trash text-[10px]"></i>
+                    <button onclick="triggerDelete('${lead.id}')" class="h-7 w-7 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-lg shadow-red-500/10">
+                        <i class="fas fa-trash-alt text-[9px]"></i>
                     </button>
                 </div>
             </td>
         </tr>
     `).join('');
 }
-
 // ═══════════════════════════════════════════════════════════════════════════
 // UI HELPERS & COMPONENTS
 // ═══════════════════════════════════════════════════════════════════════════
