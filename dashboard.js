@@ -6,11 +6,15 @@
  * Schema Sync: customers (income, operator_instruction, chat_summary)
  * =============================================================================
  */
-// यो मात्र फेर्नुहोस् (dashboard.js को टपमा)
-if (localStorage.getItem('titan_session') === 'active') {
-    document.getElementById('loginPage').classList.add('hidden');
-    document.getElementById('dashboardPage').classList.remove('hidden');
-}
+// dashboard.js को सुरुमै यो मात्र राख्नुहोस्
+document.addEventListener('DOMContentLoaded', () => {
+    if (localStorage.getItem('titan_session') === 'active') {
+        const lp = document.getElementById('loginPage');
+        const dp = document.getElementById('dashboardPage');
+        if (lp) lp.classList.add('hidden');
+        if (dp) dp.classList.remove('hidden');
+    }
+});
 
 if (typeof supabase === 'undefined') {
     console.error("Supabase SDK load bhayena! Check your internet or CDN link.");
@@ -359,36 +363,45 @@ function authGuard() {
     const form = document.getElementById('loginForm');
     if (!form) return;
 
+    // ब्राउजरको बेकारको अटो-फिल रोक्न
+    form.setAttribute('autocomplete', 'off');
+    document.getElementById('username').setAttribute('autocomplete', 'one-time-code');
+    document.getElementById('password').setAttribute('autocomplete', 'new-password');
+
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         
-        const u = document.getElementById('username').value;
-        const p = document.getElementById('password').value;
+        // .trim() प्रयोग गर्दा झुक्किएर स्पेस थपिएको भए पनि हट्छ
+        const u = document.getElementById('username').value.trim();
+        const p = document.getElementById('password').value.trim();
 
-        // प्रोफेसनल एनिमेसन थप्न बटनको टेक्स्ट बदल्ने
         const btn = form.querySelector('button');
         const originalText = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Verifying...';
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Authenticating...';
         btn.disabled = true;
 
-        // केही समय पर्खने (Realism को लागि)
-        await new Promise(resolve => setTimeout(resolve, 800));
+        await new Promise(resolve => setTimeout(resolve, 600));
 
-        if (u === 'admin' && p === 'password') {
+        // यहाँ तपाईँको लगिन चेक हुन्छ
+        if (u === 'admin' && p === 'pass123') { // पासवर्ड SQL सँग मिलाउनुहोस्
             localStorage.setItem('titan_session', 'active');
             
-            // रिफ्रेस नगरी सिधै ड्यासबोर्ड खोल्ने (Advanced Way)
-            document.getElementById('loginPage')?.classList.add('hidden');
-            document.getElementById('dashboardPage')?.classList.remove('hidden');
+            // ड्यासबोर्ड देखाउने ग्यारेन्टी तरिका
+            const loginPage = document.getElementById('loginPage');
+            const dashboardPage = document.getElementById('dashboardPage');
             
-            // ड्यासबोर्डका डाटाहरू इनिसियलाइज गर्ने
-            await bootSystem(); 
-            showGlobalToast("Access Granted: Welcome Commander", "success");
+            if (loginPage && dashboardPage) {
+                loginPage.classList.add('hidden');
+                dashboardPage.classList.remove('hidden');
+                
+                // लोड हुन सजिलो होस् भनेर २ सेकेन्डको म्याद दिने
+                await bootSystem(); 
+                showGlobalToast("Welcome back, Admin", "success");
+            }
         } else {
             btn.innerHTML = originalText;
             btn.disabled = false;
-            showGlobalToast("Security Breach: Invalid Credentials", "error");
-            // एनिमेसनको लागि फर्म थर्काउने (Shake effect)
+            showGlobalToast("Login Failed: Check Credentials", "error");
             form.classList.add('animate-shake');
             setTimeout(() => form.classList.remove('animate-shake'), 500);
         }
