@@ -57,25 +57,25 @@ const TITAN_CONFIG = {
      */
     const TitanEngine = {
         async init() {
-            console.log(`%c ${CONFIG.LOG_PREFIX} INITIALIZING ENGINE v${CONFIG.VERSION} `, 'background: #0f172a; color: #3b82f6; font-weight: bold; border: 1px solid #3b82f6;');
-            
             try {
                 this.setupSupabase();
-                this.attachEventListeners();
                 await this.performFirstSync();
                 this.initRealtimeWebSocket();
-                this.startHeartbeat();
-                this.renderSystemHealth();
             } catch (err) {
-                ErrorHandler.critical("INIT_FAILURE", err);
+                // यहाँ ErrorHandler छैन, त्यसैले सिधै console.error लेख्नुहोस्
+                console.error("INIT_FAILURE:", err);
             }
         },
 
         setupSupabase() {
-            const url = import.meta.env.VITE_SUPABASE_URL;
-            const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
+            // सिधै TITAN_CONFIG बाट URL र KEY तान्ने
+            const url = TITAN_CONFIG.URL; 
+            const key = TITAN_CONFIG.KEY;
             
-            if (!url || !key) throw new Error("Environment Keys Missing");
+            if (!url || !key) {
+                console.error("API Keys missing in TITAN_CONFIG");
+                return;
+            }
             this.client = window.supabase.createClient(url, key);
         },
 
@@ -180,9 +180,8 @@ const TITAN_CONFIG = {
         refreshAll() {
             this.renderStats();
             this.renderTable();
-            this.renderCharts(); // Future extension
+            // this.renderCharts(); // यसरी बन्द गरिदिनुहोस्
         },
-
         renderStats() {
             const ids = {
                 'statIncome': `${CONFIG.CURRENCY} ${STATE.analytics.income.toLocaleString()}`,
