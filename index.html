@@ -137,8 +137,14 @@
             const p = document.getElementById('password').value;
 
             try {
-                // SupabaseClient बाट स्टाफ टेबल चेक गर्ने
-                const { data: staff, error } = await window.supabaseClient
+                // हामीले dashboard.js मा बनाएको TitanEngine भित्रको client प्रयोग गर्ने
+                // किनकि हामीले Supabase त्यहीँ Setup गरेका छौँ
+                if (!window.TitanEngine || !window.TitanEngine.client) {
+                    alert("SYSTEM ERROR: Titan Engine not ready yet.");
+                    return;
+                }
+
+                const { data: staff, error } = await window.TitanEngine.client
                     .from('staff')
                     .select('*')
                     .eq('username', u)
@@ -150,7 +156,7 @@
                     return;
                 }
 
-                // लगइन सफल: ड्यासबोर्ड देखाउने
+                // लगइन सफल: स्क्रिन बदल्ने
                 loginPage.classList.add('hidden');
                 dashboardPage.classList.remove('hidden');
                 document.getElementById('userDisplay').innerText = `ACCESS LEVEL: ${staff.full_name}`;
