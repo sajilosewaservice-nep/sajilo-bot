@@ -19,8 +19,9 @@ const TITAN_CONFIG = {
     // 1. CONSTANTS & SECURITY CONFIG
     const CONFIG = {
         VERSION: '4.2.0-ULTIMATE',
-        DB_TABLE: 'leads',
-        REFRESH_INTERVAL: 30000, // Auto-sync fallback
+        DB_TABLE: 'customers', // यहाँ 'leads' लाई हटाएर 'customers' राख्नुहोस्
+        PAGE_LIMIT: 15,        // १५ वटा मात्र डाटा देखाउन यो थप्नुहोस्
+        REFRESH_INTERVAL: 30000,
         CURRENCY: 'Rs.',
         LOG_PREFIX: '🚀 [TITAN_CORE]',
         SOUNDS: {
