@@ -164,89 +164,75 @@ function renderMasterTable() {
     if (!tbody) return;
 
     if (TITAN_STATE.filteredLeads.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="12" class="text-center py-32">
-            <div class="relative inline-block">
-                <div class="absolute inset-0 blur-2xl bg-blue-500/20 rounded-full"></div>
-                <i class="fas fa-database text-6xl mb-4 text-slate-700 relative z-10"></i>
-            </div>
-            <p class="text-slate-500 font-bold tracking-[3px] uppercase text-[10px] mt-4">System: No Data Strings Found</p>
+        tbody.innerHTML = `<tr><td colspan="12" class="text-center py-24">
+            <div class="opacity-20"><i class="fas fa-folder-open text-6xl mb-4"></i><br>No matching records found.</div>
         </td></tr>`;
         return;
     }
 
     tbody.innerHTML = TITAN_STATE.filteredLeads.map(lead => `
-        <tr class="group hover:bg-white/[0.04] transition-all duration-500 border-b border-white/5 relative overflow-hidden">
-            <td class="px-8 py-6 relative">
-                <div class="flex flex-col gap-1">
-                    <span class="text-[10px] font-black text-blue-400 tracking-tighter uppercase italic">
-                        <i class="fas fa-bolt mr-1 text-[8px]"></i>${new Date(lead.created_at).toLocaleDateString()}
-                    </span>
-                    <span class="text-[9px] text-slate-500 font-mono font-medium">
-                        ${new Date(lead.created_at).toLocaleTimeString()}
-                    </span>
+        <tr class="group hover:bg-slate-50 transition-colors border-b border-slate-100">
+            <td class="px-6 py-4">
+                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                    ${new Date(lead.created_at).toLocaleDateString()}
                 </div>
+                <div class="text-[9px] text-slate-300 font-mono">${new Date(lead.created_at).toLocaleTimeString()}</div>
             </td>
-
-            <td class="px-8 py-6">
-                <div class="relative group-hover:scale-110 transition-transform duration-500">
-                    <div class="absolute -inset-2 bg-gradient-to-tr from-blue-600/20 to-purple-600/20 blur-lg opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                    ${renderPlatformBadge(lead.platform)}
-                </div>
+            <td class="px-6 py-4 text-center">
+                ${renderPlatformBadge(lead.platform)}
             </td>
-
-            <td class="px-8 py-6">
-                <div class="flex items-center gap-4">
-                    <div class="relative">
-                        <div class="absolute -inset-1 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-xl blur opacity-20 group-hover:opacity-50 transition-opacity"></div>
-                        <div class="h-11 w-11 rounded-xl bg-slate-900 border border-white/10 flex items-center justify-center font-black text-white text-xs relative">
-                            ${(lead.customer_name || 'T').charAt(0).toUpperCase()}
-                        </div>
+            <td class="px-6 py-4">
+                <div class="flex items-center gap-3">
+                    <div class="h-8 w-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs">
+                        ${(lead.customer_name || 'G').charAt(0)}
                     </div>
                     <div>
-                        <div class="text-sm font-black text-slate-100 tracking-tight group-hover:text-blue-400 transition-colors">
-                            ${lead.customer_name || 'Neural_Guest'}
-                        </div>
-                        <div class="text-[10px] text-slate-500 font-bold flex items-center gap-2">
-                           <span class="h-1 w-1 bg-blue-500 rounded-full"></span>
-                           ${lead.phone_number || 'ENC_ACCESS_ONLY'}
-                        </div>
+                        <div class="text-sm font-black text-slate-800">${lead.customer_name || 'Guest'}</div>
+                        <div class="text-[10px] text-blue-500 font-bold"><i class="fas fa-phone-alt mr-1"></i>${lead.phone_number || 'N/A'}</div>
                     </div>
                 </div>
             </td>
-
-            <td class="px-8 py-6">
-                <div class="inline-flex items-center gap-3 px-4 py-2 bg-slate-950/50 border border-white/5 rounded-2xl">
-                    <div class="relative flex h-2 w-2">
-                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full ${getStatusColor(lead.status)} opacity-75"></span>
-                        <span class="relative inline-flex rounded-full h-2 w-2 ${getStatusColor(lead.status)}"></span>
-                    </div>
-                    <span class="text-[9px] font-black uppercase tracking-[2px] text-slate-300">${lead.status}</span>
-                </div>
+            <td class="px-6 py-4">
+                <span class="text-xs font-semibold text-slate-600">${lead.service || 'General Inquiry'}</span>
             </td>
-
-            <td class="px-8 py-6 max-w-[280px]">
-                <div class="p-3 bg-white/[0.02] border border-white/5 rounded-xl group-hover:border-blue-500/20 transition-all">
-                    <p class="text-[11px] leading-relaxed text-slate-400 font-medium italic opacity-80 group-hover:opacity-100 line-clamp-2">
-                        "${lead.chat_summary || 'No protocol summary logs generated in this session.'}"
+            <td class="px-6 py-4 text-center">
+                <div class="text-[9px] font-black p-1 rounded bg-slate-100 text-slate-400">RPA_V4</div>
+            </td>
+            <td class="px-6 py-4">
+                <select onchange="handleStatusUpdate('${lead.id}', this.value)" 
+                    class="status-select badge-${lead.status} text-[10px] font-black uppercase p-2 rounded-xl w-full border-0 cursor-pointer shadow-sm">
+                    ${['inquiry', 'pending', 'working', 'success', 'problem'].map(s => 
+                        `<option value="${s}" ${lead.status === s ? 'selected' : ''}>${s}</option>`
+                    ).join('')}
+                </select>
+            </td>
+            <td class="px-6 py-4">
+                <div class="max-w-[180px]">
+                    <p class="text-[11px] leading-tight text-blue-700 font-medium italic">
+                        "${lead.chat_summary || 'No conversation summary generated.'}"
                     </p>
                 </div>
             </td>
-
-            <td class="px-8 py-6 text-right">
-                <div class="flex flex-col items-end">
-                    <span class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Income</span>
-                    <span class="text-lg font-black text-emerald-400 tracking-tighter shadow-emerald-500/20 drop-shadow-md">
-                        Rs. ${(parseFloat(lead.income) || 0).toLocaleString()}
-                    </span>
+            <td class="px-6 py-4">
+                <div class="relative">
+                    <i class="fas fa-pen absolute left-0 top-1 text-[9px] text-slate-300"></i>
+                    <textarea onchange="handleNoteUpdate('${lead.id}', this.value)" 
+                        placeholder="Operator instructions..."
+                        class="w-full pl-4 bg-transparent border-b border-transparent focus:border-blue-200 text-[11px] text-slate-500 outline-none resize-none transition-all">${lead.operator_instruction || ''}</textarea>
                 </div>
             </td>
-
-            <td class="px-8 py-6">
-                <div class="flex items-center justify-end gap-3 translate-x-4 opacity-0 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-500">
-                    <button onclick="viewLeadDetail('${lead.id}')" class="group/btn h-10 w-10 rounded-xl bg-blue-600/10 text-blue-500 hover:bg-blue-600 hover:text-white border border-blue-500/20 transition-all shadow-lg">
-                        <i class="fas fa-terminal text-xs"></i>
+            <td class="px-6 py-4 text-right">
+                <div class="text-sm font-black text-emerald-600">Rs. ${(parseFloat(lead.income) || 0).toLocaleString()}</div>
+            </td>
+            <td class="px-6 py-4 text-center">
+                ${renderMediaAction(lead.file_url)}
+            </td>
+            <td class="px-6 py-4 text-center">
+                <div class="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onclick="viewLeadDetail('${lead.id}')" class="h-8 w-8 rounded-lg bg-slate-100 text-slate-600 hover:bg-blue-600 hover:text-white transition-all">
+                        <i class="fas fa-expand-alt text-xs"></i>
                     </button>
-                    <button onclick="triggerDelete('${lead.id}')" class="group/btn h-10 w-10 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white border border-red-500/20 transition-all shadow-lg">
+                    <button onclick="triggerDelete('${lead.id}')" class="h-8 w-8 rounded-lg bg-red-50 text-red-500 hover:bg-red-600 hover:text-white transition-all">
                         <i class="fas fa-trash-alt text-xs"></i>
                     </button>
                 </div>
@@ -425,6 +411,10 @@ function authGuard() {
         }
     });
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SYSTEM UTILITIES (REALTIME/CLOCK)
+// ═══════════════════════════════════════════════════════════════════════════
 
 function setupRealtime() {
     if (!TITAN_STATE.client) return;
