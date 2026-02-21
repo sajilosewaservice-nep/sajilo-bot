@@ -7,7 +7,12 @@
  * Modules: Analytics, Real-time Sync, Financial Engine, UI Orchestrator
  * =============================================================================
  */
-
+const TITAN_CONFIG = {
+    URL: "https://ratgpvubjrcoipardzdp.supabase.co", // तपाईंको URL
+    KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJhdGdwdnVianJjb2lwYXJkemRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzMTg0OTMsImV4cCI6MjA4Mzg5NDQ5M30.t1eofJj9dPK-Psp_oL3LpCWimyz621T21JNpZljEGZk",
+    TABLE: 'leads',
+    VERSION: '4.0.0-PRO'
+};
 (function() {
     "use strict";
 

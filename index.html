@@ -125,31 +125,48 @@
     <div id="notificationZone" class="fixed bottom-6 right-6 z-[1000] flex flex-col gap-2"></div>
 
     <script src="dashboard.js"></script>
+
     <script>
-        // MASTER CONTROLLER
         const loginForm = document.getElementById('loginForm');
         const loginPage = document.getElementById('loginPage');
         const dashboardPage = document.getElementById('dashboardPage');
 
-        loginForm.addEventListener('submit', (e) => {
+        loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const u = document.getElementById('username').value;
             const p = document.getElementById('password').value;
 
-            // Simple Auth for Titan Core
-            if (u === "admin" && p === "titan2026") {
+            try {
+                // SupabaseClient बाट स्टाफ टेबल चेक गर्ने
+                const { data: staff, error } = await window.supabaseClient
+                    .from('staff')
+                    .select('*')
+                    .eq('username', u)
+                    .eq('password', p)
+                    .single();
+
+                if (error || !staff) {
+                    alert("❌ INVALID CIPHER: ACCESS DENIED");
+                    return;
+                }
+
+                // लगइन सफल: ड्यासबोर्ड देखाउने
                 loginPage.classList.add('hidden');
                 dashboardPage.classList.remove('hidden');
-                document.getElementById('userDisplay').innerText = `ACCESS LEVEL: ROOT (${u})`;
+                document.getElementById('userDisplay').innerText = `ACCESS LEVEL: ${staff.full_name}`;
                 
-                if (typeof syncCoreDatabase === 'function') {
-                    syncCoreDatabase();
+                // डेटा सिंक सुरु गर्ने
+                if (typeof window.syncCoreDatabase === 'function') {
+                    window.syncCoreDatabase();
                 }
-            } else {
-                alert("INVALID CIPHER: ACCESS DENIED");
+
+            } catch (err) {
+                console.error("Auth Error:", err);
+                alert("SYSTEM ERROR: UNABLE TO CONNECT TO DATABASE");
             }
         });
 
+        // लगआउट बटन फङ्सन
         document.getElementById('logoutBtn').addEventListener('click', () => {
             location.reload();
         });
