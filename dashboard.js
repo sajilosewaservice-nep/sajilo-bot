@@ -155,85 +155,77 @@ function refreshAnalyticsUI() {
     if (totalEl) totalEl.innerHTML = `<i class="fas fa-database mr-2"></i>TOTAL: ${TITAN_STATE.rawLeads.length}`;
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// MASTER TABLE RENDERER (PRO VERSION)
-// ═══════════════════════════════════════════════════════════════════════════
-
 function renderMasterTable() {
     const tbody = document.getElementById('tableBody');
     if (!tbody) return;
 
     if (TITAN_STATE.filteredLeads.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="12" class="text-center py-24">
-            <div class="opacity-20"><i class="fas fa-folder-open text-6xl mb-4"></i><br>No matching records found.</div>
-        </td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="11" class="text-center py-24 opacity-20 italic">No Database Records</td></tr>`;
         return;
     }
 
     tbody.innerHTML = TITAN_STATE.filteredLeads.map(lead => `
-        <tr class="group hover:bg-slate-50 transition-colors border-b border-slate-100">
-            <td class="px-6 py-4">
-                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
-                    ${new Date(lead.created_at).toLocaleDateString()}
-                </div>
-                <div class="text-[9px] text-slate-300 font-mono">${new Date(lead.created_at).toLocaleTimeString()}</div>
+        <tr class="group hover:bg-white/[0.03] transition-all border-b border-white/5 text-[11px] text-slate-300">
+            <td class="px-4 py-4 whitespace-nowrap">
+                <div class="font-bold text-blue-400">${new Date(lead.created_at).toLocaleDateString()}</div>
+                <div class="text-[9px] text-slate-500">${new Date(lead.created_at).toLocaleTimeString()}</div>
             </td>
-            <td class="px-6 py-4 text-center">
+
+            <td class="px-4 py-4 text-center">
                 ${renderPlatformBadge(lead.platform)}
             </td>
-            <td class="px-6 py-4">
-                <div class="flex items-center gap-3">
-                    <div class="h-8 w-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs">
-                        ${(lead.customer_name || 'G').charAt(0)}
-                    </div>
-                    <div>
-                        <div class="text-sm font-black text-slate-800">${lead.customer_name || 'Guest'}</div>
-                        <div class="text-[10px] text-blue-500 font-bold"><i class="fas fa-phone-alt mr-1"></i>${lead.phone_number || 'N/A'}</div>
-                    </div>
-                </div>
+
+            <td class="px-4 py-4 min-w-[140px]">
+                <div class="font-black text-slate-100">${lead.customer_name || 'Anonymous'}</div>
+                <div class="text-[9px] text-blue-500 font-bold tracking-tighter">${lead.phone_number || 'No Number'}</div>
             </td>
-            <td class="px-6 py-4">
-                <span class="text-xs font-semibold text-slate-600">${lead.service || 'General Inquiry'}</span>
+
+            <td class="px-4 py-4">
+                <span class="px-2 py-0.5 bg-slate-900 border border-white/10 rounded text-[9px] font-black uppercase">
+                    ${lead.service || 'General'}
+                </span>
             </td>
-            <td class="px-6 py-4 text-center">
-                <div class="text-[9px] font-black p-1 rounded bg-slate-100 text-slate-400">RPA_V4</div>
-            </td>
-            <td class="px-6 py-4">
+
+            <td class="px-4 py-4">
                 <select onchange="handleStatusUpdate('${lead.id}', this.value)" 
-                    class="status-select badge-${lead.status} text-[10px] font-black uppercase p-2 rounded-xl w-full border-0 cursor-pointer shadow-sm">
+                    class="bg-slate-950 text-[10px] font-black uppercase p-1 rounded border border-white/10 text-slate-300 w-full cursor-pointer focus:border-blue-500 outline-none">
                     ${['inquiry', 'pending', 'working', 'success', 'problem'].map(s => 
                         `<option value="${s}" ${lead.status === s ? 'selected' : ''}>${s}</option>`
                     ).join('')}
                 </select>
             </td>
-            <td class="px-6 py-4">
-                <div class="max-w-[180px]">
-                    <p class="text-[11px] leading-tight text-blue-700 font-medium italic">
-                        "${lead.chat_summary || 'No conversation summary generated.'}"
-                    </p>
-                </div>
+
+            <td class="px-4 py-4 max-w-[180px]">
+                <p class="text-[10px] leading-tight text-slate-400 italic line-clamp-2" title="${lead.chat_summary || ''}">
+                    ${lead.chat_summary || 'No neural summary available.'}
+                </p>
             </td>
-            <td class="px-6 py-4">
-                <div class="relative">
-                    <i class="fas fa-pen absolute left-0 top-1 text-[9px] text-slate-300"></i>
-                    <textarea onchange="handleNoteUpdate('${lead.id}', this.value)" 
-                        placeholder="Operator instructions..."
-                        class="w-full pl-4 bg-transparent border-b border-transparent focus:border-blue-200 text-[11px] text-slate-500 outline-none resize-none transition-all">${lead.operator_instruction || ''}</textarea>
-                </div>
+
+            <td class="px-4 py-4">
+                <textarea onchange="handleNoteUpdate('${lead.id}', this.value)" 
+                    placeholder="Operator note..."
+                    class="w-full bg-white/5 border border-white/5 rounded p-1 text-[10px] text-slate-300 outline-none h-8 resize-none focus:h-16 transition-all">${lead.operator_instruction || ''}</textarea>
             </td>
-            <td class="px-6 py-4 text-right">
-                <div class="text-sm font-black text-emerald-600">Rs. ${(parseFloat(lead.income) || 0).toLocaleString()}</div>
+
+            <td class="px-4 py-4 text-right font-black text-emerald-500">
+                ${(parseFloat(lead.income) || 0).toLocaleString()}
             </td>
-            <td class="px-6 py-4 text-center">
-                ${renderMediaAction(lead.file_url)}
+
+            <td class="px-4 py-4 text-center">
+                ${lead.documents ? `<i class="fas fa-file-invoice text-blue-400 cursor-help" title="Documents Attached"></i>` : `<i class="fas fa-minus text-slate-700"></i>`}
             </td>
-            <td class="px-6 py-4 text-center">
-                <div class="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onclick="viewLeadDetail('${lead.id}')" class="h-8 w-8 rounded-lg bg-slate-100 text-slate-600 hover:bg-blue-600 hover:text-white transition-all">
-                        <i class="fas fa-expand-alt text-xs"></i>
+
+            <td class="px-4 py-4 font-mono text-[8px] text-slate-600">
+                ${lead.id.slice(0, 8)}...
+            </td>
+
+            <td class="px-4 py-4 text-right">
+                <div class="flex items-center justify-end gap-2">
+                    <button onclick="viewLeadDetail('${lead.id}')" class="h-7 w-7 rounded bg-blue-600/10 text-blue-500 hover:bg-blue-600 hover:text-white transition-all shadow-sm">
+                        <i class="fas fa-eye text-[10px]"></i>
                     </button>
-                    <button onclick="triggerDelete('${lead.id}')" class="h-8 w-8 rounded-lg bg-red-50 text-red-500 hover:bg-red-600 hover:text-white transition-all">
-                        <i class="fas fa-trash-alt text-xs"></i>
+                    <button onclick="triggerDelete('${lead.id}')" class="h-7 w-7 rounded bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-sm">
+                        <i class="fas fa-trash text-[10px]"></i>
                     </button>
                 </div>
             </td>
