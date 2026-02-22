@@ -1,321 +1,146 @@
 /**
  * =============================================================================
- * TITAN ENTERPRISE CRM v4.0.0 - PRO MASTER ENGINE (EXTENDED)
+ * TITAN ENTERPRISE CRM v4.0.0 - MASTER WHATSAPP ENGINE
  * =============================================================================
- * Security: Environment Variables (.env) Integrated
- * Backend: Supabase Serverless
- * Features: 
- * - Multi-Platform Realtime Sync (WhatsApp/Messenger)
- * - Advanced Financial Reporting & Analytics
- * - Multimedia Preview (PDF/Image Lightbox)
- * - Operator Instruction System
- * - Automated Tax/Payment Calculations
+ * System: Serverless Node.js (Vercel Optimized)
+ * Integration: Meta WhatsApp Business API + Supabase
+ * Logic: Auto-Service Detection & Real-time Sync
  * =============================================================================
  */
 
-// 1. SECURE CONFIGURATION (Tanning from .env)
-const TITAN_CONFIG = {
-    // Vite ko env system use gareko
-    URL: import.meta.env.VITE_SUPABASE_URL, 
-    KEY: import.meta.env.VITE_SUPABASE_ANON_KEY,
-    TABLE: 'leads',
-    VERSION: '4.0.0-PRO',
-    REFRESH_RATE: 5000 // 5 seconds internal heart-beat
+import { createClient } from '@supabase/supabase-js';
+
+// 1. SYSTEM CONFIGURATION
+const CONFIG = {
+    SB_URL: process.env.VITE_SUPABASE_URL,
+    SB_SERVICE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    WA_TOKEN: process.env.WHATSAPP_TOKEN, // Meta Dashboard बाट आउने Permanent Token
+    VERIFY_TOKEN: process.env.FB_VERIFY_TOKEN || 'titan-crm-v4-verify',
+    PHONE_NUMBER_ID: process.env.WA_PHONE_NUMBER_ID, // Meta को Phone ID
+    TABLE: 'leads'
 };
 
-const TITAN_STATE = {
-    client: null,
-    leads: [],
-    filtered: [],
-    stats: {
-        totalIncome: 0,
-        successCount: 0,
-        pendingCount: 0,
-        inquiryCount: 0,
-        problemCount: 0,
-        whatsappLeads: 0,
-        messengerLeads: 0
-    },
-    ui: {
-        currentPlatform: 'all',
-        searchQuery: '',
-        isLoading: false,
-        theme: 'premium-dark'
-    }
-};
+const supabase = createClient(CONFIG.SB_URL, CONFIG.SB_SERVICE_KEY);
 
-/**
- * [MODULE 1: CORE INITIALIZER]
- */
-document.addEventListener('DOMContentLoaded', async () => {
-    console.log(`%c 🚀 TITAN CRM v${TITAN_CONFIG.VERSION} STARTING... `, 'background: #1e3a8a; color: #fff; padding: 5px; border-radius: 5px;');
-    
-    try {
-        validateConfig();
-        initSupabase();
-        await syncData();
-        setupRealtimeEngine();
-        initUIComponents();
-    } catch (error) {
-        handleSystemError("INIT_CRITICAL", error);
-    }
-});
+export default async function handler(req, res) {
+    // --- ROUTE 1: WEBHOOK VERIFICATION (Facebook Verify गर्दा) ---
+    if (req.method === 'GET') {
+        const mode = req.query['hub.mode'];
+        const token = req.query['hub.verify_token'];
+        const challenge = req.query['hub.challenge'];
 
-function validateConfig() {
-    if (!TITAN_CONFIG.URL || !TITAN_CONFIG.KEY) {
-        showNotification("Security Alert: .env keys missing!", "error");
-        console.error("Please check your .env file for VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY");
-    }
-}
-
-/**
- * [MODULE 2: DATABASE ENGINE]
- */
-function initSupabase() {
-    if (window.supabase) {
-        TITAN_STATE.client = window.supabase.createClient(TITAN_CONFIG.URL, TITAN_CONFIG.KEY);
-        console.log("✅ Supabase Engine: Connected Safely.");
-    }
-}
-
-async function syncData() {
-    TITAN_STATE.ui.isLoading = true;
-    const { data, error } = await TITAN_STATE.client
-        .from(TITAN_CONFIG.TABLE)
-        .select('*')
-        .order('created_at', { ascending: false });
-
-    if (error) throw error;
-
-    TITAN_STATE.leads = data;
-    processBusinessLogic();
-    TITAN_STATE.ui.isLoading = false;
-}
-
-/**
- * [MODULE 3: REAL-TIME ENGINE]
- * Webhook bata aako message thau ko thau dashboard ma dekhau-ne
- */
-function setupRealtimeEngine() {
-    TITAN_STATE.client
-        .channel('any')
-        .on('postgres_changes', { event: '*', schema: 'public', table: TITAN_CONFIG.TABLE }, payload => {
-            console.log("⚡ Real-time Update Received:", payload);
-            syncData(); // Instant Refresh
-            playAlertSound();
-            showNotification("System Updated: New Message Received", "info");
-        })
-        .subscribe();
-}
-
-/**
- * [MODULE 4: FINANCIAL ANALYTICS & LOGIC]
- * Hisab-kitab engine
- */
-function processBusinessLogic() {
-    // Reset Stats
-    TITAN_STATE.stats = { totalIncome: 0, successCount: 0, pendingCount: 0, inquiryCount: 0, problemCount: 0, whatsappLeads: 0, messengerLeads: 0 };
-
-    TITAN_STATE.leads.forEach(lead => {
-        // Financial Logic
-        if (lead.status === 'success') {
-            TITAN_STATE.stats.totalIncome += (Number(lead.payment) || 0);
-            TITAN_STATE.stats.successCount++;
+        if (mode === 'subscribe' && token === CONFIG.VERIFY_TOKEN) {
+            console.log('✅ WHATSAPP_WEBHOOK: Verified Successfully');
+            return res.status(200).send(challenge);
         }
-        
-        // Status Tracker
-        if (lead.status === 'pending') TITAN_STATE.stats.pendingCount++;
-        if (lead.status === 'inquiry') TITAN_STATE.stats.inquiryCount++;
-        if (lead.status === 'problem') TITAN_STATE.stats.problemCount++;
+        return res.status(403).send('Forbidden');
+    }
 
-        // Platform Tracker
-        if (lead.platform === 'whatsapp') TITAN_STATE.stats.whatsappLeads++;
-        if (lead.platform === 'messenger') TITAN_STATE.stats.messengerLeads++;
-    });
+    // --- ROUTE 2: EVENT PROCESSING (म्यासेज आउँदा) ---
+    if (req.method === 'POST') {
+        // Meta लाई तुरुन्तै 200 OK दिनुपर्छ
+        res.status(200).json({ status: 'received' });
 
-    updateUINumbers();
-    applyFiltering();
+        try {
+            const body = req.body;
+            if (!body.object || body.object !== 'whatsapp_business_account') return;
+
+            const entry = body.entry?.[0]?.changes?.[0]?.value;
+            const messages = entry?.messages;
+
+            if (messages && messages[0]) {
+                const msg = messages[0];
+                const from = msg.from; // Customer's WhatsApp Number
+                const userName = entry.contacts?.[0]?.profile?.name || "WhatsApp User";
+                
+                // Content Extraction
+                let textContent = "";
+                let mediaUrl = null;
+
+                if (msg.type === 'text') {
+                    textContent = msg.text.body;
+                } else if (msg.type === 'image') {
+                    textContent = "Sent an image";
+                    mediaUrl = await getWhatsAppMedia(msg.image.id);
+                } else if (msg.type === 'document') {
+                    textContent = "Sent a document: " + (msg.document.filename || "");
+                    mediaUrl = await getWhatsAppMedia(msg.document.id);
+                }
+
+                // 1. SERVICE DETECTION (Titan Smart Logic)
+                const detected = analyzeContent(textContent);
+
+                // 2. SAVE TO SUPABASE
+                const leadPayload = {
+                    customer_name: userName,
+                    platform: 'whatsapp',
+                    status: 'inquiry',
+                    service: detected.service,
+                    summary: textContent.slice(0, 500),
+                    file_url: mediaUrl,
+                    payment: 0,
+                    operator_note: `WA_ID: ${from} | MsgID: ${msg.id}`,
+                    created_at: new Date().toISOString()
+                };
+
+                const { error } = await supabase.from(CONFIG.TABLE).insert([leadPayload]);
+
+                if (!error) {
+                    // 3. AUTO ACKNOWLEDGEMENT
+                    await sendWAReply(from, userName, detected.service);
+                }
+            }
+        } catch (err) {
+            console.error("🔥 WA_ENGINE_ERROR:", err.message);
+        }
+    }
 }
 
-function updateUINumbers() {
-    const map = {
-        'statIncome': `Rs. ${TITAN_STATE.stats.totalIncome.toLocaleString()}`,
-        'statSuccess': TITAN_STATE.stats.successCount,
-        'statPending': TITAN_STATE.stats.pendingCount,
-        'statInquiry': TITAN_STATE.stats.inquiryCount,
-        'statProblem': TITAN_STATE.stats.problemCount
+/**
+ * MODULE: WHATSAPP MEDIA FETCH
+ * WhatsApp को म्यासेजबाट फोटो/PDF डाउनलोड गर्ने URL निकाल्छ
+ */
+async function getWhatsAppMedia(mediaId) {
+    try {
+        const response = await fetch(`https://graph.facebook.com/v19.0/${mediaId}?access_token=${CONFIG.WA_TOKEN}`);
+        const data = await response.json();
+        return data.url; // यो URL सुपबेसमा सेभ हुन्छ
+    } catch (e) { return null; }
+}
+
+/**
+ * MODULE: AI KEYWORD ANALYZER
+ */
+function analyzeContent(text) {
+    const input = text.toLowerCase();
+    const rules = [
+        { kw: ['passport', 'rahadani', 'mrp'], service: 'Passport' },
+        { kw: ['pan', 'tax', 'bill'], service: 'PAN Card' },
+        { kw: ['license', 'licence', 'bike', 'car'], service: 'Driving License' },
+        { kw: ['nid', 'national id', 'rastriya'], service: 'NID' }
+    ];
+
+    for (const rule of rules) {
+        if (rule.kw.some(k => input.includes(k))) return { service: rule.service };
+    }
+    return { service: 'General Inquiry' };
+}
+
+/**
+ * MODULE: AUTO-RESPONDER
+ */
+async function sendWAReply(to, name, service) {
+    const url = `https://graph.facebook.com/v19.0/${CONFIG.PHONE_NUMBER_ID}/messages`;
+    const body = {
+        messaging_product: "whatsapp",
+        to: to,
+        type: "text",
+        text: { body: `Namaste ${name}! 🙏\n\nWe have received your request for *${service}*. Our team is reviewing your details and will get back to you shortly.` }
     };
 
-    Object.entries(map).forEach(([id, val]) => {
-        const el = document.getElementById(id);
-        if (el) el.innerText = val;
+    await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${CONFIG.WA_TOKEN}` },
+        body: JSON.stringify(body)
     });
 }
-
-/**
- * [MODULE 5: ADVANCED TABLE & MEDIA RENDERER]
- */
-function renderTable() {
-    const container = document.getElementById('tableBody');
-    if (!container) return;
-
-    container.innerHTML = TITAN_STATE.filtered.map(lead => `
-        <tr class="hover:bg-blue-50/50 transition-all border-b border-gray-100">
-            <td class="px-6 py-4 font-mono text-[10px] text-gray-400">
-                ${new Date(lead.created_at).toLocaleString('ne-NP')}
-            </td>
-            <td class="px-6 py-4 text-center">
-                <i class="fab fa-${lead.platform} text-xl ${lead.platform === 'whatsapp' ? 'text-green-500' : 'text-blue-600'}"></i>
-            </td>
-            <td class="px-6 py-4">
-                <div class="font-bold text-gray-800">${lead.customer_name || 'Anonymous'}</div>
-                <div class="text-[10px] text-gray-400">#${lead.id.split('-')[0]}</div>
-            </td>
-            <td class="px-6 py-4 text-xs font-medium text-gray-600">${lead.service || '-'}</td>
-            
-            <td class="px-6 py-4 text-center">
-                ${renderMedia(lead.file_url)}
-            </td>
-
-            <td class="px-6 py-4">
-                <select onchange="updateLeadStatus('${lead.id}', this.value)" 
-                        class="badge-${lead.status} border-0 rounded-lg text-[10px] font-black p-2 uppercase outline-none cursor-pointer shadow-sm">
-                    <option value="inquiry" ${lead.status === 'inquiry' ? 'selected' : ''}>Inquiry</option>
-                    <option value="pending" ${lead.status === 'pending' ? 'selected' : ''}>Pending</option>
-                    <option value="working" ${lead.status === 'working' ? 'selected' : ''}>Working</option>
-                    <option value="success" ${lead.status === 'success' ? 'selected' : ''}>Success</option>
-                    <option value="problem" ${lead.status === 'problem' ? 'selected' : ''}>Problem</option>
-                </select>
-            </td>
-
-            <td class="px-6 py-4">
-                <div class="text-[11px] text-blue-600 font-semibold max-w-[150px] truncate" title="${lead.summary}">
-                    ${lead.summary || 'Analyzing inquiry...'}
-                </div>
-            </td>
-
-            <td class="px-6 py-4">
-                <textarea onchange="updateOperatorNote('${lead.id}', this.value)" 
-                          placeholder="Note to operator..."
-                          class="w-full bg-transparent border-b border-dashed border-gray-300 text-[10px] focus:border-blue-500 outline-none resize-none">${lead.operator_note || ''}</textarea>
-            </td>
-
-            <td class="px-6 py-4 font-black text-emerald-600">
-                Rs. ${(lead.payment || 0).toLocaleString()}
-            </td>
-            
-            <td class="px-6 py-4 text-center">
-                <button onclick="deleteLead('${lead.id}')" class="text-gray-300 hover:text-red-500 transition">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </td>
-        </tr>
-    `).join('');
-}
-
-function renderMedia(url) {
-    if (!url) return '<span class="text-gray-200">-</span>';
-    const isPDF = url.toLowerCase().endsWith('.pdf');
-    if (isPDF) {
-        return `<a href="${url}" target="_blank" class="text-red-500 text-xl hover:scale-120 transition-transform inline-block">
-                    <i class="fas fa-file-pdf"></i>
-                </a>`;
-    }
-    return `<img src="${url}" onclick="window.open('${url}')" 
-                 class="w-10 h-10 object-cover rounded-lg border border-gray-200 cursor-pointer hover:shadow-lg transition">`;
-}
-
-/**
- * [MODULE 6: DATA EXPORT & REPORTS]
- */
-function exportFinancialReport() {
-    const headers = "Date,Customer,Platform,Service,Payment,Status\n";
-    const rows = TITAN_STATE.filtered.map(l => 
-        `${l.created_at},${l.customer_name},${l.platform},${l.service},${l.payment},${l.status}`
-    ).join("\n");
-
-    const blob = new Blob([headers + rows], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Titan_Report_${new Date().toISOString().slice(0,10)}.csv`;
-    a.click();
-    showNotification("Financial CSV Exported!", "success");
-}
-
-/**
- * [MODULE 7: UTILITIES]
- */
-async function updateLeadStatus(id, newStatus) {
-    const { error } = await TITAN_STATE.client.from(TITAN_CONFIG.TABLE).update({ status: newStatus }).eq('id', id);
-    if (!error) {
-        showNotification("Status Updated", "success");
-        syncData();
-    }
-}
-
-async function updateOperatorNote(id, note) {
-    await TITAN_STATE.client.from(TITAN_CONFIG.TABLE).update({ operator_note: note }).eq('id', id);
-    showNotification("Note Saved", "info");
-}
-
-async function deleteLead(id) {
-    if (!confirm("Are you sure you want to delete this record?")) return;
-    const { error } = await TITAN_STATE.client.from(TITAN_CONFIG.TABLE).delete().eq('id', id);
-    if (!error) {
-        showNotification("Record Deleted", "success");
-        syncData();
-    }
-}
-
-function applyFiltering() {
-    let results = TITAN_STATE.leads;
-
-    if (TITAN_STATE.ui.currentPlatform !== 'all') {
-        results = results.filter(l => l.platform === TITAN_STATE.ui.currentPlatform);
-    }
-
-    if (TITAN_STATE.ui.searchQuery) {
-        const q = TITAN_STATE.ui.searchQuery.toLowerCase();
-        results = results.filter(l => 
-            l.customer_name?.toLowerCase().includes(q) || 
-            l.service?.toLowerCase().includes(q)
-        );
-    }
-
-    TITAN_STATE.filtered = results;
-    renderTable();
-}
-
-function showNotification(msg, type) {
-    const zone = document.getElementById('notificationZone');
-    const div = document.createElement('div');
-    div.className = `notification ${type} flex items-center p-4 mb-2 rounded-xl shadow-lg animate-bounce-in`;
-    div.innerHTML = `<i class="fas fa-bell mr-3"></i> <span class="text-xs font-bold">${msg}</span>`;
-    zone.appendChild(div);
-    setTimeout(() => div.remove(), 4000);
-}
-
-function playAlertSound() {
-    const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3');
-    audio.play().catch(() => {});
-}
-
-function initUIComponents() {
-    document.getElementById('searchInput')?.addEventListener('input', (e) => {
-        TITAN_STATE.ui.searchQuery = e.target.value;
-        applyFiltering();
-    });
-
-    setInterval(() => {
-        const el = document.getElementById('lastUpdate');
-        if (el) el.innerHTML = `<span class="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-2"></span> LIVE: ${new Date().toLocaleTimeString()}`;
-    }, 1000);
-}
-
-// Global Exports for Buttons
-window.filterPlatform = (p) => {
-    TITAN_STATE.ui.currentPlatform = p;
-    applyFiltering();
-};
-window.exportData = exportFinancialReport;
