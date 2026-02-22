@@ -33,9 +33,9 @@
 </head>
 <body class="min-h-screen">
 
-    <div id="loginPage" class="fixed inset-0 z-[500] flex items-center justify-center p-6 bg-[#020617]">
-        <div class="glass-panel w-full max-w-md rounded-[40px] p-10 shadow-2xl relative overflow-hidden border-blue-500/20">
-            <div class="absolute -top-20 -left-20 w-40 h-40 bg-blue-600/20 blur-[80px]"></div>
+    <div id="loginPage" class="fixed inset-0 z-[500] flex items-center justify-center p-6 bg-[#020617] transition-all duration-500">
+    <div class="glass-panel w-full max-w-md rounded-[40px] p-10 shadow-2xl relative overflow-hidden border-blue-500/20">
+    <div class="absolute -top-20 -left-20 w-40 h-40 bg-blue-600/20 blur-[80px]"></div>
             <div class="relative z-10 text-center">
                 <div class="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-3xl shadow-lg mb-6">
                     <i class="fas fa-shield-halved text-3xl text-white"></i>
@@ -136,7 +136,6 @@
     <script src="dashboard.js"></script>
 
     <script>
-    // तपाईंले माग्नुभएको थपिएका variable हरू र मुख्य logic:
     const loginPage = document.getElementById('loginPage');
     const dashboardPage = document.getElementById('dashboardPage');
     const loginForm = document.getElementById('loginForm');
@@ -146,46 +145,49 @@
         const u = document.getElementById('username').value;
         const p = document.getElementById('password').value;
         
-            try {
-                // सुधार: TitanEngine सिधै विन्डोबाट तान्ने, तर यो लोड हुन केही समय लाग्न सक्छ
-                const engine = window.TitanEngine;
-                
-                if (!engine || !engine.client) {
-                    alert("🚀 SYSTEM INITIALIZING: Please wait 2 seconds and try again.");
-                    return;
-                }
-
-                const { data: staff, error } = await engine.client
-                    .from('staff')
-                    .select('*')
-                    .eq('username', u)
-                    .eq('password', p)
-                    .single();
-
-                if (error || !staff) {
-                    alert("❌ INVALID CIPHER: ACCESS DENIED");
-                    return;
-                }
-
-                // लगइन सफल
-                loginPage.classList.add('hidden');
-                dashboardPage.classList.remove('hidden');
-                document.getElementById('userDisplay').innerText = `ACCESS LEVEL: ${staff.full_name}`;
-                
-                // डेटा सिंक सुरु गर्ने
-                if (window.syncCoreDatabase) {
-                    window.syncCoreDatabase();
-                }
-
-            } catch (err) {
-                console.error("Auth Error:", err);
-                alert("SYSTEM ERROR: UNABLE TO CONNECT");
+        try {
+            const engine = window.TitanEngine;
+            
+            if (!engine || !engine.client) {
+                alert("🚀 SYSTEM INITIALIZING: Please wait 2 seconds and try again.");
+                return;
             }
-        });
-        // लगआउट बटन फङ्सन
-        document.getElementById('logoutBtn').addEventListener('click', () => {
-            location.reload();
-        });
+
+            // डाटाबेसमा स्टाफ चेक गर्ने (यो भाग माथि छुटेको थियो)
+            const { data: staff, error } = await engine.client
+                .from('staff')
+                .select('*')
+                .eq('username', u)
+                .eq('password', p)
+                .single();
+
+            if (error || !staff) {
+                alert("❌ INVALID CIPHER: ACCESS DENIED");
+                return;
+            }
+
+            // लगइन सफल भएपछि UI परिवर्तन गर्ने
+            loginPage.style.display = 'none'; 
+            dashboardPage.classList.remove('hidden');
+            dashboardPage.style.display = 'flex';
+            
+            document.getElementById('userDisplay').innerText = `ACCESS LEVEL: ${staff.full_name}`;
+            
+            // डेटा सिंक सुरु गर्ने
+            if (window.syncCoreDatabase) {
+                window.syncCoreDatabase();
+            }
+
+        } catch (err) {
+            console.error("Auth Error:", err);
+            alert("SYSTEM ERROR: UNABLE TO CONNECT TO DATABASE");
+        }
+    });
+
+    // लगआउट बटन
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+        location.reload();
+    });
     </script>
 </body>
 </html>

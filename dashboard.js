@@ -319,17 +319,21 @@ const TITAN_CONFIG = {
         }
     };
 
-window.TitanEngine = {
+// --- यसलाई रिप्लेस गर्नुहोस् ---
+    window.TitanEngine = {
         get client() { return TitanEngine.client; }, 
         
         async updateStatus(id, status) {
             const ok = await DataLayer.updateLead(id, { status });
             if (ok) await TitanEngine.performFirstSync();
         },
-        // ... बाँकी अरू कोड उस्तै
+
         async updateNote(id, operator_note) {
+            // Note: यहाँ table मा column को नाम 'operator_instruction' छ कि 'operator_note'? 
+            // तपाईँको database अनुसार यो मिल्नुपर्छ।
             await DataLayer.updateLead(id, { operator_instruction: operator_note });
         },
+
         async deleteRow(id) {
             if (!confirm("Confirm Destruction?")) return;
             const { error } = await TitanEngine.client.from(CONFIG.DB_TABLE).delete().eq('id', id);
@@ -338,6 +342,7 @@ window.TitanEngine = {
                 await TitanEngine.performFirstSync();
             }
         },
+
         filterPlatform(p) {
             STATE.ui.activePlatform = p;
             UI.renderTable();
@@ -346,16 +351,16 @@ window.TitanEngine = {
 
     window.syncCoreDatabase = () => TitanEngine.performFirstSync();
 
-    // Start Everything
+    // Engine सुरु गर्ने
     TitanEngine.init();
 
-    // Attach Search Debounce
+    // Search Box लाई एक्टिभ बनाउने
     document.getElementById('searchInput')?.addEventListener('input', Utils.debounce((e) => {
         STATE.ui.searchTerm = e.target.value;
         UI.renderTable();
     }, 300));
 
-})();
+})(); // यो अन्तिम ब्र्याकेट हो, यसलाई नहटाउनुहोला
 
 /**
  * =============================================================================
