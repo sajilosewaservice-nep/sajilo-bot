@@ -274,3 +274,23 @@ select:focus, textarea:focus, input:focus {
     
     -webkit-text-fill-color: transparent;
 }
+/* ड्यासबोर्ड देखाउनका लागि विशेष फिक्स */
+#dashboardPage:not(.hidden) {
+    display: flex !important;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* टेबलको डेटा देखिने बनाउन */
+#tableBody td {
+    color: #f8fafc !important; /* सेतो रङ ताकि गाढा ब्याकग्राउन्डमा देखियोस् */
+    opacity: 1 !important;
+}
+
+/* ड्यासबोर्डको कन्ट्याक्ट एरिया */
+main {
+    position: relative;
+    z-index: 10;
+}
