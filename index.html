@@ -102,49 +102,60 @@
             </div>
 
             <div class="glass-panel rounded-[32px] overflow-hidden shadow-2xl border-white/5">
-                <div class="overflow-x-auto overflow-y-auto max-h-[600px]">
-                    <table class="w-full text-left border-collapse">
-                        <thead class="sticky top-0 bg-[#0f172a] z-20">
-                            <tr class="text-[9px] font-black uppercase text-slate-400 border-b border-white/10">
-                                <th class="px-5 py-4">Date & Source</th>
-                                <th class="px-5 py-4">Customer Details</th>
-                                <th class="px-5 py-4">Service Type</th>
-                                <th class="px-5 py-4">Current Status</th>
-                                <th class="px-5 py-4">Documents (PCC/PAS/VIS)</th>
-                                <th class="px-5 py-4 text-right">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tableBody" class="divide-y divide-white/5 text-[11px] font-semibold">
-                            </tbody>
-                    </table>
-                </div>
-            </div>
-        </main>
+    <div class="overflow-x-auto overflow-y-auto max-h-[600px]">
+        <table class="w-full text-left border-collapse">
+            <thead class="sticky top-0 bg-[#0f172a] z-20">
+                <tr class="text-[9px] font-black uppercase text-slate-400 border-b border-white/10">
+                    <th class="px-5 py-4">ID</th>
+                    <th class="px-5 py-4">Date</th>
+                    <th class="px-5 py-4">Updated</th>
+                    <th class="px-5 py-4">Platform</th>
+                    <th class="px-5 py-4">Mess. ID</th>
+                    <th class="px-5 py-4">Phone</th>
+                    <th class="px-5 py-4">Customer</th>
+                    <th class="px-5 py-4">AI Summary</th>
+                    <th class="px-5 py-4">Service</th>
+                    <th class="px-5 py-4">Status</th>
+                    <th class="px-5 py-4">Instruction</th>
+                    <th class="px-5 py-4 text-right">Income</th>
+                    <th class="px-5 py-4">Staff</th>
+                    <th class="px-5 py-4 text-center">Docs</th>
+                    <th class="px-5 py-4 text-right">Action</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody" class="divide-y divide-white/5 text-[11px] font-semibold">
+                </tbody>
+        </table>
     </div>
+</div>
+</main>
+</div>
 
     <div id="notificationZone" class="fixed bottom-6 right-6 z-[1000] flex flex-col gap-2"></div>
 
     <script src="dashboard.js"></script>
 
     <script>
-        const loginForm = document.getElementById('loginForm');
-        const loginPage = document.getElementById('loginPage');
-        const dashboardPage = document.getElementById('dashboardPage');
+    // तपाईंले माग्नुभएको थपिएका variable हरू र मुख्य logic:
+    const loginPage = document.getElementById('loginPage');
+    const dashboardPage = document.getElementById('dashboardPage');
+    const loginForm = document.getElementById('loginForm');
 
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const u = document.getElementById('username').value;
-            const p = document.getElementById('password').value;
-
+    loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const u = document.getElementById('username').value;
+        const p = document.getElementById('password').value;
+        
             try {
-                // हामीले dashboard.js मा बनाएको TitanEngine भित्रको client प्रयोग गर्ने
-                // किनकि हामीले Supabase त्यहीँ Setup गरेका छौँ
-                if (!window.TitanEngine || !window.TitanEngine.client) {
-                    alert("SYSTEM ERROR: Titan Engine not ready yet.");
+                // सुधार: TitanEngine सिधै विन्डोबाट तान्ने, तर यो लोड हुन केही समय लाग्न सक्छ
+                const engine = window.TitanEngine;
+                
+                if (!engine || !engine.client) {
+                    alert("🚀 SYSTEM INITIALIZING: Please wait 2 seconds and try again.");
                     return;
                 }
 
-                const { data: staff, error } = await window.TitanEngine.client
+                const { data: staff, error } = await engine.client
                     .from('staff')
                     .select('*')
                     .eq('username', u)
@@ -156,22 +167,21 @@
                     return;
                 }
 
-                // लगइन सफल: स्क्रिन बदल्ने
+                // लगइन सफल
                 loginPage.classList.add('hidden');
                 dashboardPage.classList.remove('hidden');
                 document.getElementById('userDisplay').innerText = `ACCESS LEVEL: ${staff.full_name}`;
                 
                 // डेटा सिंक सुरु गर्ने
-                if (typeof window.syncCoreDatabase === 'function') {
+                if (window.syncCoreDatabase) {
                     window.syncCoreDatabase();
                 }
 
             } catch (err) {
                 console.error("Auth Error:", err);
-                alert("SYSTEM ERROR: UNABLE TO CONNECT TO DATABASE");
+                alert("SYSTEM ERROR: UNABLE TO CONNECT");
             }
         });
-
         // लगआउट बटन फङ्सन
         document.getElementById('logoutBtn').addEventListener('click', () => {
             location.reload();
