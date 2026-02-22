@@ -8,9 +8,9 @@
  * =============================================================================
  */
 const TITAN_CONFIG = {
-    URL: "https://ratgpvubjrcoipardzdp.supabase.co", // तपाईंको URL
-    KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJhdGdwdnVianJjb2lwYXJkemRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzMTg0OTMsImV4cCI6MjA4Mzg5NDQ5M30.t1eofJj9dPK-Psp_oL3LpCWimyz621T21JNpZljEGZk",
-    TABLE: 'leads',
+    URL: "https://ratgpvubjrcoipardzdp.supabase.co",
+    KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    TABLE: 'customers', // यहाँ 'leads' थियो, यसलाई मात्र 'customers' बनाउनुहोस्
     VERSION: '4.0.0-PRO'
 };
 (function() {
@@ -140,9 +140,6 @@ const TITAN_CONFIG = {
         }
     };
 
-    /**
-     * [MODULE: ANALYTICS & LOGIC ENGINE]
-     */
     const AnalyticsEngine = {
         computeAll() {
             const stats = {
@@ -157,16 +154,23 @@ const TITAN_CONFIG = {
             };
 
             STATE.rawLeads.forEach(l => {
-                const val = parseFloat(l.payment || 0);
+                const val = parseFloat(l.income || 0);
+                
+                // Status गणना (यहाँ 'success' एक पटक मात्र छ)
                 if (l.status === 'success') {
                     stats.income += val;
                     stats.success++;
+                } else if (l.status === 'pending') {
+                    stats.pending++;
+                } else if (l.status === 'inquiry') {
+                    stats.inquiry++;
+                } else if (l.status === 'working') {
+                    stats.working++;
+                } else if (l.status === 'problem') {
+                    stats.problem++;
                 }
-                if (l.status === 'pending') stats.pending++;
-                if (l.status === 'inquiry') stats.inquiry++;
-                if (l.status === 'working') stats.working++;
-                if (l.status === 'problem') stats.problem++;
 
+                // Platform गणना
                 l.platform === 'whatsapp' ? stats.wa++ : stats.msgr++;
             });
 
@@ -196,7 +200,6 @@ const TITAN_CONFIG = {
             for (const [id, val] of Object.entries(ids)) {
                 const el = document.getElementById(id);
                 if (el) {
-                    // Animation logic for numbers
                     el.innerText = val;
                 }
             }
@@ -206,69 +209,68 @@ const TITAN_CONFIG = {
             const tbody = document.getElementById('tableBody');
             if (!tbody) return;
 
-            const filtered = STATE.rawLeads.filter(l => {
-                const matchesSearch = l.customer_name?.toLowerCase().includes(STATE.ui.searchTerm.toLowerCase()) ||
-                                     l.service?.toLowerCase().includes(STATE.ui.searchTerm.toLowerCase());
-                const matchesPlatform = STATE.ui.activePlatform === 'all' || l.platform === STATE.ui.activePlatform;
+            const filtered = STATE.rawLeads.filter(customer => {
+                const matchesSearch = customer.customer_name?.toLowerCase().includes(STATE.ui.searchTerm.toLowerCase()) ||
+                                     customer.service?.toLowerCase().includes(STATE.ui.searchTerm.toLowerCase());
+                const matchesPlatform = STATE.ui.activePlatform === 'all' || customer.platform === STATE.ui.activePlatform;
                 return matchesSearch && matchesPlatform;
             });
 
-            tbody.innerHTML = filtered.map(lead => this.createRowHTML(lead)).join('');
+            tbody.innerHTML = filtered.map(customer => this.createRowHTML(customer)).join('');
         },
 
-        createRowHTML(lead) {
-            const platformIcon = lead.platform === 'whatsapp' 
+        createRowHTML(customer) {
+            const platformIcon = customer.platform === 'whatsapp' 
                 ? '<i class="fab fa-whatsapp text-emerald-500"></i>' 
                 : '<i class="fab fa-facebook-messenger text-blue-500"></i>';
 
             return `
                 <tr class="vibrant-table-row border-b border-white/5 hover:bg-white/5 transition-all">
                     <td class="px-3 py-4 text-[10px] font-mono text-slate-400">
-                        ${new Date(lead.created_at).toLocaleString('ne-NP')}
+                        ${new Date(customer.created_at).toLocaleString('ne-NP')}
                     </td>
                     <td class="px-3 py-4 text-center">${platformIcon}</td>
                     <td class="px-3 py-4">
-                        <div class="font-bold text-slate-100">${lead.customer_name || 'Walk-in'}</div>
-                        <div class="text-[8px] opacity-40 uppercase">ID: ${lead.id.slice(0,8)}</div>
+                        <div class="font-bold text-slate-100">${customer.customer_name || 'Walk-in'}</div>
+                        <div class="text-[8px] opacity-40 uppercase">ID: ${customer.id.slice(0,8)}</div>
                     </td>
                     <td class="px-3 py-4">
                         <span class="bg-slate-800/50 px-2 py-1 rounded border border-white/5 text-[10px]">
-                            ${lead.service || 'N/A'}
+                            ${customer.service || 'N/A'}
                         </span>
                     </td>
                     <td class="px-3 py-4">
-                        <select onchange="window.TitanEngine.updateStatus('${lead.id}', this.value)" 
+                        <select onchange="window.TitanEngine.updateStatus('${customer.id}', this.value)" 
                                 class="bg-transparent text-[9px] font-black uppercase border border-white/10 rounded-md p-1 outline-none">
-                            <option value="inquiry" ${lead.status === 'inquiry' ? 'selected' : ''}>Inquiry</option>
-                            <option value="pending" ${lead.status === 'pending' ? 'selected' : ''}>Pending</option>
-                            <option value="working" ${lead.status === 'working' ? 'selected' : ''}>Working</option>
-                            <option value="success" ${lead.status === 'success' ? 'selected' : ''}>Success</option>
-                            <option value="problem" ${lead.status === 'problem' ? 'selected' : ''}>Problem</option>
+                            <option value="inquiry" ${customer.status === 'inquiry' ? 'selected' : ''}>Inquiry</option>
+                            <option value="pending" ${customer.status === 'pending' ? 'selected' : ''}>Pending</option>
+                            <option value="working" ${customer.status === 'working' ? 'selected' : ''}>Working</option>
+                            <option value="success" ${customer.status === 'success' ? 'selected' : ''}>Success</option>
+                            <option value="problem" ${customer.status === 'problem' ? 'selected' : ''}>Problem</option>
                         </select>
                     </td>
                     <td class="px-3 py-4 text-[10px] text-blue-300 italic max-w-[150px] truncate">
-                        ${lead.summary || 'Waiting for AI...'}
+                        ${customer.summary || 'Waiting for AI...'}
                     </td>
                     <td class="px-3 py-4">
-                         <input type="text" value="${lead.operator_note || ''}" 
-                                onblur="window.TitanEngine.updateNote('${lead.id}', this.value)"
+                         <input type="text" value="${customer.operator_instruction || ''}" 
+                                onblur="window.TitanEngine.updateNote('${customer.id}', this.value)"
                                 class="bg-transparent border-b border-white/10 w-full text-[10px] outline-none focus:border-blue-500">
                     </td>
                     <td class="px-3 py-4 text-right font-black text-emerald-400">
-                        ${CONFIG.CURRENCY} ${parseFloat(lead.payment || 0).toLocaleString()}
+                        ${CONFIG.CURRENCY} ${parseFloat(customer.income || 0).toLocaleString()}
                     </td>
                     <td class="px-3 py-4 text-center">
-                        ${lead.file_url ? `<button onclick="window.open('${lead.file_url}')" class="text-blue-400 hover:text-white"><i class="fas fa-file-alt"></i></button>` : '-'}
+                        ${customer.file_url ? `<button onclick="window.open('${customer.file_url}')" class="text-blue-400 hover:text-white"><i class="fas fa-file-alt"></i></button>` : '-'}
                     </td>
                     <td class="px-3 py-4 text-right">
-                        <button onclick="window.TitanEngine.deleteRow('${lead.id}')" class="text-red-500/50 hover:text-red-500">
+                        <button onclick="window.TitanEngine.deleteRow('${customer.id}')" class="text-red-500/50 hover:text-red-500">
                             <i class="fas fa-trash-alt text-xs"></i>
                         </button>
                     </td>
                 </tr>
             `;
         },
-
         notify(msg, type = 'info') {
             const zone = document.getElementById('notificationZone');
             if (!zone) return;
@@ -317,19 +319,16 @@ const TITAN_CONFIG = {
         }
     };
 
-    /**
-     * [EXPORTING GLOBAL ACTIONS]
-     */
-    window.TitanEngine = {
-        // यो लाइन थप्नुस्, यसले नै लगइन पेजलाई Database सँग जोड्छ
-        client: TitanEngine.client, 
+window.TitanEngine = {
+        get client() { return TitanEngine.client; }, 
         
         async updateStatus(id, status) {
             const ok = await DataLayer.updateLead(id, { status });
             if (ok) await TitanEngine.performFirstSync();
         },
+        // ... बाँकी अरू कोड उस्तै
         async updateNote(id, operator_note) {
-            await DataLayer.updateLead(id, { operator_note });
+            await DataLayer.updateLead(id, { operator_instruction: operator_note });
         },
         async deleteRow(id) {
             if (!confirm("Confirm Destruction?")) return;
