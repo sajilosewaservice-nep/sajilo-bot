@@ -7,23 +7,24 @@
  * Modules: Analytics, Real-time Sync, Financial Engine, UI Orchestrator
  * =============================================================================
  */
+// Vite मा Environment Variables तान्न यो नै सही तरिका हो
 const TITAN_CONFIG = {
-    URL: "https://ratgpvubjrcoipardzdp.supabase.co",
-    KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJhdGdwdnVianJjb2lwYXJkemRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzMTg0OTMsImV4cCI6MjA4Mzg5NDQ5M30.t1eofJj9dPK-Psp_oL3LpCWimyz621T21JNpZljEGZk",
-    TABLE: 'customers', // यहाँ 'leads' थियो, यसलाई मात्र 'customers' बनाउनुहोस्
+    URL: import.meta.env.VITE_SUPABASE_URL, 
+    KEY: import.meta.env.VITE_SUPABASE_ANON_KEY,
+    TABLE: 'customers', 
     VERSION: '4.0.0-PRO'
 };
+
 (function() {
     "use strict";
 
-    // 1. CONSTANTS & SECURITY CONFIG
     const CONFIG = {
         VERSION: '4.2.0-ULTIMATE',
-        DB_TABLE: 'customers', // यहाँ 'leads' लाई हटाएर 'customers' राख्नुहोस्
-        PAGE_LIMIT: 15,        // १५ वटा मात्र डाटा देखाउन यो थप्नुहोस्
+        DB_TABLE: TITAN_CONFIG.TABLE,
+        PAGE_LIMIT: 15,
         REFRESH_INTERVAL: 30000,
         CURRENCY: 'Rs.',
-        LOG_PREFIX: '🚀 [TITAN_CORE]',
+        LOG_PREFIX: '🚀 [TITAN_VITE_CORE]',
         SOUNDS: {
             NOTIFICATION: 'https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3',
             SUCCESS: 'https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3'
