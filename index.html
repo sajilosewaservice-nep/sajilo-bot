@@ -1,193 +1,389 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="en" class="dark">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>TITAN ENTERPRISE v4 | Advanced RPA Engine</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TITAN ERP v4 | Ultimate SaaS Dashboard</title>
+    
+    <meta name="description" content="Advanced RPA and CRM System for Automated Form Filling">
+    <meta name="author" content="Online Sajilo Service">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
-        :root { --glass: rgba(255, 255, 255, 0.03); --glass-border: rgba(255, 255, 255, 0.1); }
-        * { font-family: 'Plus Jakarta Sans', sans-serif !important; }
-        body {
-            background: #020617;
-            background-image: radial-gradient(at 0% 0%, rgba(30, 64, 175, 0.15) 0px, transparent 50%),
-                              radial-gradient(at 100% 100%, rgba(88, 28, 135, 0.15) 0px, transparent 50%);
-            color: #f8fafc;
-            overflow-x: hidden;
-        }
-        .glass-panel { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); border: 1px solid var(--glass-border); }
-        .status-badge { font-size: 9px; font-weight: 800; padding: 4px 10px; border-radius: 8px; text-transform: uppercase; letter-spacing: 1px; }
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap');
         
-        /* 5 Status Colors */
-        .status-inquiry { background: rgba(6, 182, 212, 0.2); color: #06b6d4; border: 1px solid rgba(6, 182, 212, 0.3); }
-        .status-pending { background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); }
-        .status-success { background: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); }
-        .status-processing { background: rgba(139, 92, 246, 0.2); color: #8b5cf6; border: 1px solid rgba(139, 92, 246, 0.3); }
-        .status-problem { background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+        :root {
+            --primary-glow: rgba(59, 130, 246, 0.5);
+            --secondary-glow: rgba(139, 92, 246, 0.5);
+        }
+
+        * { font-family: 'Plus Jakarta Sans', sans-serif; transition: all 0.2s ease-in-out; }
+        body { background: #020617; color: #f8fafc; overflow: hidden; }
+
+        /* Custom Scrollbar for Advanced Look */
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: #020617; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #3b82f6; }
+
+        /* Glassmorphism Classes */
+        .glass-sidebar { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(20px); border-right: 1px solid rgba(255, 255, 255, 0.05); }
+        .glass-card { background: rgba(30, 41, 59, 0.4); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        .glass-header { background: rgba(2, 6, 23, 0.7); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
+
+        /* Animations */
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade { animation: slideIn 0.4s ease forwards; }
+        
+        /* Status Badges */
+        .badge-pulse { position: relative; }
+        .badge-pulse::after {
+            content: ''; position: absolute; width: 8px; height: 8px; border-radius: 50%;
+            right: -2px; top: -2px; animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(3); opacity: 0; } }
+        .success-pulse::after { background: #10b981; }
+
+        /* SaaS Specific Styles */
+        .token-mask { font-family: 'JetBrains Mono', monospace; letter-spacing: 2px; }
     </style>
 </head>
-<body class="min-h-screen">
+<body class="flex h-screen overflow-hidden">
 
-    <div id="loginPage" class="fixed inset-0 z-[500] flex items-center justify-center p-6 bg-[#020617] transition-all duration-500">
-    <div class="glass-panel w-full max-w-md rounded-[40px] p-10 shadow-2xl relative overflow-hidden border-blue-500/20">
-    <div class="absolute -top-20 -left-20 w-40 h-40 bg-blue-600/20 blur-[80px]"></div>
-            <div class="relative z-10 text-center">
-                <div class="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-3xl shadow-lg mb-6">
-                    <i class="fas fa-shield-halved text-3xl text-white"></i>
+    <aside id="sidebar" class="w-72 glass-sidebar flex flex-col z-[100] transition-all duration-500">
+        <div class="p-8">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+                    <i class="fas fa-bolt text-white text-xl"></i>
                 </div>
-                <h1 class="text-3xl font-extrabold tracking-tighter italic text-white">TITAN <span class="text-blue-500">CORE v4</span></h1>
-                <p class="text-[10px] text-slate-500 tracking-[4px] uppercase mt-2 font-bold">Authorized Access Only</p>
-                
-                <form id="loginForm" class="space-y-5 mt-10">
-                    <input type="text" id="username" placeholder="Identity Token" class="w-full bg-slate-900 border border-white/10 rounded-2xl px-6 py-4 outline-none focus:border-blue-500 transition-all text-sm font-bold tracking-widest">
-                    <input type="password" id="password" placeholder="Access Cipher" class="w-full bg-slate-900 border border-white/10 rounded-2xl px-6 py-4 outline-none focus:border-blue-500 transition-all text-sm font-bold tracking-widest">
-                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 py-5 rounded-2xl font-black text-xs uppercase tracking-[3px] shadow-xl transition-all active:scale-95">
-                        Initialize System <i class="fas fa-bolt ml-2 text-yellow-400"></i>
+                <div>
+                    <h1 class="text-xl font-black tracking-tighter text-white">TITAN<span class="text-blue-500 text-sm italic ml-1">v4.PRO</span></h1>
+                    <p class="text-[8px] text-slate-500 font-bold uppercase tracking-[3px]">Enterprise Solution</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex-1 px-4 space-y-1 overflow-y-auto">
+            <p class="px-4 text-[9px] font-black text-slate-600 uppercase tracking-widest mb-2">Main Terminal</p>
+            <a href="#" class="flex items-center gap-3 px-4 py-3 rounded-xl bg-blue-600/10 text-blue-400 border border-blue-500/20 group font-bold text-xs">
+                <i class="fas fa-th-large w-5 text-center group-hover:scale-110"></i> Dashboard Matrix
+            </a>
+            <a href="#" class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-all font-bold text-xs">
+                <i class="fas fa-address-book w-5 text-center"></i> Customer Directory
+            </a>
+            <a href="#" class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-all font-bold text-xs">
+                <i class="fas fa-robot w-5 text-center"></i> RPA Automation
+            </a>
+
+            <p class="px-4 pt-6 text-[9px] font-black text-slate-600 uppercase tracking-widest mb-2">Communication Hub</p>
+            <a href="#" class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-all font-bold text-xs">
+                <i class="fab fa-whatsapp w-5 text-center"></i> WhatsApp API
+            </a>
+            <a href="#" class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-all font-bold text-xs">
+                <i class="fab fa-facebook-messenger w-5 text-center"></i> Messenger Engine
+            </a>
+
+            <p class="px-4 pt-6 text-[9px] font-black text-slate-600 uppercase tracking-widest mb-2">SaaS Engine</p>
+            <a href="#" class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-all font-bold text-xs">
+                <i class="fas fa-file-invoice-dollar w-5 text-center"></i> Revenue & Finance
+            </a>
+            <a href="#" class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-all font-bold text-xs">
+                <i class="fas fa-key w-5 text-center"></i> Token Management
+            </a>
+        </div>
+
+        <div class="p-6 border-t border-white/5">
+            <div class="glass-card rounded-2xl p-4 mb-4">
+                <p class="text-[9px] font-bold text-slate-500 uppercase mb-1">System Health</p>
+                <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                    <div class="bg-blue-500 h-full w-[85%] rounded-full shadow-[0_0_8px_#3b82f6]"></div>
+                </div>
+            </div>
+            <button onclick="location.reload()" class="w-full bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all">
+                <i class="fas fa-power-off mr-2"></i> Terminate Session
+            </button>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col min-w-0 bg-[#020617] relative">
+        
+        <header class="h-20 glass-header px-8 flex items-center justify-between z-50">
+            <div class="flex items-center gap-6 flex-1">
+                <div class="relative w-full max-w-md group">
+                    <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-500 transition-all"></i>
+                    <input type="text" id="searchInput" placeholder="Search customer, ID or forms..." class="w-full bg-slate-900/50 border border-white/5 rounded-2xl pl-12 pr-4 py-3 text-xs font-bold outline-none focus:border-blue-500/50 focus:bg-slate-900 transition-all">
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_#10b981]"></span>
+                    <p class="text-[10px] font-black text-emerald-500 uppercase tracking-tighter">Gateway: Online</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-5">
+                <div class="flex flex-col text-right">
+                    <p class="text-[10px] font-black text-white uppercase" id="userDisplay">Admin Operator</p>
+                    <p class="text-[8px] text-slate-500 font-bold uppercase tracking-widest">Nepal Division</p>
+                </div>
+                <div class="w-12 h-12 glass-card rounded-2xl flex items-center justify-center border-blue-500/30 overflow-hidden relative group cursor-pointer">
+                    <img src="https://ui-avatars.com/api/?name=Shyam+Tamang&background=3b82f6&color=fff" alt="Profile" class="w-full h-full object-cover">
+                    <div class="absolute inset-0 bg-blue-600/20 opacity-0 group-hover:opacity-100 transition-all"></div>
+                </div>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-8 space-y-8">
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-6">
+                <div class="glass-card p-6 rounded-3xl border-t-2 border-blue-500 hover:shadow-lg hover:shadow-blue-500/5 transition-transform">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-400">
+                            <i class="fas fa-wallet text-lg"></i>
+                        </div>
+                        <span class="text-[10px] font-black text-emerald-500">+12%</span>
+                    </div>
+                    <p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Net Revenue</p>
+                    <h3 id="statIncome" class="text-2xl font-black text-white mt-1">Rs. 0</h3>
+                </div>
+                <div class="glass-card p-6 rounded-3xl border-t-2 border-cyan-500">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-10 h-10 bg-cyan-500/10 rounded-xl flex items-center justify-center text-cyan-400">
+                            <i class="fas fa-paper-plane"></i>
+                        </div>
+                    </div>
+                    <p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Inquiries</p>
+                    <h3 id="statInquiry" class="text-2xl font-black text-white mt-1">0</h3>
+                </div>
+                <div class="glass-card p-6 rounded-3xl border-t-2 border-amber-500">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-400">
+                            <i class="fas fa-hourglass-half"></i>
+                        </div>
+                    </div>
+                    <p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Pending Forms</p>
+                    <h3 id="statPending" class="text-2xl font-black text-white mt-1">0</h3>
+                </div>
+                <div class="glass-card p-6 rounded-3xl border-t-2 border-purple-500">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-10 h-10 bg-purple-500/10 rounded-xl flex items-center justify-center text-purple-400">
+                            <i class="fas fa-cog animate-spin-slow"></i>
+                        </div>
+                    </div>
+                    <p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Processing</p>
+                    <h3 id="statWorking" class="text-2xl font-black text-white mt-1">0</h3>
+                </div>
+                <div class="glass-card p-6 rounded-3xl border-t-2 border-emerald-500">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-400">
+                            <i class="fas fa-check-double"></i>
+                        </div>
+                    </div>
+                    <p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Forms Completed</p>
+                    <h3 id="statSuccess" class="text-2xl font-black text-white mt-1">0</h3>
+                </div>
+                <div class="glass-card p-6 rounded-3xl border-t-2 border-red-500">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-10 h-10 bg-red-500/10 rounded-xl flex items-center justify-center text-red-400">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                    </div>
+                    <p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Issues / Problems</p>
+                    <h3 id="statProblem" class="text-2xl font-black text-white mt-1">0</h3>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div class="lg:col-span-2 glass-card rounded-[32px] p-8">
+                    <div class="flex items-center justify-between mb-8">
+                        <div>
+                            <h3 class="text-lg font-black text-white">Neural Analytics</h3>
+                            <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Real-time data synchronization</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button class="bg-blue-600/10 text-blue-500 px-4 py-2 rounded-xl text-[10px] font-black uppercase">Weekly</button>
+                            <button class="text-slate-500 hover:text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase">Monthly</button>
+                        </div>
+                    </div>
+                    <div class="h-[300px] w-full relative">
+                        <canvas id="analyticsChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="glass-card rounded-[32px] p-8 flex flex-col">
+                    <h3 class="text-lg font-black text-white mb-6">Agent Gateway</h3>
+                    <div class="space-y-4 flex-1">
+                        <div class="p-4 bg-slate-900/50 rounded-2xl border border-white/5">
+                            <p class="text-[9px] font-black text-slate-500 uppercase mb-2">WhatsApp Token Status</p>
+                            <div class="flex items-center justify-between">
+                                <span class="token-mask text-[10px] text-blue-400">••••••••••••••••3A7F</span>
+                                <span class="bg-emerald-500/10 text-emerald-500 px-2 py-1 rounded text-[8px] font-bold uppercase">Active</span>
+                            </div>
+                        </div>
+                        <div class="p-4 bg-slate-900/50 rounded-2xl border border-white/5">
+                            <p class="text-[9px] font-black text-slate-500 uppercase mb-2">Form Filler API</p>
+                            <div class="flex items-center justify-between">
+                                <span class="token-mask text-[10px] text-slate-400">ID: titan_rpa_core_01</span>
+                                <span class="bg-blue-500/10 text-blue-500 px-2 py-1 rounded text-[8px] font-bold uppercase">Ready</span>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="w-full mt-6 bg-gradient-to-r from-blue-600 to-indigo-600 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-blue-500/20 active:scale-95 transition-all">
+                        Update Access Tokens
                     </button>
-                </form>
+                </div>
+            </div>
+
+            <div class="glass-card rounded-[40px] overflow-hidden border border-white/5">
+                <div class="px-8 py-6 border-b border-white/5 flex items-center justify-between">
+                    <div class="flex items-center gap-6">
+                        <h3 class="text-lg font-black text-white">Customer Hub</h3>
+                        <div class="flex gap-2 p-1 bg-slate-900 rounded-xl border border-white/5">
+                            <button onclick="window.TitanEngine.filterPlatform('all')" class="px-4 py-2 rounded-lg text-[10px] font-black uppercase text-white bg-white/5">All</button>
+                            <button onclick="window.TitanEngine.filterPlatform('whatsapp')" class="px-4 py-2 rounded-lg text-[10px] font-black uppercase text-emerald-500 hover:bg-emerald-500/5">WhatsApp</button>
+                            <button onclick="window.TitanEngine.filterPlatform('messenger')" class="px-6 py-2 rounded-lg text-[10px] font-black uppercase text-blue-500 hover:bg-blue-500/5">Messenger</button>
+                        </div>
+                    </div>
+                    <button onclick="syncCoreDatabase()" class="flex items-center gap-2 text-blue-500 hover:text-white text-[10px] font-black uppercase tracking-widest transition-all">
+                        <i class="fas fa-sync-alt"></i> Force Cloud Sync
+                    </button>
+                </div>
+
+                <div class="overflow-x-auto overflow-y-auto max-h-[600px] relative">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="sticky top-0 bg-[#0f172a] z-40">
+                            <tr class="text-[9px] font-black uppercase text-slate-500 border-b border-white/5 tracking-widest">
+                                <th class="px-8 py-5">System ID / Date</th>
+                                <th class="px-8 py-5">Source Platform</th>
+                                <th class="px-8 py-5">Customer Profile</th>
+                                <th class="px-8 py-5">RPA Status</th>
+                                <th class="px-8 py-5">AI Processing Summary</th>
+                                <th class="px-8 py-5">Operator Instruction</th>
+                                <th class="px-8 py-5 text-right">Revenue (NPR)</th>
+                                <th class="px-8 py-5 text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody" class="divide-y divide-white/5 text-[11px] font-bold">
+                            <tr class="animate-pulse bg-white/2 cursor-wait">
+                                <td colspan="8" class="px-8 py-20 text-center text-slate-600 uppercase tracking-[10px] text-xs font-black">Connecting to Neural Network...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <footer class="flex items-center justify-between text-slate-600 text-[10px] font-bold py-4">
+                <p>&copy; 2026 TITAN ENTERPRISE. v4.2.0-ULTIMATE Build</p>
+                <div class="flex gap-6">
+                    <a href="#" class="hover:text-blue-500">API Documentation</a>
+                    <a href="#" class="hover:text-blue-500">System Logs</a>
+                    <a href="#" class="hover:text-blue-500">Support Terminal</a>
+                </div>
+            </footer>
+
+        </div>
+    </main>
+
+    <div id="formModal" class="fixed inset-0 z-[1000] hidden bg-black/80 backdrop-blur-md flex items-center justify-center p-6">
+        <div class="glass-card w-full max-w-4xl rounded-[40px] shadow-2xl relative overflow-hidden animate-fade">
+            <div class="absolute -top-40 -left-40 w-96 h-96 bg-blue-600/20 blur-[100px] pointer-events-none"></div>
+            <div class="p-10 relative z-10 flex flex-col h-[80vh]">
+                <div class="flex items-center justify-between mb-8 border-b border-white/5 pb-6">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-xl shadow-lg">
+                            <i class="fas fa-file-signature"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-2xl font-black text-white">Smart Form Filler</h2>
+                            <p class="text-[10px] text-slate-500 uppercase font-black tracking-widest">RPA Automated Data Extraction</p>
+                        </div>
+                    </div>
+                    <button onclick="document.getElementById('formModal').classList.add('hidden')" class="w-10 h-10 rounded-xl hover:bg-white/10 flex items-center justify-center transition-all">
+                        <i class="fas fa-times text-slate-400"></i>
+                    </button>
+                </div>
+
+                <div class="flex-1 overflow-y-auto grid grid-cols-2 gap-10">
+                    <div class="space-y-6">
+                        <h4 class="text-[11px] font-black text-blue-500 uppercase tracking-widest">Extracted Information</h4>
+                        <div class="space-y-4">
+                            <div class="flex flex-col">
+                                <label class="text-[9px] text-slate-500 font-bold uppercase mb-1">Full Legal Name</label>
+                                <input type="text" class="bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-xs outline-none focus:border-blue-500" value="John Doe">
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="flex flex-col">
+                                    <label class="text-[9px] text-slate-500 font-bold uppercase mb-1">Passport / ID</label>
+                                    <input type="text" class="bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-xs outline-none focus:border-blue-500" value="N-1234567">
+                                </div>
+                                <div class="flex flex-col">
+                                    <label class="text-[9px] text-slate-500 font-bold uppercase mb-1">Date of Birth</label>
+                                    <input type="text" class="bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-xs outline-none focus:border-blue-500" value="1995-10-15">
+                                </div>
+                            </div>
+                        </div>
+                        <h4 class="text-[11px] font-black text-blue-500 uppercase tracking-widest pt-4">AI Verification Summary</h4>
+                        <div class="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-2xl">
+                            <p class="text-[11px] leading-relaxed text-emerald-200 italic">"The AI has successfully extracted the passport number and verified the citizen status from the WhatsApp document. Data is ready for the Online Form Filler engine."</p>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col gap-4">
+                        <h4 class="text-[11px] font-black text-blue-500 uppercase tracking-widest">Document Evidence</h4>
+                        <div class="flex-1 bg-slate-900 rounded-3xl border border-white/5 overflow-hidden relative">
+                            <div class="absolute inset-0 flex items-center justify-center opacity-10">
+                                <i class="fas fa-image text-8xl"></i>
+                            </div>
+                            <img id="docPreview" src="" class="w-full h-full object-contain hidden" alt="Document">
+                        </div>
+                        <button class="bg-blue-600 py-4 rounded-2xl font-black text-xs uppercase tracking-[3px] shadow-xl hover:scale-105 active:scale-95 transition-all">
+                            Submit to Government Portal <i class="fas fa-paper-plane ml-2"></i>
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
-    <div id="dashboardPage" class="hidden flex flex-col min-h-screen">
-        <header class="glass-panel sticky top-0 z-[100] px-8 py-4 flex items-center justify-between border-b border-white/5">
-            <div class="flex items-center gap-4">
-                <h2 class="text-2xl font-black italic tracking-tighter">TITAN <span class="text-blue-500">v4</span></h2>
-                <div class="h-6 w-[1px] bg-white/10 mx-2"></div>
-                <div id="userDisplay" class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">--</div>
-            </div>
-            <button id="logoutBtn" class="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white px-4 py-2 rounded-xl text-xs font-bold transition-all">
-                <i class="fas fa-power-off"></i> LOGOUT
-            </button>
-        </header>
-
-        <main class="p-6 max-w-[1800px] mx-auto w-full space-y-6">
-            
-            <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
-                <div class="glass-panel p-5 rounded-3xl border-l-4 border-cyan-500">
-                    <p class="text-[10px] font-bold text-slate-500 uppercase">Inquiry</p>
-                    <h3 id="statInquiry" class="text-2xl font-black mt-1 text-cyan-400">0</h3>
-                </div>
-                <div class="glass-panel p-5 rounded-3xl border-l-4 border-amber-500">
-                    <p class="text-[10px] font-bold text-slate-500 uppercase">Pending</p>
-                    <h3 id="statPending" class="text-2xl font-black mt-1 text-amber-400">0</h3>
-                </div>
-                <div class="glass-panel p-5 rounded-3xl border-l-4 border-emerald-500">
-                    <p class="text-[10px] font-bold text-slate-500 uppercase">Success</p>
-                    <h3 id="statSuccess" class="text-2xl font-black mt-1 text-emerald-400">0</h3>
-                </div>
-                <div class="glass-panel p-5 rounded-3xl border-l-4 border-purple-500">
-                    <p class="text-[10px] font-bold text-slate-500 uppercase">Processing</p>
-                    <h3 id="statProcessing" class="text-2xl font-black mt-1 text-purple-400">0</h3>
-                </div>
-                <div class="glass-panel p-5 rounded-3xl border-l-4 border-red-500">
-                    <p class="text-[10px] font-bold text-slate-500 uppercase">Problem</p>
-                    <h3 id="statProblem" class="text-2xl font-black mt-1 text-red-400">0</h3>
-                </div>
-            </div>
-
-            <div class="flex flex-col md:row gap-4">
-                <div class="relative flex-1">
-                    <i class="fas fa-search absolute left-5 top-1/2 -translate-y-1/2 text-slate-500"></i>
-                    <input type="text" id="searchInput" placeholder="Search Customer, ID or Passport..." class="w-full bg-slate-900 border border-white/5 rounded-2xl pl-14 pr-6 py-4 outline-none focus:border-blue-500 transition-all font-semibold">
-                </div>
-                <button onclick="syncCoreDatabase()" class="bg-blue-600 px-8 py-4 rounded-2xl font-bold text-[10px] uppercase tracking-widest hover:bg-blue-500 active:scale-95 transition-all">
-                    <i class="fas fa-sync-alt mr-2"></i> Cloud Sync
-                </button>
-            </div>
-
-            <div class="glass-panel rounded-[32px] overflow-hidden shadow-2xl border-white/5">
-    <div class="overflow-x-auto overflow-y-auto max-h-[600px]">
-        <table class="w-full text-left border-collapse">
-            <thead class="sticky top-0 bg-[#0f172a] z-20">
-                <tr class="text-[9px] font-black uppercase text-slate-400 border-b border-white/10">
-                    <th class="px-5 py-4">ID</th>
-                    <th class="px-5 py-4">Date</th>
-                    <th class="px-5 py-4">Updated</th>
-                    <th class="px-5 py-4">Platform</th>
-                    <th class="px-5 py-4">Mess. ID</th>
-                    <th class="px-5 py-4">Phone</th>
-                    <th class="px-5 py-4">Customer</th>
-                    <th class="px-5 py-4">AI Summary</th>
-                    <th class="px-5 py-4">Service</th>
-                    <th class="px-5 py-4">Status</th>
-                    <th class="px-5 py-4">Instruction</th>
-                    <th class="px-5 py-4 text-right">Income</th>
-                    <th class="px-5 py-4">Staff</th>
-                    <th class="px-5 py-4 text-center">Docs</th>
-                    <th class="px-5 py-4 text-right">Action</th>
-                </tr>
-            </thead>
-            <tbody id="tableBody" class="divide-y divide-white/5 text-[11px] font-semibold">
-                </tbody>
-        </table>
-    </div>
-</div>
-</main>
-</div>
-
-    <div id="notificationZone" class="fixed bottom-6 right-6 z-[1000] flex flex-col gap-2"></div>
+    <div id="notificationZone" class="fixed bottom-10 right-10 z-[2000] flex flex-col gap-4"></div>
 
     <script type="module" src="/dashboard.js"></script>
 
     <script>
-    const loginPage = document.getElementById('loginPage');
-    const dashboardPage = document.getElementById('dashboardPage');
-    const loginForm = document.getElementById('loginForm');
-
-    loginForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const u = document.getElementById('username').value;
-        const p = document.getElementById('password').value;
-        
-        try {
-            const engine = window.TitanEngine;
-            
-            if (!engine || !engine.client) {
-                alert("🚀 SYSTEM INITIALIZING: Please wait 2 seconds and try again.");
-                return;
+        // Simple Chart.js Setup for Advanced Look
+        window.addEventListener('load', () => {
+            const ctx = document.getElementById('analyticsChart')?.getContext('2d');
+            if (ctx) {
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                        datasets: [{
+                            label: 'Forms Processed',
+                            data: [12, 19, 15, 25, 22, 30, 45],
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 4,
+                            pointBackgroundColor: '#3b82f6',
+                            borderWidth: 3
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748b', font: { size: 10 } } },
+                            x: { grid: { display: false }, ticks: { color: '#64748b', font: { size: 10 } } }
+                        }
+                    }
+                });
             }
-
-            // डाटाबेसमा स्टाफ चेक गर्ने (यो भाग माथि छुटेको थियो)
-            const { data: staff, error } = await engine.client
-                .from('staff')
-                .select('*')
-                .eq('username', u)
-                .eq('password', p)
-                .single();
-
-            if (error || !staff) {
-                alert("❌ INVALID CIPHER: ACCESS DENIED");
-                return;
-            }
-
-            // लगइन सफल भएपछि UI परिवर्तन गर्ने
-            loginPage.style.display = 'none'; 
-            dashboardPage.classList.remove('hidden');
-            dashboardPage.style.display = 'flex';
-            
-            document.getElementById('userDisplay').innerText = `ACCESS LEVEL: ${staff.full_name}`;
-            
-            // डेटा सिंक सुरु गर्ने
-            if (window.syncCoreDatabase) {
-                window.syncCoreDatabase();
-            }
-
-        } catch (err) {
-            console.error("Auth Error:", err);
-            alert("SYSTEM ERROR: UNABLE TO CONNECT TO DATABASE");
-        }
-    });
-
-    // लगआउट बटन
-    document.getElementById('logoutBtn').addEventListener('click', () => {
-        location.reload();
-    });
+        });
     </script>
 </body>
 </html>

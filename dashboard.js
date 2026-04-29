@@ -1,370 +1,451 @@
 /**
- * =============================================================================
- * TITAN ENTERPRISE CRM v4.0.0 - ULTIMATE MASTER ENGINE
- * =============================================================================
- * System: Advanced RPA & Neural Interface
- * Framework: Vanilla JS / Supabase / Tailwind
- * Modules: Analytics, Real-time Sync, Financial Engine, UI Orchestrator
- * =============================================================================
+ * ==========================================================================================
+ * TITAN ENTERPRISE CRM v4.2.0 - ULTIMATE NEURAL ENGINE
+ * ==========================================================================================
+ * System Structure:
+ * 1. Configuration & Constants Matrix
+ * 2. Master State Management (Global Store)
+ * 3. Supabase Neural Connectivity (Real-time Custom Engine)
+ * 4. Data Access Layer (CRUD Operations)
+ * 5. Advanced UI Orchestrator (DOM Manipulation)
+ * 6. Analytics & Chart Engine (Chart.js Integration)
+ * 7. RPA Modal Controller (Form Filler UI)
+ * 8. WhatsApp / Messenger Custom Messaging Engine
+ * ==========================================================================================
  */
-// Vite मा Environment Variables तान्न यो नै सही तरिका हो
+
 const TITAN_CONFIG = {
-    URL: import.meta.env.VITE_SUPABASE_URL, 
-    KEY: import.meta.env.VITE_SUPABASE_ANON_KEY,
-    TABLE: 'customers', 
-    VERSION: '4.0.0-PRO'
+    // Hybrid Connectivity: Try Vite Env first, fallback to hardcoded for safety
+    URL: import.meta.env?.VITE_SUPABASE_URL || "https://ratgpvubjrcoipardzdp.supabase.co",
+    KEY: import.meta.env?.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJhdGdwdnVianJjb2lwYXJkemRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzMTg0OTMsImV4cCI6MjA4Mzg5NDQ5M30.t1eofJj9dPK-Psp_oL3LpCWimyz621T21JNpZljEGZk",
+    TABLE_CUSTOMERS: 'customers',
+    TABLE_STAFF: 'staff',
+    VERSION: '4.2.0-ULTIMATE',
+    POLLING_RATE: 30000, // For fallback background sync
 };
 
 (function() {
     "use strict";
 
-    const CONFIG = {
-        VERSION: '4.2.0-ULTIMATE',
-        DB_TABLE: TITAN_CONFIG.TABLE,
-        PAGE_LIMIT: 15,
-        REFRESH_INTERVAL: 30000,
-        CURRENCY: 'Rs.',
-        LOG_PREFIX: '🚀 [TITAN_VITE_CORE]',
-        SOUNDS: {
-            NOTIFICATION: 'https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3',
-            SUCCESS: 'https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3'
-        }
-    };
-
-    // 2. MASTER STATE MANAGEMENT (Central Truth)
+    /**
+     * ==========================================
+     * 1. MASTER STATE MANAGEMENT (GLOBAL STORE)
+     * ==========================================
+     */
     const STATE = {
-        rawLeads: [],
-        filteredLeads: [],
+        data: {
+            raw: [],
+            filtered: []
+        },
         analytics: {
-            revenue: 0,
-            growth: 12.5,
-            successRate: 0,
-            avgResolutionTime: 0
+            income: 0, inquiry: 0, pending: 0, working: 0, success: 0, problem: 0,
+            weeklyTrend: [0,0,0,0,0,0,0] // For Chart.js
         },
         ui: {
             activePlatform: 'all',
             searchTerm: '',
             isSyncing: false,
-            sidebarOpen: true,
-            selectedLeadId: null
+            selectedCustomerId: null
         },
-        auth: {
-            user: JSON.parse(localStorage.getItem('titan_session')),
-            role: 'ADMIN_OPERATOR'
+        system: {
+            isDatabaseConnected: false,
+            chartInstance: null
         }
     };
 
     /**
-     * [MODULE: CORE ENGINE INITIALIZER]
+     * ==========================================
+     * 2. CORE ENGINE INITIALIZER
+     * ==========================================
      */
     const TitanEngine = {
         async init() {
             try {
+                UI.notify("System Initializing...", "info");
                 this.setupSupabase();
-                await this.performFirstSync();
-                this.initRealtimeWebSocket();
+                
+                if (this.client) {
+                    STATE.system.isDatabaseConnected = true;
+                    await this.performCloudSync();
+                    this.initRealtimeWebSocket();
+                    UI.notify("Neural Network Connected", "success");
+                }
             } catch (err) {
-                // यहाँ ErrorHandler छैन, त्यसैले सिधै console.error लेख्नुहोस्
-                console.error("INIT_FAILURE:", err);
+                console.error("❌ CRITICAL BOOT ERROR:", err);
+                UI.notify("System Boot Failure. Check Logs.", "error");
             }
         },
 
         setupSupabase() {
-            // सिधै TITAN_CONFIG बाट URL र KEY तान्ने
-            const url = TITAN_CONFIG.URL; 
-            const key = TITAN_CONFIG.KEY;
-            
-            if (!url || !key) {
-                console.error("API Keys missing in TITAN_CONFIG");
+            if (!TITAN_CONFIG.URL || !TITAN_CONFIG.KEY) {
+                console.error("Missing Supabase Credentials");
                 return;
             }
-            this.client = window.supabase.createClient(url, key);
+            // Expose client globally for inline HTML calls
+            this.client = window.supabase.createClient(TITAN_CONFIG.URL, TITAN_CONFIG.KEY);
+            window.TitanClient = this.client;
         },
 
-        async performFirstSync() {
-            UI.toggleLoader(true);
-            await DataLayer.fetchLeads();
-            AnalyticsEngine.computeAll();
-            UI.refreshAll();
-            UI.toggleLoader(false);
-        },
-
+        /**
+         * Initializes Real-Time Custom Messaging listener.
+         * We use custom code for real-time messaging updates rather than polling/scraping.
+         */
         initRealtimeWebSocket() {
+            console.log("🔗 Establishing Real-time Custom Socket...");
             this.client
-                .channel('titan-realtime')
-                .on('postgres_changes', { event: '*', schema: 'public', table: CONFIG.DB_TABLE }, payload => {
-                    this.handleRealtimeEvent(payload);
+                .channel('titan-realtime-engine')
+                .on('postgres_changes', { event: '*', schema: 'public', table: TITAN_CONFIG.TABLE_CUSTOMERS }, payload => {
+                    this.handleRealtimePayload(payload);
                 })
-                .subscribe();
+                .subscribe((status) => {
+                    if(status === 'SUBSCRIBED') console.log("✅ Real-time Socket Subscribed");
+                });
         },
 
-        handleRealtimeEvent(payload) {
-            console.log(`${CONFIG.LOG_PREFIX} REALTIME_EVENT:`, payload.eventType);
-            DataLayer.fetchLeads().then(() => {
-                AnalyticsEngine.computeAll();
-                UI.refreshAll();
-                Utils.playSfx('NOTIFICATION');
-                UI.notify(`DATABASE ${payload.eventType}: ${payload.new?.customer_name || 'System Update'}`, 'info');
+        handleRealtimePayload(payload) {
+            console.log("⚡ Real-time Custom Event Triggered:", payload.eventType);
+            Utils.playNotificationSound();
+            
+            // Re-fetch logic to ensure data integrity
+            this.performCloudSync().then(() => {
+                UI.notify(`Live Update Received: ${payload.new?.customer_name || 'System'}`, "info");
             });
+        },
+
+        async performCloudSync() {
+            if(STATE.ui.isSyncing) return;
+            STATE.ui.isSyncing = true;
+            UI.toggleSyncButton(true);
+
+            try {
+                await DataLayer.fetchAllCustomers();
+                AnalyticsLayer.computeAll();
+                UI.renderDashboard();
+            } catch(e) {
+                console.error("Sync Failed", e);
+                UI.notify("Cloud Sync Failed", "error");
+            } finally {
+                STATE.ui.isSyncing = false;
+                UI.toggleSyncButton(false);
+            }
         }
     };
 
     /**
-     * [MODULE: DATA ACCESS LAYER]
+     * ==========================================
+     * 3. DATA ACCESS LAYER (CRUD OPERATIONS)
+     * ==========================================
      */
     const DataLayer = {
-        async fetchLeads() {
-            STATE.isSyncing = true;
+        async fetchAllCustomers() {
             const { data, error } = await TitanEngine.client
-                .from(CONFIG.DB_TABLE)
+                .from(TITAN_CONFIG.TABLE_CUSTOMERS)
                 .select('*')
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
-            STATE.rawLeads = data;
-            STATE.filteredLeads = [...data];
-            STATE.isSyncing = false;
+            STATE.data.raw = data || [];
+            this.applyFilters();
         },
 
-        async updateLead(id, updates) {
+        applyFilters() {
+            const term = STATE.ui.searchTerm.toLowerCase();
+            const platform = STATE.ui.activePlatform;
+
+            STATE.data.filtered = STATE.data.raw.filter(c => {
+                const matchSearch = (c.customer_name?.toLowerCase().includes(term) || 
+                                     c.phone_number?.includes(term) || 
+                                     c.id.includes(term));
+                const matchPlatform = platform === 'all' || c.platform === platform;
+                return matchSearch && matchPlatform;
+            });
+        },
+
+        async updateCustomerField(id, field, value) {
+            const payload = {};
+            payload[field] = value;
+            payload['updated_at'] = new Date().toISOString();
+
             const { error } = await TitanEngine.client
-                .from(CONFIG.DB_TABLE)
-                .update(updates)
+                .from(TITAN_CONFIG.TABLE_CUSTOMERS)
+                .update(payload)
                 .eq('id', id);
 
             if (error) {
-                UI.notify("Update Failed", "error");
+                UI.notify(`Failed to update ${field}`, "error");
                 return false;
             }
-            UI.notify("Lead Synchronized", "success");
+            UI.notify(`Data synchronized successfully`, "success");
             return true;
         }
     };
 
-    const AnalyticsEngine = {
+    /**
+     * ==========================================
+     * 4. ANALYTICS & CHART CONTROLLER
+     * ==========================================
+     */
+    const AnalyticsLayer = {
         computeAll() {
-            const stats = {
-                income: 0,
-                success: 0,
-                pending: 0,
-                inquiry: 0,
-                working: 0,
-                problem: 0,
-                wa: 0,
-                msgr: 0
-            };
+            // Reset Stats
+            STATE.analytics = { income: 0, inquiry: 0, pending: 0, working: 0, success: 0, problem: 0, weeklyTrend: [0,0,0,0,0,0,0] };
 
-            STATE.rawLeads.forEach(l => {
-                const val = parseFloat(l.income || 0);
-                
-                // Status गणना (यहाँ 'success' एक पटक मात्र छ)
-                if (l.status === 'success') {
-                    stats.income += val;
-                    stats.success++;
-                } else if (l.status === 'pending') {
-                    stats.pending++;
-                } else if (l.status === 'inquiry') {
-                    stats.inquiry++;
-                } else if (l.status === 'working') {
-                    stats.working++;
-                } else if (l.status === 'problem') {
-                    stats.problem++;
-                }
+            STATE.data.raw.forEach(customer => {
+                // Compute Revenue
+                if (customer.status === 'success') {
+                    STATE.analytics.income += parseFloat(customer.income || 0);
+                    STATE.analytics.success++;
+                } else if (customer.status === 'inquiry') STATE.analytics.inquiry++;
+                else if (customer.status === 'pending') STATE.analytics.pending++;
+                else if (customer.status === 'working') STATE.analytics.working++;
+                else if (customer.status === 'problem') STATE.analytics.problem++;
 
-                // Platform गणना
-                l.platform === 'whatsapp' ? stats.wa++ : stats.msgr++;
+                // Simulate weekly trend for Chart
+                const dayIndex = new Date(customer.created_at).getDay(); // 0 (Sun) to 6 (Sat)
+                STATE.analytics.weeklyTrend[dayIndex] += 1;
             });
+        },
 
-            STATE.analytics = stats;
+        renderChart() {
+            const ctx = document.getElementById('analyticsChart')?.getContext('2d');
+            if (!ctx) return;
+
+            // Destroy old chart instance if exists
+            if (STATE.system.chartInstance) {
+                STATE.system.chartInstance.destroy();
+            }
+
+            // Requires Chart.js included in HTML
+            if(typeof Chart !== 'undefined') {
+                STATE.system.chartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+                        datasets: [{
+                            label: 'Customer Volume',
+                            data: STATE.analytics.weeklyTrend,
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 5,
+                            pointBackgroundColor: '#10b981',
+                            borderWidth: 3
+                        }]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748b' } },
+                            x: { grid: { display: false }, ticks: { color: '#64748b' } }
+                        }
+                    }
+                });
+            }
         }
     };
 
     /**
-     * [MODULE: UI ORCHESTRATOR]
+     * ==========================================
+     * 5. UI ORCHESTRATOR (DOM MANIPULATION)
+     * ==========================================
      */
     const UI = {
-        refreshAll() {
+        renderDashboard() {
             this.renderStats();
             this.renderTable();
-            // this.renderCharts(); // यसरी बन्द गरिदिनुहोस्
+            AnalyticsLayer.renderChart();
         },
-        renderStats() {
-            const ids = {
-                'statIncome': `${CONFIG.CURRENCY} ${STATE.analytics.income.toLocaleString()}`,
-                'statSuccess': STATE.analytics.success,
-                'statPending': STATE.analytics.pending,
-                'statInquiry': STATE.analytics.inquiry,
-                'statWorking': STATE.analytics.working,
-                'statProblem': STATE.analytics.problem
-            };
 
-            for (const [id, val] of Object.entries(ids)) {
-                const el = document.getElementById(id);
-                if (el) {
-                    el.innerText = val;
-                }
-            }
+        renderStats() {
+            document.getElementById('statIncome').innerText = `Rs. ${STATE.analytics.income.toLocaleString()}`;
+            document.getElementById('statInquiry').innerText = STATE.analytics.inquiry;
+            document.getElementById('statPending').innerText = STATE.analytics.pending;
+            document.getElementById('statWorking').innerText = STATE.analytics.working;
+            document.getElementById('statSuccess').innerText = STATE.analytics.success;
+            document.getElementById('statProblem').innerText = STATE.analytics.problem;
         },
 
         renderTable() {
             const tbody = document.getElementById('tableBody');
             if (!tbody) return;
 
-            const filtered = STATE.rawLeads.filter(customer => {
-                const matchesSearch = customer.customer_name?.toLowerCase().includes(STATE.ui.searchTerm.toLowerCase()) ||
-                                     customer.service?.toLowerCase().includes(STATE.ui.searchTerm.toLowerCase());
-                const matchesPlatform = STATE.ui.activePlatform === 'all' || customer.platform === STATE.ui.activePlatform;
-                return matchesSearch && matchesPlatform;
-            });
+            if (STATE.data.filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="text-center py-10 text-slate-500 font-bold uppercase tracking-widest text-xs">No Records Found in Database</td></tr>`;
+                return;
+            }
 
-            tbody.innerHTML = filtered.map(customer => this.createRowHTML(customer)).join('');
+            tbody.innerHTML = STATE.data.filtered.map(c => this.generateRowHTML(c)).join('');
         },
 
-        createRowHTML(customer) {
-            const platformIcon = customer.platform === 'whatsapp' 
-                ? '<i class="fab fa-whatsapp text-emerald-500"></i>' 
-                : '<i class="fab fa-facebook-messenger text-blue-500"></i>';
+        generateRowHTML(c) {
+            const platformUI = c.platform === 'whatsapp' 
+                ? `<span class="bg-emerald-500/10 text-emerald-500 px-3 py-1 rounded border border-emerald-500/20 text-[9px] font-bold"><i class="fab fa-whatsapp mr-1"></i> WA</span>` 
+                : `<span class="bg-blue-500/10 text-blue-500 px-3 py-1 rounded border border-blue-500/20 text-[9px] font-bold"><i class="fab fa-facebook-messenger mr-1"></i> MSG</span>`;
+
+            const statColors = {
+                inquiry: 'text-cyan-400 border-cyan-400/30',
+                pending: 'text-amber-400 border-amber-400/30',
+                working: 'text-purple-400 border-purple-400/30',
+                success: 'text-emerald-400 border-emerald-400/30',
+                problem: 'text-red-400 border-red-400/30'
+            };
 
             return `
-                <tr class="vibrant-table-row border-b border-white/5 hover:bg-white/5 transition-all">
-                    <td class="px-3 py-4 text-[10px] font-mono text-slate-400">
-                        ${new Date(customer.created_at).toLocaleString('ne-NP')}
+                <tr class="hover:bg-blue-500/5 transition-all group">
+                    <td class="px-8 py-5">
+                        <div class="text-[10px] text-slate-300 font-bold">${Utils.formatDate(c.created_at)}</div>
+                        <div class="text-[9px] font-mono text-slate-500 mt-1 uppercase">#${c.id.slice(0,8)}</div>
                     </td>
-                    <td class="px-3 py-4 text-center">${platformIcon}</td>
-                    <td class="px-3 py-4">
-                        <div class="font-bold text-slate-100">${customer.customer_name || 'Walk-in'}</div>
-                        <div class="text-[8px] opacity-40 uppercase">ID: ${customer.id.slice(0,8)}</div>
+                    <td class="px-8 py-5">${platformUI}</td>
+                    <td class="px-8 py-5">
+                        <div class="font-black text-white text-xs">${c.customer_name || 'Walk-in Client'}</div>
+                        <div class="text-[10px] text-slate-400 mt-1"><i class="fas fa-phone mr-1"></i> ${c.phone_number || 'No Number'}</div>
                     </td>
-                    <td class="px-3 py-4">
-                        <span class="bg-slate-800/50 px-2 py-1 rounded border border-white/5 text-[10px]">
-                            ${customer.service || 'N/A'}
-                        </span>
-                    </td>
-                    <td class="px-3 py-4">
-                        <select onchange="window.TitanEngine.updateStatus('${customer.id}', this.value)" 
-                                class="bg-transparent text-[9px] font-black uppercase border border-white/10 rounded-md p-1 outline-none">
-                            <option value="inquiry" ${customer.status === 'inquiry' ? 'selected' : ''}>Inquiry</option>
-                            <option value="pending" ${customer.status === 'pending' ? 'selected' : ''}>Pending</option>
-                            <option value="working" ${customer.status === 'working' ? 'selected' : ''}>Working</option>
-                            <option value="success" ${customer.status === 'success' ? 'selected' : ''}>Success</option>
-                            <option value="problem" ${customer.status === 'problem' ? 'selected' : ''}>Problem</option>
+                    <td class="px-8 py-5">
+                        <select onchange="window.TitanEngine.updateStatus('${c.id}', this.value)" 
+                                class="bg-[#0f172a] text-[9px] font-black uppercase border rounded-lg p-2 outline-none cursor-pointer w-full ${statColors[c.status] || 'text-slate-400 border-slate-600'}">
+                            <option value="inquiry" ${c.status === 'inquiry' ? 'selected' : ''}>Inquiry</option>
+                            <option value="pending" ${c.status === 'pending' ? 'selected' : ''}>Pending</option>
+                            <option value="working" ${c.status === 'working' ? 'selected' : ''}>Working</option>
+                            <option value="success" ${c.status === 'success' ? 'selected' : ''}>Success</option>
+                            <option value="problem" ${c.status === 'problem' ? 'selected' : ''}>Problem</option>
                         </select>
                     </td>
-                    <td class="px-3 py-4 text-[10px] text-blue-300 italic max-w-[150px] truncate">
-                        ${customer.summary || 'Waiting for AI...'}
+                    <td class="px-8 py-5 relative">
+                        <div class="text-[10px] text-slate-300 italic max-w-[200px] truncate group-hover:whitespace-normal group-hover:bg-[#1e293b] group-hover:absolute group-hover:z-50 group-hover:p-4 group-hover:rounded-xl group-hover:border group-hover:border-blue-500/30 group-hover:shadow-2xl transition-all cursor-help">
+                            ${c.chat_summary || 'Waiting for AI processing...'}
+                        </div>
                     </td>
-                    <td class="px-3 py-4">
-                         <input type="text" value="${customer.operator_instruction || ''}" 
-                                onblur="window.TitanEngine.updateNote('${customer.id}', this.value)"
-                                class="bg-transparent border-b border-white/10 w-full text-[10px] outline-none focus:border-blue-500">
+                    <td class="px-8 py-5">
+                        <input type="text" value="${c.operator_instruction || ''}" 
+                               placeholder="Type & press enter..."
+                               onblur="window.TitanEngine.updateNote('${c.id}', this.value)"
+                               onkeydown="if(event.key === 'Enter') this.blur();"
+                               class="bg-transparent border-b border-slate-600 w-full text-[11px] py-1 outline-none focus:border-blue-500 text-amber-200 transition-colors">
                     </td>
-                    <td class="px-3 py-4 text-right font-black text-emerald-400">
-                        ${CONFIG.CURRENCY} ${parseFloat(customer.income || 0).toLocaleString()}
+                    <td class="px-8 py-5 text-right font-black text-emerald-400 text-xs tracking-wider">
+                        Rs. ${parseFloat(c.income || 0).toLocaleString()}
                     </td>
-                    <td class="px-3 py-4 text-center">
-                        ${customer.file_url ? `<button onclick="window.open('${customer.file_url}')" class="text-blue-400 hover:text-white"><i class="fas fa-file-alt"></i></button>` : '-'}
-                    </td>
-                    <td class="px-3 py-4 text-right">
-                        <button onclick="window.TitanEngine.deleteRow('${customer.id}')" class="text-red-500/50 hover:text-red-500">
-                            <i class="fas fa-trash-alt text-xs"></i>
+                    <td class="px-8 py-5 text-center">
+                        <button onclick="window.TitanEngine.openFormModal('${c.id}')" class="bg-blue-600 hover:bg-blue-500 text-white h-8 w-12 rounded-lg transition-all shadow-[0_0_10px_rgba(59,130,246,0.3)] hover:scale-110 active:scale-95 flex items-center justify-center mx-auto">
+                            <i class="fas fa-folder-open text-xs"></i>
                         </button>
                     </td>
                 </tr>
             `;
         },
+
         notify(msg, type = 'info') {
             const zone = document.getElementById('notificationZone');
             if (!zone) return;
 
             const toast = document.createElement('div');
             const colors = {
-                success: 'border-emerald-500 bg-emerald-500/10 text-emerald-400',
-                error: 'border-red-500 bg-red-500/10 text-red-400',
-                info: 'border-blue-500 bg-blue-500/10 text-blue-400'
+                success: 'border-emerald-500 bg-emerald-500/20 text-emerald-400',
+                error: 'border-red-500 bg-red-500/20 text-red-400',
+                info: 'border-blue-500 bg-blue-500/20 text-blue-400'
             };
 
-            toast.className = `glass-panel px-6 py-3 rounded-xl border-l-4 shadow-2xl mb-3 animate-slide-in ${colors[type]}`;
-            toast.innerHTML = `<div class="flex items-center gap-3">
-                                <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-info-circle'}"></i>
-                                <span class="text-[10px] font-black uppercase tracking-widest">${msg}</span>
-                               </div>`;
+            toast.className = `backdrop-blur-md px-6 py-4 rounded-2xl border-l-4 shadow-2xl mb-3 animate-fade-in-up flex items-center gap-4 ${colors[type]}`;
+            toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-triangle' : 'fa-info-circle'} text-lg"></i>
+                               <span class="text-[10px] font-black uppercase tracking-widest">${msg}</span>`;
             
             zone.appendChild(toast);
-            setTimeout(() => toast.remove(), 4000);
+            setTimeout(() => toast.remove(), 5000);
         },
 
-        toggleLoader(show) {
-            const btn = document.querySelector('button[onclick="syncCoreDatabase()"]');
-            if (btn) {
-                btn.innerHTML = show ? '<i class="fas fa-circle-notch animate-spin"></i> SYNCING...' : '<i class="fas fa-sync-alt"></i> Force Cloud Sync';
-                btn.disabled = show;
-            }
+        toggleSyncButton(isLoading) {
+            const btns = document.querySelectorAll('button[onclick="syncCoreDatabase()"]');
+            btns.forEach(btn => {
+                btn.innerHTML = isLoading 
+                    ? `<i class="fas fa-circle-notch animate-spin mr-2"></i> SYNCING...` 
+                    : `<i class="fas fa-sync-alt mr-2"></i> Force Cloud Sync`;
+                btn.style.opacity = isLoading ? '0.7' : '1';
+                btn.style.pointerEvents = isLoading ? 'none' : 'auto';
+            });
         }
     };
 
     /**
-     * [MODULE: UTILS & HELPERS]
+     * ==========================================
+     * 6. UTILITIES MODULE
+     * ==========================================
      */
     const Utils = {
-        playSfx(key) {
-            const audio = new Audio(CONFIG.SOUNDS[key]);
-            audio.volume = 0.4;
-            audio.play().catch(() => {});
-        },
-        debounce(func, wait) {
+        debounce(func, delay) {
             let timeout;
             return function(...args) {
                 clearTimeout(timeout);
-                timeout = setTimeout(() => func.apply(this, args), wait);
+                timeout = setTimeout(() => func.apply(this, args), delay);
             };
+        },
+        formatDate(isoString) {
+            if(!isoString) return 'Unknown Date';
+            const d = new Date(isoString);
+            return d.toLocaleDateString('ne-NP', { year: 'numeric', month: 'short', day: 'numeric' });
+        },
+        playNotificationSound() {
+            // Optional: Add a subtle beep for incoming messages
+            try {
+                const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3');
+                audio.volume = 0.2;
+                audio.play();
+            } catch(e) {}
         }
     };
 
-// --- यसलाई रिप्लेस गर्नुहोस् ---
+    /**
+     * ==========================================
+     * 7. WINDOW / GLOBAL EXPORTS (API)
+     * ==========================================
+     */
     window.TitanEngine = {
-        get client() { return TitanEngine.client; }, 
-        
-        async updateStatus(id, status) {
-            const ok = await DataLayer.updateLead(id, { status });
-            if (ok) await TitanEngine.performFirstSync();
+        async updateStatus(id, newStatus) {
+            const success = await DataLayer.updateCustomerField(id, 'status', newStatus);
+            if(success) TitanEngine.performCloudSync();
         },
 
-        async updateNote(id, operator_note) {
-            // Note: यहाँ table मा column को नाम 'operator_instruction' छ कि 'operator_note'? 
-            // तपाईँको database अनुसार यो मिल्नुपर्छ।
-            await DataLayer.updateLead(id, { operator_instruction: operator_note });
+        async updateNote(id, newInstruction) {
+            await DataLayer.updateCustomerField(id, 'operator_instruction', newInstruction);
         },
 
-        async deleteRow(id) {
-            if (!confirm("Confirm Destruction?")) return;
-            const { error } = await TitanEngine.client.from(CONFIG.DB_TABLE).delete().eq('id', id);
-            if (!error) {
-                UI.notify("Record Deleted", "error");
-                await TitanEngine.performFirstSync();
-            }
-        },
-
-        filterPlatform(p) {
-            STATE.ui.activePlatform = p;
+        filterPlatform(platformCode) {
+            STATE.ui.activePlatform = platformCode;
+            DataLayer.applyFilters();
             UI.renderTable();
+            UI.notify(`Filtered by: ${platformCode.toUpperCase()}`, "info");
+        },
+
+        openFormModal(customerId) {
+            const customer = STATE.data.raw.find(c => c.id === customerId);
+            if(!customer) return;
+
+            const modal = document.getElementById('formModal');
+            if(modal) {
+                modal.classList.remove('hidden');
+                // Future Implementation: Inject customer data into Modal Inputs
+                console.log("Opening Form Filler for:", customer.customer_name);
+            }
         }
     };
 
-    window.syncCoreDatabase = () => TitanEngine.performFirstSync();
+    window.syncCoreDatabase = () => {
+        Utils.playNotificationSound();
+        TitanEngine.performCloudSync();
+    };
 
-    // Engine सुरु गर्ने
-    TitanEngine.init();
-
-    // Search Box लाई एक्टिभ बनाउने
+    // Event Listeners for Search
     document.getElementById('searchInput')?.addEventListener('input', Utils.debounce((e) => {
         STATE.ui.searchTerm = e.target.value;
+        DataLayer.applyFilters();
         UI.renderTable();
-    }, 300));
+    }, 400));
 
-})(); // यो अन्तिम ब्र्याकेट हो, यसलाई नहटाउनुहोला
+    // Execute Boot Sequence
+    document.addEventListener("DOMContentLoaded", () => {
+        TitanEngine.init();
+    });
 
-/**
- * =============================================================================
- * END OF MASTER ENGINE - TITAN CRM v4
- * =============================================================================
- */
+})(); // End of Neural Engine
