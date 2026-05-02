@@ -220,7 +220,7 @@ function applyFilters() {
     renderCustomers();
 }
 
-// Render Customers
+// Render Customers (लाइन १७९ देखि सुरु गर्नुहोस्)
 function renderCustomers() {
     const startIndex = (currentPage - 1) * pageSize;
     const endIndex = startIndex + pageSize;
@@ -243,9 +243,8 @@ function renderCustomers() {
     updatePagination();
 }
 
-// Create Customer Card - Updated for SQL v5
+// Create Customer Card (यो एउटा मात्र राख्नुहोस्, दोहोर्याउनु पर्दैन)
 function createCustomerCard(customer) {
-    // समय मिलाउने
     const date = new Date(customer.created_at || customer.time);
     const timeStr = date.toLocaleString('en-US', {
         month: 'short',
@@ -254,7 +253,6 @@ function createCustomerCard(customer) {
         minute: '2-digit'
     });
     
-    // प्लेटफर्म अनुसार आइकन र लिङ्क
     const messengerLink = `https://m.me/${customer.id}`;
     const whatsappLink = `https://wa.me/${customer.customer_phone?.replace(/\D/g, '')}`;
     const finalChatLink = customer.platform === 'whatsapp' ? whatsappLink : messengerLink;
@@ -264,19 +262,12 @@ function createCustomerCard(customer) {
         : '<i class="fab fa-facebook-messenger text-blue-500 text-2xl"></i>';
     
     const statusColors = {
-        'working': 'status-working',
-        'success': 'status-success',
-        'problem': 'status-problem',
-        'pending': 'status-pending',
-        'in_progress': 'bg-blue-600'
+        'working': 'status-working', 'success': 'status-success',
+        'problem': 'status-problem', 'pending': 'status-pending', 'in_progress': 'bg-blue-600'
     };
     
     const statusEmojis = {
-        'working': '🔵',
-        'success': '✅',
-        'problem': '❌',
-        'pending': '⏳',
-        'in_progress': '🔄'
+        'working': '🔵', 'success': '✅', 'problem': '❌', 'pending': '⏳', 'in_progress': '🔄'
     };
     
     const priorityClass = `priority-${customer.priority || 'normal'}`;
@@ -287,25 +278,20 @@ function createCustomerCard(customer) {
         <div class="customer-row ${priorityClass} p-6 mb-4 bg-white rounded-xl shadow-sm border border-gray-100">
             <div class="flex items-start justify-between mb-4">
                 <div class="flex items-start space-x-4">
-                    <div class="flex-shrink-0 mt-1">
-                        ${platformIcon}
-                    </div>
+                    <div class="flex-shrink-0 mt-1">${platformIcon}</div>
                     <div class="flex-1">
                         <div class="flex items-center space-x-3 mb-2">
                             <h4 class="text-lg font-bold text-gray-800">${customer.customer_name || 'Anonymous'}</h4>
                             <span class="badge ${statusColors[customer.status] || 'bg-gray-500'} text-white text-xs px-2 py-1 rounded">
                                 ${statusEmojis[customer.status] || '❓'} ${(customer.status || 'UNKNOWN').toUpperCase()}
                             </span>
-                            ${customer.priority === 'urgent' ? '<span class="animate-pulse bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">URGENT</span>' : ''}
                         </div>
                         <p class="text-sm text-gray-600 mb-1">
                             <i class="fas fa-id-badge mr-2 text-gray-400"></i>ID: ${customer.id}
                             <span class="mx-2 text-gray-300">|</span>
                             <i class="fas fa-clock mr-2 text-gray-400"></i>${timeStr}
                         </p>
-                        <!-- Inquiry (Service) Section -->
                         <div class="mt-3 p-3 bg-indigo-50 border-l-4 border-indigo-500 rounded">
-                            <p class="text-xs font-bold text-indigo-700 uppercase tracking-wider mb-1">Service Inquiry</p>
                             <p class="text-sm font-semibold text-gray-800">
                                 <i class="fas fa-concierge-bell mr-2"></i>${customer.service || 'General Inquiry'}
                             </p>
@@ -318,25 +304,24 @@ function createCustomerCard(customer) {
                         <p class="text-xs text-gray-500 font-semibold uppercase">Potential Income</p>
                         <span class="text-2xl font-black text-indigo-600">NPR ${(customer.income || 0).toLocaleString()}</span>
                     </div>
-                    <a href="${finalChatLink}" target="_blank" class="flex items-center space-x-2 bg-gray-900 hover:bg-black text-white px-4 py-2 rounded-lg transition-all transform hover:scale-105 shadow-md">
+                    <a href="${finalChatLink}" target="_blank" class="flex items-center space-x-2 bg-gray-900 hover:bg-black text-white px-4 py-2 rounded-lg shadow-md">
                         <i class="fab fa-${customer.platform === 'whatsapp' ? 'whatsapp' : 'facebook-messenger'}"></i>
                         <span class="font-bold text-sm">Open Chat</span>
                     </a>
                 </div>
             </div>
             
-            <!-- Quick Actions Grid -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 pt-4 border-t border-gray-100">
                 <div>
-                    <label class="text-[10px] font-bold text-gray-400 uppercase mb-1 block tracking-widest">Assign Operator</label>
-                    <select class="w-full bg-gray-50 border-0 rounded-lg text-sm p-2 focus:ring-2 focus:ring-indigo-500" onchange="assignOperator('${customer.id}', this.value)">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Assign Operator</label>
+                    <select class="w-full bg-gray-50 border-0 rounded-lg text-sm p-2" onchange="assignOperator('${customer.id}', this.value)">
                         <option value="">Choose Staff</option>
                         ${allOperators.map(op => `<option value="${op.id}" ${customer.assigned_to === op.id ? 'selected' : ''}>${op.full_name}</option>`).join('')}
                     </select>
                 </div>
                 <div>
-                    <label class="text-[10px] font-bold text-gray-400 uppercase mb-1 block tracking-widest">Live Status</label>
-                    <select class="w-full bg-gray-50 border-0 rounded-lg text-sm p-2 font-bold focus:ring-2 focus:ring-indigo-500" onchange="updateStatus('${customer.id}', this.value)">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Live Status</label>
+                    <select class="w-full bg-gray-50 border-0 rounded-lg text-sm p-2 font-bold" onchange="updateStatus('${customer.id}', this.value)">
                         <option value="pending" ${customer.status === 'pending' ? 'selected' : ''}>⏳ Pending</option>
                         <option value="working" ${customer.status === 'working' ? 'selected' : ''}>🔵 Working</option>
                         <option value="success" ${customer.status === 'success' ? 'selected' : ''}>✅ Success</option>
@@ -344,8 +329,8 @@ function createCustomerCard(customer) {
                     </select>
                 </div>
                 <div>
-                    <label class="text-[10px] font-bold text-gray-400 uppercase mb-1 block tracking-widest">Priority</label>
-                    <select class="w-full bg-gray-50 border-0 rounded-lg text-sm p-2 focus:ring-2 focus:ring-indigo-500" onchange="updatePriority('${customer.id}', this.value)">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Priority</label>
+                    <select class="w-full bg-gray-50 border-0 rounded-lg text-sm p-2" onchange="updatePriority('${customer.id}', this.value)">
                         <option value="low" ${customer.priority === 'low' ? 'selected' : ''}>Low</option>
                         <option value="normal" ${customer.priority === 'normal' ? 'selected' : ''}>Normal</option>
                         <option value="high" ${customer.priority === 'high' ? 'selected' : ''}>High</option>
@@ -354,38 +339,15 @@ function createCustomerCard(customer) {
                 </div>
             </div>
             
-            <!-- Admin & Operator Notes -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
-                    <label class="text-xs font-semibold text-gray-600 mb-1 block">Admin Instructions</label>
-                    <textarea class="editable-area w-full text-sm" rows="2" 
-                              onblur="updateField('${customer.id}', 'admin_instruction', this.value)"
-                              placeholder="Enter admin instructions...">${customer.admin_instruction || ''}</textarea>
-                </div>
-                <div>
-                    <label class="text-xs font-semibold text-gray-600 mb-1 block">Operator Notes</label>
-                    <textarea class="editable-area w-full text-sm" rows="2" 
-                              onblur="updateField('${customer.id}', 'operator_notes', this.value)"
-                              placeholder="Operator notes...">${customer.operator_notes || ''}</textarea>
-                </div>
-            </div>
-            
-            <!-- Multimedia & Meta -->
             <div class="flex items-center justify-between pt-4 border-t border-gray-100">
                 <div class="flex items-center space-x-3">
                     ${hasDocuments ? `
-                        <button onclick="viewMultimedia('${customer.id}', 'documents')" class="bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-200 transition">
+                        <button onclick="viewMultimedia('${customer.id}', 'documents')" class="bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg text-xs font-bold">
                             <i class="fas fa-file-image mr-1"></i> Files (${customer.documents.length})
                         </button>
                     ` : '<span class="text-gray-300 text-xs font-medium italic">No files attached</span>'}
-                    
-                    ${hasVoice ? `
-                        <button onclick="viewMultimedia('${customer.id}', 'voice')" class="bg-purple-100 text-purple-700 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-purple-200 transition">
-                            <i class="fas fa-microphone-alt mr-1"></i> Voice Note
-                        </button>
-                    ` : ''}
                 </div>
-                <div class="text-[10px] text-gray-400 font-medium">
+                <div class="text-[10px] text-gray-400">
                     SYNCED: ${customer.updated_at ? new Date(customer.updated_at).toLocaleTimeString() : 'N/A'}
                 </div>
             </div>
