@@ -106,14 +106,13 @@ function setupEventListeners() {
     });
 }
 
-// Login Handler
 async function handleLogin(e) {
     e.preventDefault();
-    
     const username = document.getElementById('username').value;
     const password = document.getElementById('password').value;
     
     try {
+        // तपाईँको नयाँ 'staff' टेबलबाट युजर खोज्ने
         const { data, error } = await supabase
             .from('staff')
             .select('*')
@@ -126,10 +125,10 @@ async function handleLogin(e) {
             localStorage.setItem('omniUser', JSON.stringify(currentUser));
             showDashboard();
         } else {
-            showNotification('Invalid credentials!', 'error');
+            showNotification('गलत युजरनेम वा पासवर्ड!', 'error');
         }
     } catch (err) {
-        showNotification('Database error!', 'error');
+        showNotification('डाटाबेस कनेक्सनमा समस्या आयो!', 'error');
     }
 }
 
@@ -238,9 +237,10 @@ function renderCustomers() {
     updatePagination();
 }
 
-// Create Customer Card
+// Create Customer Card - Updated for SQL v5 and Automated Inquiries
 function createCustomerCard(customer) {
-    const date = new Date(customer.time);
+    // समय मिलाउने (created_at प्रयोग गर्ने)
+    const date = new Date(customer.created_at || customer.time);
     const timeStr = date.toLocaleString('en-US', {
         month: 'short',
         day: 'numeric',
@@ -248,6 +248,22 @@ function createCustomerCard(customer) {
         minute: '2-digit'
     });
     
+    // Create Customer Card - Updated for SQL v5
+function createCustomerCard(customer) {
+    // समय मिलाउने
+    const date = new Date(customer.created_at || customer.time);
+    const timeStr = date.toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+    
+    // प्लेटफर्म अनुसार आइकन र लिङ्क
+    const messengerLink = `https://m.me/${customer.id}`;
+    const whatsappLink = `https://wa.me/${customer.customer_phone?.replace(/\D/g, '')}`;
+    const finalChatLink = customer.platform === 'whatsapp' ? whatsappLink : messengerLink;
+
     const platformIcon = customer.platform === 'whatsapp' 
         ? '<i class="fab fa-whatsapp text-green-500 text-2xl"></i>'
         : '<i class="fab fa-facebook-messenger text-blue-500 text-2xl"></i>';
@@ -256,15 +272,115 @@ function createCustomerCard(customer) {
         'working': 'status-working',
         'success': 'status-success',
         'problem': 'status-problem',
-        'pending': 'status-pending'
+        'pending': 'status-pending',
+        'in_progress': 'bg-blue-600'
     };
     
     const statusEmojis = {
         'working': '🔵',
         'success': '✅',
         'problem': '❌',
-        'pending': '⏳'
+        'pending': '⏳',
+        'in_progress': '🔄'
     };
+    
+    const priorityClass = `priority-${customer.priority || 'normal'}`;
+    const hasDocuments = Array.isArray(customer.documents) && customer.documents.length > 0;
+    const hasVoice = Array.isArray(customer.voice_notes) && customer.voice_notes.length > 0;
+    
+    return `
+        <div class="customer-row ${priorityClass} p-6 mb-4 bg-white rounded-xl shadow-sm border border-gray-100">
+            <div class="flex items-start justify-between mb-4">
+                <div class="flex items-start space-x-4">
+                    <div class="flex-shrink-0 mt-1">
+                        ${platformIcon}
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex items-center space-x-3 mb-2">
+                            <h4 class="text-lg font-bold text-gray-800">${customer.customer_name || 'Anonymous'}</h4>
+                            <span class="badge ${statusColors[customer.status] || 'bg-gray-500'} text-white text-xs px-2 py-1 rounded">
+                                ${statusEmojis[customer.status] || '❓'} ${(customer.status || 'UNKNOWN').toUpperCase()}
+                            </span>
+                            ${customer.priority === 'urgent' ? '<span class="animate-pulse bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">URGENT</span>' : ''}
+                        </div>
+                        <p class="text-sm text-gray-600 mb-1">
+                            <i class="fas fa-id-badge mr-2 text-gray-400"></i>ID: ${customer.id}
+                            <span class="mx-2 text-gray-300">|</span>
+                            <i class="fas fa-clock mr-2 text-gray-400"></i>${timeStr}
+                        </p>
+                        <!-- Inquiry (Service) Section -->
+                        <div class="mt-3 p-3 bg-indigo-50 border-l-4 border-indigo-500 rounded">
+                            <p class="text-xs font-bold text-indigo-700 uppercase tracking-wider mb-1">Service Inquiry</p>
+                            <p class="text-sm font-semibold text-gray-800">
+                                <i class="fas fa-concierge-bell mr-2"></i>${customer.service || 'General Inquiry'}
+                            </p>
+                        </div>
+                        <p class="text-sm text-gray-600 mt-3 italic line-clamp-2">"${customer.chat_summary || 'No conversation details...'}"</p>
+                    </div>
+                </div>
+                <div class="flex flex-col items-end space-y-3">
+                    <div class="text-right">
+                        <p class="text-xs text-gray-500 font-semibold uppercase">Potential Income</p>
+                        <span class="text-2xl font-black text-indigo-600">NPR ${(customer.income || 0).toLocaleString()}</span>
+                    </div>
+                    <a href="${finalChatLink}" target="_blank" class="flex items-center space-x-2 bg-gray-900 hover:bg-black text-white px-4 py-2 rounded-lg transition-all transform hover:scale-105 shadow-md">
+                        <i class="fab fa-${customer.platform === 'whatsapp' ? 'whatsapp' : 'facebook-messenger'}"></i>
+                        <span class="font-bold text-sm">Open Chat</span>
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Quick Actions Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 pt-4 border-t border-gray-100">
+                <div>
+                    <label class="text-[10px] font-bold text-gray-400 uppercase mb-1 block tracking-widest">Assign Operator</label>
+                    <select class="w-full bg-gray-50 border-0 rounded-lg text-sm p-2 focus:ring-2 focus:ring-indigo-500" onchange="assignOperator('${customer.id}', this.value)">
+                        <option value="">Choose Staff</option>
+                        ${allOperators.map(op => `<option value="${op.id}" ${customer.assigned_to === op.id ? 'selected' : ''}>${op.full_name}</option>`).join('')}
+                    </select>
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-gray-400 uppercase mb-1 block tracking-widest">Live Status</label>
+                    <select class="w-full bg-gray-50 border-0 rounded-lg text-sm p-2 font-bold focus:ring-2 focus:ring-indigo-500" onchange="updateStatus('${customer.id}', this.value)">
+                        <option value="pending" ${customer.status === 'pending' ? 'selected' : ''}>⏳ Pending</option>
+                        <option value="working" ${customer.status === 'working' ? 'selected' : ''}>🔵 Working</option>
+                        <option value="success" ${customer.status === 'success' ? 'selected' : ''}>✅ Success</option>
+                        <option value="problem" ${customer.status === 'problem' ? 'selected' : ''}>❌ Problem</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-gray-400 uppercase mb-1 block tracking-widest">Priority</label>
+                    <select class="w-full bg-gray-50 border-0 rounded-lg text-sm p-2 focus:ring-2 focus:ring-indigo-500" onchange="updatePriority('${customer.id}', this.value)">
+                        <option value="low" ${customer.priority === 'low' ? 'selected' : ''}>Low</option>
+                        <option value="normal" ${customer.priority === 'normal' ? 'selected' : ''}>Normal</option>
+                        <option value="high" ${customer.priority === 'high' ? 'selected' : ''}>High</option>
+                        <option value="urgent" ${customer.priority === 'urgent' ? 'selected' : ''}>Urgent</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Multimedia & Meta -->
+            <div class="flex items-center justify-between pt-4">
+                <div class="flex items-center space-x-3">
+                    ${hasDocuments ? `
+                        <button onclick="viewMultimedia('${customer.id}', 'documents')" class="bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-200 transition">
+                            <i class="fas fa-file-image mr-1"></i> Files (${customer.documents.length})
+                        </button>
+                    ` : '<span class="text-gray-300 text-xs font-medium italic">No files attached</span>'}
+                    
+                    ${hasVoice ? `
+                        <button onclick="viewMultimedia('${customer.id}', 'voice')" class="bg-purple-100 text-purple-700 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-purple-200 transition">
+                            <i class="fas fa-microphone-alt mr-1"></i> Voice Note
+                        </button>
+                    ` : ''}
+                </div>
+                <div class="text-[10px] text-gray-400 font-medium">
+                    SYNCED: ${customer.updated_at ? new Date(customer.updated_at).toLocaleTimeString() : 'N/A'}
+                </div>
+            </div>
+        </div>
+    `;
+}
     
     const priorityClass = `priority-${customer.priority}`;
     
@@ -391,49 +507,67 @@ function createCustomerCard(customer) {
     `;
 }
 
-// View Multimedia
+// View Multimedia - Updated for JSONB and Edge Function Data
 function viewMultimedia(customerId, type) {
     const customer = allCustomers.find(c => c.id === customerId);
     if (!customer) return;
     
     if (type === 'documents') {
-        modalTitle.innerHTML = `<i class="fas fa-images mr-2 text-indigo-600"></i>Documents - ${customer.customer_name}`;
-        modalContent.innerHTML = `
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                ${customer.documents.map((url, idx) => `
-                    <div class="border-2 border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition">
-                        <img src="${url}" class="w-full h-auto" alt="Document ${idx + 1}">
-                        <div class="p-3 bg-gray-50 flex justify-between items-center">
-                            <span class="text-sm font-semibold text-gray-700">Document ${idx + 1}</span>
-                            <a href="${url}" target="_blank" class="text-indigo-600 hover:text-indigo-800 text-sm font-medium">
-                                <i class="fas fa-external-link-alt mr-1"></i>Open
-                            </a>
-                        </div>
-                    </div>
-                `).join('')}
-            </div>
-        `;
+        modalTitle.innerHTML = `<i class="fas fa-file-alt mr-2 text-indigo-600"></i>Documents - ${customer.customer_name}`;
+        
+        // Edge Function बाट आउने JSONB डाटालाई एरेमा बदल्ने
+        const docs = Array.isArray(customer.documents) ? customer.documents : [];
+        
+        if (docs.length === 0) {
+            modalContent.innerHTML = `<p class="text-center p-8 text-gray-500">कुनै फाइल भेटिएन।</p>`;
+        } else {
+            modalContent.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    ${docs.map((doc, idx) => {
+                        // यदि इमेज हो भने प्रिभ्यू देखाउने, नत्र आइकन देखाउने
+                        const isImage = doc.type === 'image' || doc.url.match(/\.(jpeg|jpg|gif|png)$/i);
+                        return `
+                        <div class="border-2 border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition">
+                            ${isImage 
+                                ? `<img src="${doc.url}" class="w-full h-auto max-h-96 object-contain bg-gray-100">`
+                                : `<div class="w-full h-48 flex flex-col items-center justify-center bg-gray-100">
+                                     <i class="fas fa-file-pdf text-5xl text-red-500 mb-2"></i>
+                                     <span class="text-xs font-bold text-gray-500">DOCUMENT/FILE</span>
+                                   </div>`
+                            }
+                            <div class="p-3 bg-gray-50 flex justify-between items-center border-t">
+                                <span class="text-sm font-semibold text-gray-700 truncate mr-2">${doc.name || `File ${idx + 1}`}</span>
+                                <a href="${doc.url}" target="_blank" class="bg-indigo-600 text-white px-3 py-1 rounded text-xs font-bold hover:bg-indigo-700 transition">
+                                    <i class="fas fa-external-link-alt mr-1"></i>Open
+                                </a>
+                            </div>
+                        </div>`;
+                    }).join('')}
+                </div>
+            `;
+        }
     } else if (type === 'voice') {
         modalTitle.innerHTML = `<i class="fas fa-microphone mr-2 text-purple-600"></i>Voice Notes - ${customer.customer_name}`;
-        modalContent.innerHTML = `
-            <div class="space-y-4">
-                ${customer.voice_notes.map((url, idx) => `
+        const voices = Array.isArray(customer.voice_notes) ? customer.voice_notes : [];
+        
+        modalContent.innerHTML = voices.length === 0 
+            ? `<p class="text-center p-8 text-gray-500">कुनै भ्वाइस नोट भेटिएन।</p>`
+            : `<div class="space-y-4">
+                ${voices.map((url, idx) => `
                     <div class="bg-gradient-to-r from-purple-50 to-indigo-50 p-6 rounded-xl border-2 border-purple-200">
                         <div class="flex items-center justify-between mb-3">
                             <span class="font-semibold text-gray-800">
                                 <i class="fas fa-volume-up mr-2 text-purple-600"></i>
                                 Voice Message ${idx + 1}
                             </span>
-                            <span class="text-sm text-gray-600">Customer voice note</span>
                         </div>
-                        <audio controls class="audio-player">
+                        <audio controls class="w-full">
                             <source src="${url}" type="audio/mpeg">
                             Your browser does not support audio playback.
                         </audio>
                     </div>
                 `).join('')}
-            </div>
-        `;
+            </div>`;
     }
     
     multimediaModal.classList.add('active');
