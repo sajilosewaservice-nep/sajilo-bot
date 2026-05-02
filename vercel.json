@@ -1,10 +1,10 @@
 {
   "version": 2,
-  "name": "titan-crm-v4",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
   "rewrites": [
     { "source": "/api/messenger", "destination": "/api/messenger.js" },
     { "source": "/api/whatsapp", "destination": "/api/whatsapp.js" },
-    { "source": "/((?!.*\\.(js|css|png|jpg|svg)$).*)", "destination": "/index.html" }
-  ],
-  "cleanUrls": true
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }
