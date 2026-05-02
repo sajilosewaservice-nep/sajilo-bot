@@ -1,10 +1,9 @@
 // Omnichannel Operations Dashboard - Advanced Multi-Operator System
 // अमनिच्यानल अपरेशन्स ड्यासबोर्ड
 // SUPABASE SETUP
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = "https://ratgpvubjrcoipardzdp.supabase.co"; 
+const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJhdGdwdnVianJjb2lwYXJkemRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzMTg0OTMsImV4cCI6MjA4Mzg5NDQ5M30.t1eofJj9dPK-Psp_oL3LpCWimyz621T21JNpZljEGZk"; 
 const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
-
 // Global State
 let currentUser = null;
 let currentPage = 1;
