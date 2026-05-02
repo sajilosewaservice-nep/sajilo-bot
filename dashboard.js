@@ -4,6 +4,7 @@
 const supabaseUrl = "https://ratgpvubjrcoipardzdp.supabase.co"; 
 const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJhdGdwdnVianJjb2lwYXJkemRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzMTg0OTMsImV4cCI6MjA4Mzg5NDQ5M30.t1eofJj9dPK-Psp_oL3LpCWimyz621T21JNpZljEGZk"; 
 const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
 // Global State
 let currentUser = null;
 let currentPage = 1;
@@ -103,6 +104,12 @@ function setupEventListeners() {
             el.style.display = sidebar.classList.contains('collapsed') ? 'none' : 'block';
         });
     });
+}
+
+// Logout
+function handleLogout() {
+    localStorage.removeItem('omniUser');
+    location.reload();
 }
 
 async function handleLogin(e) {
@@ -236,18 +243,7 @@ function renderCustomers() {
     updatePagination();
 }
 
-// Create Customer Card - Updated for SQL v5 and Automated Inquiries
-function createCustomerCard(customer) {
-    // समय मिलाउने (created_at प्रयोग गर्ने)
-    const date = new Date(customer.created_at || customer.time);
-    const timeStr = date.toLocaleString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
-    
-    // Create Customer Card - Updated for SQL v5
+// Create Customer Card - Updated for SQL v5
 function createCustomerCard(customer) {
     // समय मिलाउने
     const date = new Date(customer.created_at || customer.time);
@@ -358,114 +354,7 @@ function createCustomerCard(customer) {
                 </div>
             </div>
             
-            <!-- Multimedia & Meta -->
-            <div class="flex items-center justify-between pt-4">
-                <div class="flex items-center space-x-3">
-                    ${hasDocuments ? `
-                        <button onclick="viewMultimedia('${customer.id}', 'documents')" class="bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-200 transition">
-                            <i class="fas fa-file-image mr-1"></i> Files (${customer.documents.length})
-                        </button>
-                    ` : '<span class="text-gray-300 text-xs font-medium italic">No files attached</span>'}
-                    
-                    ${hasVoice ? `
-                        <button onclick="viewMultimedia('${customer.id}', 'voice')" class="bg-purple-100 text-purple-700 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-purple-200 transition">
-                            <i class="fas fa-microphone-alt mr-1"></i> Voice Note
-                        </button>
-                    ` : ''}
-                </div>
-                <div class="text-[10px] text-gray-400 font-medium">
-                    SYNCED: ${customer.updated_at ? new Date(customer.updated_at).toLocaleTimeString() : 'N/A'}
-                </div>
-            </div>
-        </div>
-    `;
-}
-    
-    const priorityClass = `priority-${customer.priority}`;
-    
-    const hasDocuments = customer.documents && customer.documents.length > 0;
-    const hasVoice = customer.voice_notes && customer.voice_notes.length > 0;
-    
-    const whatsappLink = customer.platform === 'whatsapp' 
-        ? `https://wa.me/${customer.customer_phone?.replace(/\D/g, '')}`
-        : `https://m.me/${customer.customer_phone}`;
-    
-    return `
-        <div class="customer-row ${priorityClass} p-6">
-            <div class="flex items-start justify-between mb-4">
-                <div class="flex items-start space-x-4">
-                    <div class="flex-shrink-0">
-                        ${platformIcon}
-                    </div>
-                    <div class="flex-1">
-                        <div class="flex items-center space-x-3 mb-2">
-                            <h4 class="text-lg font-bold text-gray-800">${customer.customer_name}</h4>
-                            <span class="badge ${statusColors[customer.status]} text-white">${statusEmojis[customer.status]} ${customer.status.toUpperCase()}</span>
-                            ${customer.priority === 'urgent' ? '<span class="badge bg-red-500 text-white">🔥 URGENT</span>' : ''}
-                        </div>
-                        <p class="text-sm text-gray-600 mb-1">
-                            <i class="fas fa-phone mr-2"></i>${customer.customer_phone || 'N/A'}
-                            <span class="mx-2">•</span>
-                            <i class="fas fa-clock mr-2"></i>${timeStr}
-                        </p>
-                        <p class="text-sm text-gray-700 mb-2">
-                            <strong>Service:</strong> ${customer.service}
-                        </p>
-                        <p class="text-sm text-gray-600 italic">${customer.chat_summary}</p>
-                    </div>
-                </div>
-                <div class="flex flex-col items-end space-y-2">
-                    <span class="text-2xl font-bold text-indigo-600">NPR ${(customer.income || 0).toLocaleString()}</span>
-                    <a href="${whatsappLink}" target="_blank" class="quick-action-btn bg-green-500 hover:bg-green-600 text-white">
-                        <i class="fab fa-${customer.platform}"></i>
-                        Open Chat
-                    </a>
-                </div>
-            </div>
-            
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                <div>
-                    <label class="text-xs font-semibold text-gray-600 mb-1 block">Assigned To</label>
-                    <select class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" onchange="assignOperator('${customer.id}', this.value)">
-                        <option value="">Unassigned</option>
-                        ${allOperators.map(op => `
-                            <option value="${op.id}" ${customer.assigned_to === op.id ? 'selected' : ''}>
-                                ${op.full_name}
-                            </option>
-                        `).join('')}
-                    </select>
-                </div>
-                
-                <div>
-                    <label class="text-xs font-semibold text-gray-600 mb-1 block">Status</label>
-                    <select class="w-full px-3 py-2 rounded-lg text-sm text-white font-semibold ${statusColors[customer.status]}" onchange="updateStatus('${customer.id}', this.value)">
-                        <option value="pending" ${customer.status === 'pending' ? 'selected' : ''}>⏳ Pending</option>
-                        <option value="working" ${customer.status === 'working' ? 'selected' : ''}>🔵 Working</option>
-                        <option value="success" ${customer.status === 'success' ? 'selected' : ''}>✅ Success</option>
-                        <option value="problem" ${customer.status === 'problem' ? 'selected' : ''}>❌ Problem</option>
-                    </select>
-                </div>
-                
-                <div>
-                    <label class="text-xs font-semibold text-gray-600 mb-1 block">Priority</label>
-                    <select class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" onchange="updatePriority('${customer.id}', this.value)">
-                        <option value="low" ${customer.priority === 'low' ? 'selected' : ''}>⚪ Low</option>
-                        <option value="normal" ${customer.priority === 'normal' ? 'selected' : ''}>🔵 Normal</option>
-                        <option value="high" ${customer.priority === 'high' ? 'selected' : ''}>🟠 High</option>
-                        <option value="urgent" ${customer.priority === 'urgent' ? 'selected' : ''}>🔴 Urgent</option>
-                    </select>
-                </div>
-            </div>
-            
-            ${customer.problem_description ? `
-                <div class="bg-red-50 border-l-4 border-red-500 p-3 rounded mb-4">
-                    <p class="text-sm text-red-800">
-                        <i class="fas fa-exclamation-triangle mr-2"></i>
-                        <strong>Problem:</strong> ${customer.problem_description}
-                    </p>
-                </div>
-            ` : ''}
-            
+            <!-- Admin & Operator Notes -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div>
                     <label class="text-xs font-semibold text-gray-600 mb-1 block">Admin Instructions</label>
@@ -481,25 +370,23 @@ function createCustomerCard(customer) {
                 </div>
             </div>
             
-            <div class="flex items-center justify-between pt-4 border-t border-gray-200">
-                <div class="flex items-center space-x-4">
+            <!-- Multimedia & Meta -->
+            <div class="flex items-center justify-between pt-4 border-t border-gray-100">
+                <div class="flex items-center space-x-3">
                     ${hasDocuments ? `
-                        <button onclick="viewMultimedia('${customer.id}', 'documents')" class="quick-action-btn bg-blue-500 hover:bg-blue-600 text-white">
-                            <i class="fas fa-images"></i>
-                            View Documents (${customer.documents.length})
+                        <button onclick="viewMultimedia('${customer.id}', 'documents')" class="bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-200 transition">
+                            <i class="fas fa-file-image mr-1"></i> Files (${customer.documents.length})
                         </button>
-                    ` : '<span class="text-gray-400 text-sm">No documents</span>'}
+                    ` : '<span class="text-gray-300 text-xs font-medium italic">No files attached</span>'}
                     
                     ${hasVoice ? `
-                        <button onclick="viewMultimedia('${customer.id}', 'voice')" class="quick-action-btn bg-purple-500 hover:bg-purple-600 text-white">
-                            <i class="fas fa-microphone"></i>
-                            Voice Notes (${customer.voice_notes.length})
+                        <button onclick="viewMultimedia('${customer.id}', 'voice')" class="bg-purple-100 text-purple-700 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-purple-200 transition">
+                            <i class="fas fa-microphone-alt mr-1"></i> Voice Note
                         </button>
                     ` : ''}
                 </div>
-                
-                <div class="text-xs text-gray-500">
-                    Last updated: ${new Date(customer.last_updated).toLocaleString()}
+                <div class="text-[10px] text-gray-400 font-medium">
+                    SYNCED: ${customer.updated_at ? new Date(customer.updated_at).toLocaleTimeString() : 'N/A'}
                 </div>
             </div>
         </div>
@@ -524,7 +411,7 @@ function viewMultimedia(customerId, type) {
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     ${docs.map((doc, idx) => {
                         // यदि इमेज हो भने प्रिभ्यू देखाउने, नत्र आइकन देखाउने
-                        const isImage = doc.type === 'image' || doc.url.match(/\.(jpeg|jpg|gif|png)$/i);
+                        const isImage = doc.type === 'image' || (doc.url && doc.url.match(/\.(jpeg|jpg|gif|png)$/i));
                         return `
                         <div class="border-2 border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition">
                             ${isImage 
@@ -588,7 +475,6 @@ async function assignOperator(customerId, operatorId) {
             last_updated: new Date().toISOString()
         };
         
-        // Supabase Update
         await supabase.from('customers').update(updates).eq('id', customerId);
         
         const customer = allCustomers.find(c => c.id === customerId);
@@ -604,7 +490,6 @@ async function assignOperator(customerId, operatorId) {
 
 async function updateStatus(customerId, newStatus) {
     try {
-        // Supabase Update
         await supabase.from('customers').update({ 
             status: newStatus,
             last_updated: new Date().toISOString()
@@ -623,7 +508,6 @@ async function updateStatus(customerId, newStatus) {
 
 async function updatePriority(customerId, newPriority) {
     try {
-        // Supabase Update
         await supabase.from('customers').update({ 
             priority: newPriority,
             last_updated: new Date().toISOString()
@@ -641,7 +525,6 @@ async function updatePriority(customerId, newPriority) {
 
 async function updateField(customerId, field, value) {
     try {
-        // Supabase Update
         const payload = {};
         payload[field] = value;
         payload['last_updated'] = new Date().toISOString();
